@@ -1,0 +1,168 @@
+Package: vpn-panel
+Version: 0.2.1
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55317
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.1_amd64.deb
+Size: 14260540
+MD5sum: b9947a26c1d8bf238144a5c27cad0055
+SHA1: a21fd753905c268a826eb92b223f8433e934f9ff
+SHA256: 8c0898fd44283d8936534e211b9e4b554cf2de52abab745e536eb1dfc5423ca5
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.2.2
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55317
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.2_amd64.deb
+Size: 14262860
+MD5sum: c56ec54139fcf5c05cf37fab17ed9879
+SHA1: 6787d55944be3b7aaba59b7eaaabd2df631eaf10
+SHA256: a7080579852c303e4e605bce92127854e90c6247174f20861999919b78f68943
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.2.3
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55317
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.3_amd64.deb
+Size: 14262828
+MD5sum: 80f65d936af5ffb90b49e94d2b0d6a39
+SHA1: aa802609619197a8179e0f5ae688ddeafe7c9895
+SHA256: 82586a7c128e734af272b62d29f69d1c282a14f356d15a8fce26c0e42745c902
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.2.4
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55317
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.4_amd64.deb
+Size: 14273864
+MD5sum: 1324a439b79c8173e3ab525f28d9dd27
+SHA1: b163027da979cbe4123fcd38b87d4ea7f9580248
+SHA256: 0cd7d7ef37237c7101a3295319612bda341d4bf63f83ac70be5b30902db80d09
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.2.5
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55317
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.5_amd64.deb
+Size: 14274364
+MD5sum: 506aa10f2dae463f2bfd61afb85fb113
+SHA1: 5489ad28d58e3a8bccf6993555b0a0b8dbae353b
+SHA256: b8a3af6cb52d3e789e5f67b76e99be041aa043bd5e74a43c73c73a0428579659
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.2.6
+Architecture: amd64
+Maintainer: VPN Vendor <info@vpn-vendor.com>
+Installed-Size: 55322
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.2.6_amd64.deb
+Size: 14266940
+MD5sum: 0aef9d06acf22bbe978698728baf5ec7
+SHA1: 26bd38a974b262d67ce696b30c93b3309a0688ac
+SHA256: d013f305c30d92e12c5b771d687ffe94f40dbd671909eb5fd30445dd8183688f
+Section: net
+Priority: optional
+Homepage: https://vpn-vendor.com
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+

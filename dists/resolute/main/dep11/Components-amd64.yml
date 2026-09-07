@@ -1,0 +1,68 @@
+---
+File: DEP-11
+Version: '0.16'
+Origin: vpn-vendor-resolute-main
+Priority: 0
+MediaBaseUrl: https://apt.vpn-vendor.com/dists/resolute/main/dep11/media
+---
+Type: desktop-application
+ID: com.vpn_vendor.panel
+Package: vpn-panel
+Name:
+  C: "VPN Panel"
+Summary:
+  C: "Office gateway control panel"
+  ru: "Панель управления офисным шлюзом"
+Description:
+  C: "<p>Web control panel for a local office internet gateway: network, DHCP, DNS and VPN connections are managed in the browser, without the command line.</p><p>Early test build: not intended for production offices.</p>"
+  ru: "<p>Веб-панель управления локальным интернет-шлюзом офиса: сеть, DHCP, DNS и VPN-подключения настраиваются в браузере, без командной строки.</p><p>Ранняя тестовая сборка: не предназначена для рабочих офисов.</p>"
+Developer:
+  name:
+    C: "VPN Vendor"
+DeveloperName:
+  C: "VPN Vendor"
+ProjectLicense: LicenseRef-proprietary
+Categories:
+  - Network
+Launchable:
+  desktop-id:
+    - vpn-panel.desktop
+Url:
+  homepage: "https://vpn-vendor.com"
+Releases:
+  - version: "0.2.6"
+    unix-timestamp: 1788739200
+  - version: "0.2.5"
+    unix-timestamp: 1788739200
+  - version: "0.2.4"
+    unix-timestamp: 1788652800
+  - version: "0.2.3"
+    unix-timestamp: 1788652800
+  - version: "0.2.2"
+    unix-timestamp: 1788652800
+  - version: "0.2.1"
+    unix-timestamp: 1788652800
+  - version: "0.2.0"
+    unix-timestamp: 1788566400
+  - version: "0.1.1"
+    unix-timestamp: 1788134400
+  - version: "0.1.0"
+    unix-timestamp: 1788134400
+  - version: "0.0.11"
+    unix-timestamp: 1788134400
+Icon:
+  stock: vpn-panel
+  cached:
+    - name: vpn-panel_vpn-panel.png
+      width: 64
+      height: 64
+    - name: vpn-panel_vpn-panel.png
+      width: 128
+      height: 128
+  remote:
+    - url: com.vpn_vendor.panel/icons/64x64/vpn-panel.png
+      width: 64
+      height: 64
+    - url: com.vpn_vendor.panel/icons/128x128/vpn-panel.png
+      width: 128
+      height: 128
