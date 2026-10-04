@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC
+ "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+
+  <vendor>VPN Vendor</vendor>
+  <vendor_url>https://github.com/vpn-vendor/vpn-panel</vendor_url>
+  <icon_name>vpn-panel</icon_name>
+
+  <!-- Вход в панель с рабочего стола самого сервера.
+       Права спрашивает штатный механизм подтверждения системы: он знает,
+       кто сейчас сидит за этой машиной, и требует пароль администратора.
+       Это тот же уровень доверия, что и команда на консоли, поэтому
+       граница доверия не расширяется: подключение по сети (в том числе с
+       проброшенным портом) этой проверки не проходит без пароля. -->
+  <action id="com.vpn_vendor.panel.desktop-login">
+    <description>Sign in to the control panel from this server</description>
+    <description xml:lang="ru">Вход в панель управления с этого сервера</description>
+    <message>Authentication is required to sign in to the control panel from this server</message>
+    <message xml:lang="ru">Чтобы войти в панель управления с этого сервера, подтвердите права администратора</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/sbin/vpn-panel-desktop-login</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <!-- Код выгрузки копии настроек: тот же уровень доверия, что у входа с
+       этого сервера — человек у экрана шлюза с паролем администратора. -->
+  <action id="com.vpn_vendor.panel.backup-code">
+    <description>Issue a settings backup code on this server</description>
+    <description xml:lang="ru">Код для копии настроек на этом сервере</description>
+    <message>Authentication is required to issue a settings backup code</message>
+    <message xml:lang="ru">Чтобы получить код для копии настроек, подтвердите права администратора</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/sbin/vpn-panel-backup-code</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+  <!-- Сведения для поддержки: файл собирает системная служба; получить его
+       может человек у экрана шлюза с паролем администратора. -->
+  <action id="com.vpn_vendor.panel.support">
+    <description>Collect a support report on this server</description>
+    <description xml:lang="ru">Сведения для поддержки на этом сервере</description>
+    <message>Authentication is required to collect a support report</message>
+    <message xml:lang="ru">Чтобы собрать сведения для поддержки, подтвердите права администратора</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/sbin/vpn-panel-support</annotate>
+    <annotate key="org.freedesktop.policykit.exec.allow_gui">true</annotate>
+  </action>
+
+</policyconfig>

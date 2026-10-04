@@ -1,0 +1,118 @@
+#!/bin/sh
+set -e
+
+case "$1" in
+    remove|purge)
+        # Экран пароля возвращается к теме Ubuntu; initramfs собирается заново,
+        # иначе загрузка искала бы удалённую тему.
+        update-alternatives --remove default.plymouth /usr/share/plymouth/themes/vpn-panel/vpn-panel.plymouth 2>/dev/null || true
+        rm -f /var/lib/vpn-panel/boot-theme.sha256
+        if command -v update-initramfs >/dev/null 2>&1; then
+            update-initramfs -u >/dev/null 2>&1 || true
+        fi
+        ;;
+esac
+
+case "$1" in
+    purge)
+        systemctl unmask ufw 2>/dev/null || true
+        # Недописанные файлы прерванной записи (обрыв питания): в них могли
+        # остаться ключи и пароли. Раньше удаления каталогов.
+        for DIR in /etc/NetworkManager/conf.d /etc/apt/apt.conf.d /etc/cryptsetup-keys.d \
+            /etc/dracut.conf.d /etc/kea/vpn-panel /etc/netplan /etc/nftables.d /etc/openvpn/client \
+            /etc/ppp /etc/ppp/peers /etc/sysctl.d /etc/systemd/resolved.conf.d \
+            /etc/systemd/system/kea-dhcp4-server.service.d /etc/unbound/unbound.conf.d \
+            /etc/vpn-panel /etc/wireguard /run/vpn-panel /var/lib/vpn-panel ; do
+            rm -f "$DIR"/.*.vpn-panel-tmp 2>/dev/null || true
+        done
+        # Точка возврата незавершённого импорта: в ней все ключи профилей и
+        # пароль провайдера.
+        rm -f /etc/vpn-panel/import-checkpoint.json
+        rm -f /etc/vpn-panel/support.key
+        # Копии на откат от прерванного применения сети; в копиях секретов
+        # pppd — пароль провайдера.
+        rm -f /etc/netplan/.99-vpn-panel.yaml.prev
+        rm -f /etc/ppp/peers/vpn_panel_wan.vpn-panel.prev
+        rm -f /etc/ppp/chap-secrets.vpn-panel.prev /etc/ppp/pap-secrets.vpn-panel.prev
+        rm -f /etc/apt/apt.conf.d/52vpn-panel-auto
+        # Отметка запроса смены пароля диска и итог последней смены.
+        rm -f /etc/vpn-panel/disk-change.request /etc/vpn-panel/disk-change.last
+        rm -f /etc/systemd/system/kea-dhcp4-server.service.d/vpn-panel.conf
+        rmdir /etc/systemd/system/kea-dhcp4-server.service.d 2>/dev/null || true
+        rm -rf /etc/kea/vpn-panel
+        rm -f /etc/unbound/unbound.conf.d/vpn-panel.conf /etc/systemd/resolved.conf.d/vpn-panel.conf
+        rmdir /etc/systemd/resolved.conf.d 2>/dev/null || true
+        systemctl try-restart unbound 2>/dev/null || true
+        systemctl try-restart systemd-resolved 2>/dev/null || true
+        systemctl daemon-reload 2>/dev/null || true
+        systemctl try-restart kea-dhcp4-server 2>/dev/null || true
+        if ip link show wg-vpn0 >/dev/null 2>&1; then
+            wg-quick down wg-vpn0 2>/dev/null || true
+        fi
+        ip link del wg-vpn0 2>/dev/null || true
+        systemctl stop openvpn-client@vpn-panel 2>/dev/null || true
+        ip link del ovpn-vpn0 2>/dev/null || true
+        rm -f /etc/openvpn/client/vpn-panel.conf /etc/openvpn/client/vpn-panel-*.conf
+        # Правила маршрутизации канала ставит агент на весь защищённый режим:
+        # снимаем их вместе с таблицей канала (в ней запасной маршрут
+        # «недоступно»). Иначе сервер остался бы без маршрута по умолчанию
+        # до перезагрузки.
+        for _ in 1 2 3; do
+            ip -4 rule show 2>/dev/null | grep -q "lookup 51820" || break
+            ip -4 rule del table 51820 2>/dev/null || break
+        done
+        for _ in 1 2 3; do
+            ip -4 rule show 2>/dev/null | grep -q "suppress_prefixlength 0" || break
+            ip -4 rule del table main suppress_prefixlength 0 2>/dev/null || break
+        done
+        ip -4 route flush table 51820 2>/dev/null || true
+        ip link del ifb-vpn1 2>/dev/null || true
+        rm -f /etc/wireguard/wg-vpn0.conf /etc/wireguard/vpn-panel-*.conf
+        rm -f /etc/NetworkManager/conf.d/99-vpn-panel-wg.conf
+        rm -f /etc/NetworkManager/conf.d/99-vpn-panel-connectivity.conf
+        rm -f /etc/apt/sources.list.d/vpn-panel.sources
+        nmcli general reload conf 2>/dev/null || true
+        rm -f /etc/vpn-panel/vpn.json
+        # Сетевые факты единого сборщика служб режима (compose.go, шаг 5 M10).
+        rm -f /etc/vpn-panel/net-facts.json
+        rm -f /etc/vpn-panel/lockdown.nft
+        nft delete table inet vpn_panel 2>/dev/null || true
+        rm -f /etc/nftables.d/vpn-panel.nft /etc/sysctl.d/99-vpn-panel.conf
+        if [ -f /etc/vpn-panel/qos.json ]; then
+            QOS_WAN=$(sed -n 's/.*"wan":"\([a-zA-Z0-9_.-]*\)".*/\1/p' /etc/vpn-panel/qos.json)
+            if [ -n "$QOS_WAN" ]; then
+                tc qdisc del dev "$QOS_WAN" root 2>/dev/null || true
+                tc qdisc del dev "$QOS_WAN" ingress 2>/dev/null || true
+            fi
+            ip link del ifb-vpn0 2>/dev/null || true
+            rm -f /etc/vpn-panel/qos.json
+        fi
+        # PPPoE: снять надзор, убрать пир и СВОИ строки в секретах pppd. Там
+        # лежит пароль провайдера — после purge его на диске быть не должно.
+        # Логин читаем из peer-файла ДО удаления, чтобы снять ровно свою
+        # запись и не тронуть чужие подключения администратора. Прежнее имя с
+        # дефисами чистим тоже (сборки до исправления шага 3a).
+        for PEER in vpn_panel_wan vpn-panel-wan; do
+            [ -f "/etc/ppp/peers/$PEER" ] || continue
+            systemctl disable --now "ppp@$PEER.service" >/dev/null 2>&1 || true
+            PPPOE_USER=$(sed -n 's/^user "\(.*\)"$/\1/p' "/etc/ppp/peers/$PEER")
+            if [ -n "$PPPOE_USER" ]; then
+                for SEC in /etc/ppp/chap-secrets /etc/ppp/pap-secrets; do
+                    [ -f "$SEC" ] || continue
+                    awk -v u="\"$PPPOE_USER\"" '$1 != u' "$SEC" > "$SEC.vpn-panel-tmp" || continue
+                    chmod 0600 "$SEC.vpn-panel-tmp"
+                    mv "$SEC.vpn-panel-tmp" "$SEC"
+                done
+            fi
+            rm -f "/etc/ppp/peers/$PEER"
+        done
+        rm -f /etc/ppp/peers/vpn_panel_wan
+        rm -rf /var/lib/vpn-panel /var/log/vpn-panel
+        rm -f /etc/vpn-panel/panel.env
+        rmdir /etc/vpn-panel 2>/dev/null || true
+        ;;
+esac
+
+#DEBHELPER#
+
+exit 0

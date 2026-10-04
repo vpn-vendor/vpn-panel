@@ -1,0 +1,3 @@
+/* Фикстура: слой на каждую карточку и полоса прокрутки одного семейства браузеров. */
+.card { will-change: transform; }
+.list::-webkit-scrollbar { width: 6px; }

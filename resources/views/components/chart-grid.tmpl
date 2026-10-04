@@ -1,0 +1,5 @@
+{{ define "components/chart-grid" }}
+<div class="{{ .Class }}">
+    {{ range .Cards }}{{ template "components/chart-card" . }}{{ end }}
+</div>
+{{ end }}

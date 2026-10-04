@@ -1,0 +1,59 @@
+{{ define "security/storage" }}
+<div class="card">
+    <h2>Диск и системные журналы</h2>
+    {{ if .diskKnown }}
+    <p>Свободно <strong>{{ .diskAvail }}</strong> из {{ .diskTotal }}.
+    Данные панели занимают {{ .diskOurs }} при бюджете {{ .diskBudget }}.
+    Системные журналы сервера — {{ .logsTotal }}.</p>
+    {{ if eq .diskPressure 2 }}
+    <p><span class="state-down">Место почти кончилось.</span> Панель обрезает
+    разросшиеся системные журналы сама; если это не помогает — освободите место
+    на диске сервера.</p>
+    {{ else if eq .diskPressure 1 }}
+    <p><span class="state-down">Места мало.</span> Проверьте, что занимает диск.</p>
+    {{ else if .diskStarved }}
+    <p><span class="state-down">Диск слишком мал</span> для обычного хранения:
+    история панели хранится по минимуму.</p>
+    {{ else }}
+    <p><span class="state-up">Места достаточно.</span></p>
+    {{ end }}
+    {{ else }}
+    <p class="muted">Сведения о диске появятся через несколько секунд после
+    запуска панели.</p>
+    {{ end }}
+
+    <form method="post" action="/security/disk-budget">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/field" .fieldDiskBudget }}
+        {{ template "components/button" .buttonDiskBudget }}
+    </form>
+    <p class="muted">Когда данные панели превышают бюджет, история
+    сокращается первой: старые события удаляются раньше срока, а действия
+    администратора не трогаются.</p>
+
+    <form method="post" action="/security/syslog-cap">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="syslog_cap" value="0">
+        {{ template "components/toggle" .toggleSyslogCap }}
+        {{ template "components/button" .buttonSyslogCap }}
+    </form>
+
+    <table>
+        <thead><tr><th>Журнал</th><th>Текущий файл</th><th>Копии</th></tr></thead>
+        <tbody>
+            {{ range .logRows }}
+            <tr><td><code>{{ .Name }}</code></td><td>{{ .Live }}</td><td>{{ .Rotated }}</td></tr>
+            {{ end }}
+        </tbody>
+    </table>
+    <form method="post" action="/security/logs-trim"
+          data-island="confirm-logs-trim"
+          data-question="Очистить системные журналы сервера? Последние записи каждого журнала сохранятся, остальное и старые копии будут удалены. Это действие попадёт в журнал безопасности.">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/button" .buttonLogsTrim }}
+    </form>
+    <p class="muted">Кнопка для случая, когда диск заполнили системные
+    журналы, а разбираться в них некому. Журнал безопасности панели она не
+    трогает.{{ if .logsLastTrim }} Последняя очистка: {{ .logsLastTrim }}.{{ end }}</p>
+</div>
+{{ end }}

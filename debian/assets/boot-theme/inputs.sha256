@@ -1,0 +1,5 @@
+35a69df8aa03bb3f0016e0209b407fc0006b5b1df8e4076fdfc6819aa3dd329d  scripts/brand/mark.txt
+8161fb3bd88fd780b139ce94e41da632375aed1479cb007771ea8613f516fe6a  scripts/brand/boot-theme.script.in
+0bdad2d3ddec9201404b1e9747a4e82fdb3b7b7956037ca811bb91bebe42ada4  scripts/brand/gen-boot-theme.py
+dfe2ac2e6bd8f825b51346fd134ff7f7e103f019cdc46a4d7f6958f8d1705b2d  internal/diskcrypt/texts.tsv
+d9b951d999faf257568e456dfd41435288e1f3f5d2866babbfcd8d66a0ea00b4  public/css/app.css (тёмная тема)

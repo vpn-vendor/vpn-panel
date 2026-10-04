@@ -1,0 +1,314 @@
+{
+ "files": {
+  "both": {
+   "detect_err": "файл похож сразу на WireGuard и OpenVPN — выберите файл одного подключения, который прислал поставщик"
+  },
+  "empty": {
+   "detect_err": "файл пуст — выберите файл подключения, который прислал поставщик",
+   "shape": "файл пуст — выберите файл подключения, который прислал поставщик"
+  },
+  "garbage": {
+   "detect_err": "файл не похож на файл подключения: нужен файл WireGuard (с разделами [Interface] и [Peer]) или OpenVPN (со строкой remote и сертификатами внутри)"
+  },
+  "ovpn-script": {
+   "protocol": "openvpn",
+   "parse_err": "в файле есть команда «script-security», которую сервер выполнил бы с полными правами. Такие файлы панель не принимает — запросите у поставщика конфигурацию без встроенных команд"
+  },
+  "ovpn-tcp": {
+   "protocol": "openvpn",
+   "meta": {
+    "protocol": "openvpn",
+    "transport": "tcp",
+    "addresses": null,
+    "peer_key": "",
+    "allowed_ips": null,
+    "endpoint_host": "192.0.2.7",
+    "endpoint_port": 443,
+    "keepalive": 25,
+    "full_tunnel": true,
+    "voice_fit": false
+   },
+   "warnings": [
+    "подключение работает по TCP: для работы в интернете годится, а разговоры через него будут страдать — при потере пакета задерживается всё, что идёт следом. Для телефонии запросите у поставщика подключение по UDP"
+   ],
+   "generated": "client\ndev ovpn-vpn0\ndev-type tun\nproto tcp-client\nremote 192.0.2.10 1194 udp\nnobind\nresolv-retry infinite\nmark 51820\nroute-noexec\nroute-nopull\ndns-updown disable\npull-filter accept \"ifconfig \"\npull-filter accept \"topology \"\npull-filter accept \"route-gateway \"\npull-filter accept \"ping\"\npull-filter accept \"peer-id \"\npull-filter accept \"cipher \"\npull-filter accept \"protocol-flags\"\npull-filter reject \"compress\"\npull-filter reject \"comp-lzo\"\npull-filter reject \"fragment\"\npull-filter ignore \"\"\nping 25\nping-restart 120\ntun-mtu 1400\nmanagement /run/management.sock unix\nmanagement-client-user root\nverb 3\nremote-cert-tls server\n\u003cca\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCA\n-----END CERTIFICATE-----\n\u003c/ca\u003e\n\u003ccert\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCE\n-----END CERTIFICATE-----\n\u003c/cert\u003e\n\u003ckey\u003e\n-----BEGIN TESTING KEY-----\nMIIBKE\n-----END TESTING KEY-----\n\u003c/key\u003e\n",
+   "library": "client\nproto tcp-client\nremote 192.0.2.7 443 tcp\nremote-cert-tls server\n\u003cca\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCA\n-----END CERTIFICATE-----\n\u003c/ca\u003e\n\u003ccert\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCE\n-----END CERTIFICATE-----\n\u003c/cert\u003e\n\u003ckey\u003e\n-----BEGIN TESTING KEY-----\nMIIBKE\n-----END TESTING KEY-----\n\u003c/key\u003e\n"
+  },
+  "ovpn-vendor": {
+   "protocol": "openvpn",
+   "meta": {
+    "protocol": "openvpn",
+    "transport": "udp",
+    "addresses": null,
+    "peer_key": "",
+    "allowed_ips": null,
+    "endpoint_host": "vpn.example.net",
+    "endpoint_port": 1194,
+    "keepalive": 25,
+    "full_tunnel": true,
+    "voice_fit": true
+   },
+   "generated": "client\ndev ovpn-vpn0\ndev-type tun\nproto udp\nremote 192.0.2.10 1194 udp\nnobind\nresolv-retry infinite\nmark 51820\nroute-noexec\nroute-nopull\ndns-updown disable\npull-filter accept \"ifconfig \"\npull-filter accept \"topology \"\npull-filter accept \"route-gateway \"\npull-filter accept \"ping\"\npull-filter accept \"peer-id \"\npull-filter accept \"cipher \"\npull-filter accept \"protocol-flags\"\npull-filter reject \"compress\"\npull-filter reject \"comp-lzo\"\npull-filter reject \"fragment\"\npull-filter ignore \"\"\nping 25\nping-restart 120\ntun-mtu 1400\nexplicit-exit-notify 1\nmanagement /run/management.sock unix\nmanagement-client-user root\nverb 3\nremote-cert-tls server\ndata-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305\n\u003cca\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCA\n-----END CERTIFICATE-----\n\u003c/ca\u003e\n\u003ccert\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCE\n-----END CERTIFICATE-----\n\u003c/cert\u003e\n\u003ckey\u003e\n-----BEGIN TESTING KEY-----\nMIIBKE\n-----END TESTING KEY-----\n\u003c/key\u003e\n",
+   "library": "client\nproto udp\nremote vpn.example.net 1194 udp\nremote-cert-tls server\ndata-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305\n\u003cca\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCA\n-----END CERTIFICATE-----\n\u003c/ca\u003e\n\u003ccert\u003e\n-----BEGIN CERTIFICATE-----\nMIIBCE\n-----END CERTIFICATE-----\n\u003c/cert\u003e\n\u003ckey\u003e\n-----BEGIN TESTING KEY-----\nMIIBKE\n-----END TESTING KEY-----\n\u003c/key\u003e\n"
+  },
+  "wg-bad-key": {
+   "protocol": "wireguard",
+   "parse_err": "открытый ключ сервера в файле повреждён — запросите конфигурацию заново"
+  },
+  "wg-ipv6": {
+   "protocol": "wireguard",
+   "meta": {
+    "protocol": "wireguard",
+    "transport": "udp",
+    "addresses": [
+     "10.66.66.2/32",
+     "fd00::2/128"
+    ],
+    "peer_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+    "allowed_ips": [
+     "0.0.0.0/0"
+    ],
+    "endpoint_host": "vpn.example.net",
+    "endpoint_port": 51820,
+    "config_dns": [
+     "10.66.66.1"
+    ],
+    "config_mtu": 1420,
+    "keepalive": 25,
+    "full_tunnel": true,
+    "voice_fit": true
+   },
+   "warnings": [
+    "файл содержит адреса нового поколения (IPv6) — офису они не раздаются, на работу подключения это не влияет"
+   ],
+   "generated": "[Interface]\nPrivateKey = 6HrAtQNTBhaOAxo2rEyOEqYnLXQ5U8DdAxIQyfaFvV4=\nAddress = 10.66.66.2/32, fd00::2/128\nMTU = 1420\nTable = off\nFwMark = 51820\n\n[Peer]\nPublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=\nPresharedKey = FpCyhws9cxwWoV4xELtfJvjJN+zQVRPISllRWgeopVE=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 192.0.2.10:51820\nPersistentKeepalive = 25\n"
+  },
+  "wg-no-endpoint": {
+   "protocol": "wireguard",
+   "parse_err": "в файле нет адреса сервера — запросите конфигурацию заново"
+  },
+  "wg-split": {
+   "protocol": "wireguard",
+   "meta": {
+    "protocol": "wireguard",
+    "transport": "udp",
+    "addresses": [
+     "10.66.66.2/32"
+    ],
+    "peer_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+    "allowed_ips": [
+     "10.0.0.0/8"
+    ],
+    "endpoint_host": "vpn.example.net",
+    "endpoint_port": 51820,
+    "config_dns": [
+     "10.66.66.1"
+    ],
+    "config_mtu": 1420,
+    "keepalive": 25,
+    "full_tunnel": false,
+    "voice_fit": true
+   },
+   "warnings": [
+    "файл направляет в защищённый канал не весь трафик, а только часть адресов — режим «весь офис через защищённый канал» с таким файлом работать не будет"
+   ],
+   "generated": "[Interface]\nPrivateKey = 6HrAtQNTBhaOAxo2rEyOEqYnLXQ5U8DdAxIQyfaFvV4=\nAddress = 10.66.66.2/32\nMTU = 1420\nTable = off\nFwMark = 51820\n\n[Peer]\nPublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=\nPresharedKey = FpCyhws9cxwWoV4xELtfJvjJN+zQVRPISllRWgeopVE=\nAllowedIPs = 10.0.0.0/8\nEndpoint = 192.0.2.10:51820\nPersistentKeepalive = 25\n"
+  },
+  "wg-vendor": {
+   "protocol": "wireguard",
+   "meta": {
+    "protocol": "wireguard",
+    "transport": "udp",
+    "addresses": [
+     "10.66.66.2/32"
+    ],
+    "peer_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=",
+    "allowed_ips": [
+     "0.0.0.0/0"
+    ],
+    "endpoint_host": "vpn.example.net",
+    "endpoint_port": 51820,
+    "config_dns": [
+     "10.66.66.1"
+    ],
+    "config_mtu": 1420,
+    "keepalive": 25,
+    "full_tunnel": true,
+    "voice_fit": true
+   },
+   "generated": "[Interface]\nPrivateKey = 6HrAtQNTBhaOAxo2rEyOEqYnLXQ5U8DdAxIQyfaFvV4=\nAddress = 10.66.66.2/32\nMTU = 1420\nTable = off\nFwMark = 51820\n\n[Peer]\nPublicKey = xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=\nPresharedKey = FpCyhws9cxwWoV4xELtfJvjJN+zQVRPISllRWgeopVE=\nAllowedIPs = 0.0.0.0/0\nEndpoint = 192.0.2.10:51820\nPersistentKeepalive = 25\n"
+  }
+ },
+ "names": {
+  "« OpenVPN »": {
+   "normalized": "openvpn",
+   "stored": "openvpn",
+   "valid": true,
+   "iface": "ovpn-vpn0"
+  },
+  "«WIREGUARD»": {
+   "normalized": "wireguard",
+   "stored": "wireguard",
+   "valid": true,
+   "iface": "wg-vpn0"
+  },
+  "«ipsec»": {
+   "normalized": "ipsec",
+   "stored": "ipsec",
+   "valid": false,
+   "iface": ""
+  },
+  "«open vpn»": {
+   "normalized": "open vpn",
+   "stored": "open vpn",
+   "valid": false,
+   "iface": ""
+  },
+  "«openvpn»": {
+   "normalized": "openvpn",
+   "stored": "openvpn",
+   "valid": true,
+   "iface": "ovpn-vpn0"
+  },
+  "«wireguard»": {
+   "normalized": "wireguard",
+   "stored": "wireguard",
+   "valid": true,
+   "iface": "wg-vpn0"
+  },
+  "«»": {
+   "normalized": "",
+   "stored": "wireguard",
+   "valid": false,
+   "iface": ""
+  }
+ },
+ "passports": {
+  "openvpn/": {
+   "protocol": "openvpn",
+   "transport": "udp",
+   "kernel_data_plane": true,
+   "uses_aes": true,
+   "sets_mark": false,
+   "manages_routes": false,
+   "server_pushes": true,
+   "address_at_import": false,
+   "probe_candidates": [
+    "pushed_gateway",
+    "admin"
+   ],
+   "liveness": "process",
+   "progress_period": 10000000000,
+   "self_heal_budget": 120000000000,
+   "can_pause": true,
+   "clock_sensitive": true,
+   "overhead_ipv4": 52,
+   "overhead_ipv6": 72
+  },
+  "openvpn/tcp": {
+   "protocol": "openvpn",
+   "transport": "tcp",
+   "kernel_data_plane": true,
+   "uses_aes": true,
+   "sets_mark": false,
+   "manages_routes": false,
+   "server_pushes": true,
+   "address_at_import": false,
+   "probe_candidates": [
+    "pushed_gateway",
+    "admin"
+   ],
+   "liveness": "process",
+   "progress_period": 10000000000,
+   "self_heal_budget": 120000000000,
+   "can_pause": true,
+   "clock_sensitive": true,
+   "overhead_ipv4": 52,
+   "overhead_ipv6": 72
+  },
+  "openvpn/udp": {
+   "protocol": "openvpn",
+   "transport": "udp",
+   "kernel_data_plane": true,
+   "uses_aes": true,
+   "sets_mark": false,
+   "manages_routes": false,
+   "server_pushes": true,
+   "address_at_import": false,
+   "probe_candidates": [
+    "pushed_gateway",
+    "admin"
+   ],
+   "liveness": "process",
+   "progress_period": 10000000000,
+   "self_heal_budget": 120000000000,
+   "can_pause": true,
+   "clock_sensitive": true,
+   "overhead_ipv4": 52,
+   "overhead_ipv6": 72
+  },
+  "wireguard/": {
+   "protocol": "wireguard",
+   "transport": "udp",
+   "kernel_data_plane": true,
+   "uses_aes": false,
+   "sets_mark": true,
+   "manages_routes": false,
+   "server_pushes": false,
+   "address_at_import": true,
+   "probe_candidates": [
+    "admin",
+    "subnet_first"
+   ],
+   "liveness": "handshake",
+   "progress_period": 120000000000,
+   "self_heal_budget": 90000000000,
+   "can_pause": false,
+   "clock_sensitive": false,
+   "overhead_ipv4": 60,
+   "overhead_ipv6": 80
+  },
+  "wireguard/tcp": {
+   "protocol": "wireguard",
+   "transport": "udp",
+   "kernel_data_plane": true,
+   "uses_aes": false,
+   "sets_mark": true,
+   "manages_routes": false,
+   "server_pushes": false,
+   "address_at_import": true,
+   "probe_candidates": [
+    "admin",
+    "subnet_first"
+   ],
+   "liveness": "handshake",
+   "progress_period": 120000000000,
+   "self_heal_budget": 90000000000,
+   "can_pause": false,
+   "clock_sensitive": false,
+   "overhead_ipv4": 60,
+   "overhead_ipv6": 80
+  },
+  "wireguard/udp": {
+   "protocol": "wireguard",
+   "transport": "udp",
+   "kernel_data_plane": true,
+   "uses_aes": false,
+   "sets_mark": true,
+   "manages_routes": false,
+   "server_pushes": false,
+   "address_at_import": true,
+   "probe_candidates": [
+    "admin",
+    "subnet_first"
+   ],
+   "liveness": "handshake",
+   "progress_period": 120000000000,
+   "self_heal_budget": 90000000000,
+   "can_pause": false,
+   "clock_sensitive": false,
+   "overhead_ipv4": 60,
+   "overhead_ipv6": 80
+  }
+ }
+}

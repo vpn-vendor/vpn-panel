@@ -1,0 +1,41 @@
+[Unit]
+Description=VPN Panel web interface
+Wants=vpn-agent.service
+After=vpn-agent.service network.target
+
+[Service]
+Type=simple
+User=vpn-admin
+Group=vpn-panel
+EnvironmentFile=/etc/vpn-panel/panel.env
+WorkingDirectory=/usr/share/vpn-panel
+ExecStart=/usr/sbin/vpn-panel
+StateDirectory=vpn-panel
+StateDirectoryMode=0750
+# Пределы ресурсов: перезапуск веб-интерфейса по пределу памяти не трогает
+# трафик офиса.
+# Порога торможения нет намеренно: без подкачки он усыпляет процесс на
+# четверть часа вместо быстрого перезапуска. Мягкий предел держит сам процесс.
+# Единственный рычаг памяти. Мягкий предел сборщика мусора веб-интерфейс
+# вычисляет сам при старте как 0,9 от этого числа (при 384M — 345 МиБ):
+# второго рукописного числа здесь быть не должно.
+MemoryMax=30%
+# Без подкачки: иначе рост памяти уходит в своп и жёсткий предел не срабатывает.
+MemorySwapMax=0
+CPUWeight=50
+CPUQuota=100%
+TasksMax=128
+# Предел частоты сообщений в системный журнал.
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=1000
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

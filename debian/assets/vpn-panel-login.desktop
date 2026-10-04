@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Sign in to VPN Panel
+Name[ru]=Вход в панель — с этого сервера
+Comment=Get an access code and open the panel in one click
+Comment[ru]=Один клик: панель откроется уже с доступом, код вводить не нужно
+Keywords=vpn;panel;login;
+Keywords[ru]=впн;панель;вход;код;доступ;
+Exec=/usr/bin/vpn-panel-login
+Icon=vpn-panel
+Terminal=false
+Categories=Network;
+StartupNotify=true

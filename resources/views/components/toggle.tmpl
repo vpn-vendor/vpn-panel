@@ -1,0 +1,15 @@
+{{ define "components/toggle" }}
+<div class="field field-toggle">
+    <label class="toggle" for="{{ .ID }}">
+        <input type="checkbox"
+               id="{{ .ID }}"
+               name="{{ .Name }}"
+               value="{{ .FormValue }}"
+               {{ if .Checked }}checked{{ end }}
+               {{ if .Disabled }}disabled{{ end }}
+               {{ if .Hint }}aria-describedby="{{ .ID }}-hint"{{ end }}>
+        <span class="toggle-label">{{ .Label }}</span>
+    </label>
+    {{ if .Hint }}<div class="field-msg"><span class="field-hint" id="{{ .ID }}-hint">{{ .Hint }}</span></div>{{ end }}
+</div>
+{{ end }}

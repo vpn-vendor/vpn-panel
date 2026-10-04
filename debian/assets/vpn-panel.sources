@@ -1,0 +1,6 @@
+Types: deb
+URIs: https://vpn-vendor.github.io/vpn-panel
+Suites: resolute
+Components: main
+Architectures: amd64
+Signed-By: /usr/share/keyrings/vpn-panel.asc

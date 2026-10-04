@@ -1,0 +1,2 @@
+{"active_slug": "office", "mode": "black", "on_failure": "strict", "mtu": 0, "dns_choice": "ours",
+ "profiles": [{"name": "Офис", "slug": "office", "protocol": "wireguard", "transport": "udp", "endpoint_host": "vpn.example.net", "endpoint_port": 51820, "peer_key": "xTIBA5rboUvnH4htodjb6e697QjLERt1NAB4mZqp8Dg=", "addresses": "10.66.66.2/32", "allowed_ips": "0.0.0.0/0", "config_dns": "10.66.66.1", "config_mtu": 1420, "keepalive": 25, "full_tunnel": true, "voice_fit": true, "probe_target": "198.51.100.1"}]}

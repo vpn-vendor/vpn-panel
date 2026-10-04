@@ -1,0 +1,436 @@
+{{ define "vpn.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+{{ if .intentBroken }}
+<div class="alert alert-error">
+    <strong>Настройки защищённого канала повреждены.</strong>
+    Сохранённый режим перестал читаться (сбой диска или питания). Чтобы трафик
+    офиса не пошёл мимо канала, офис закрыт от интернета или будет закрыт после
+    перезагрузки. Проверьте режим и подключение ниже и нажмите «Применить» —
+    настройки запишутся заново, и офис вернётся в выбранный режим.
+</div>
+{{ end }}
+
+{{ if .agentDown }}
+<div class="alert alert-error">
+    <strong>Системная служба недоступна.</strong>
+    Состояние защищённого канала получить не удалось. Если это повторяется —
+    перезагрузите сервер или обратитесь в поддержку.
+</div>
+{{ end }}
+
+<div class="card">
+    <h2>Состояние</h2>
+    {{ if .appliedBlack }}
+        {{ if and .online .dataOK }}
+        <p><span class="state-up">Весь офис выходит через защищённый канал.</span>
+        Трафик и адреса сайтов, которые открывают сотрудники, провайдеру не видны.</p>
+        {{ else if and .online .dataUnknown }}
+        <p><span class="state-up">Канал установлен, идёт проверка прохождения данных.</span></p>
+        {{ else if .online }}
+        <p><span class="state-down">Канал установлен, но данные через него не идут.</span>
+        Подробности — в уведомлениях вверху страницы.</p>
+        {{ else }}
+        <p><span class="state-down">Канал не отвечает.</span> Подробности — в
+        уведомлениях вверху страницы.</p>
+        {{ end }}
+    {{ else }}
+    <p>Офис выходит в интернет <strong>напрямую</strong>. Это полноценный режим:
+    оптимизация телефонии и защита шлюза работают и в нём — но маршрут и адреса
+    сайтов видны провайдеру.</p>
+    {{ end }}
+    <table>
+        <tbody>
+            <tr><td>Канал поднят</td>
+                <td>{{ if .tunnelUp }}да{{ else }}нет{{ end }}</td></tr>
+            {{ if .handshakeAgo }}
+            <tr><td>Последний обмен с сервером</td><td>{{ .handshakeAgo }} с назад</td></tr>
+            {{ end }}
+            {{ if .endpoint }}
+            <tr><td>Сервер подключения</td><td><code>{{ .endpoint }}</code></td></tr>
+            {{ else if .endpointIP }}
+            <tr><td>Сервер подключения</td><td><code>{{ .endpointIP }}</code></td></tr>
+            {{ end }}
+            {{ if .appliedBlack }}
+            <tr><td>Протокол</td>
+                <td>{{ .protocol }} по {{ .transport }}{{ if .tunnelUp }},
+                    {{ if .kernelDataPlane }}шифрование в ядре{{ else }}шифрование в процессе{{ end }}{{ end }}</td></tr>
+            {{ end }}
+            {{ if .serverPushed }}
+            <tr><td>Сервер просил</td>
+                <td>{{ range .serverPushed }}<code>{{ . }}</code> {{ end }}<span class="muted">— панель это не применяет:
+                    маршрутами и именами распоряжается она сама</span></td></tr>
+            {{ end }}
+            {{ if .appliedMTU }}
+            <tr><td>Размер пакетов</td>
+                <td>{{ .appliedMTU }}{{ if .mtuAuto }} <span class="tag">подобран автоматически</span>{{ end }}</td></tr>
+            {{ end }}
+            {{ if .tunnelUp }}
+            <tr><td>Передано через канал</td><td>{{ .rxText }} принято, {{ .txText }} отправлено</td></tr>
+            {{ end }}
+            <tr><td>Ядер процессора</td>
+                <td>{{ if .cores }}{{ .cores }}{{ else }}—{{ end }}{{ if .load1 }}, нагрузка {{ .load1 }}{{ end }}</td></tr>
+        </tbody>
+    </table>
+</div>
+
+{{ if .findings }}
+<div class="card">
+    <h2>Что происходит с каналом</h2>
+    <p class="muted">Панель разбирает состояние сама и отвечает на самые
+    частые вопросы. Если ответ вам понятен — обращаться в поддержку не нужно.</p>
+    {{ range .findings }}
+    <div class="finding finding-{{ .Level }}">
+        <div class="finding-title">{{ .Title }}</div>
+        <p>{{ .Text }}</p>
+        {{ if .Action }}<p class="finding-action"><strong>Что делать:</strong> {{ .Action }}</p>{{ end }}
+    </div>
+    {{ end }}
+</div>
+{{ end }}
+
+<div class="card">
+    <h2>Подключения</h2>
+    <p class="muted">Файл подключения выдаёт поставщик услуги — панель его не
+    создаёт и не может создать. Панель принимает файл из любого источника.</p>
+    {{ if .hasProfile }}
+    <table>
+        <thead><tr><th>Название</th><th>Протокол</th><th>Сервер</th><th>Адрес в канале</th><th></th></tr></thead>
+        <tbody>
+            {{ range .profiles }}
+            <tr>
+                <td>{{ .Name }}
+                    {{ if .Active }}<span class="tag tag-main">выбрано</span>{{ end }}
+                    {{ if not .FullTunnel }}<span class="tag">не весь трафик</span>{{ end }}</td>
+                <td>{{ .Protocol }} по {{ .Transport }}
+                    {{ if not .VoiceFit }}<span class="tag">телефония: не годится</span>{{ end }}</td>
+                <td><code>{{ .Endpoint }}</code></td>
+                <td><code>{{ .Addresses }}</code></td>
+                <td>
+                    <form method="post" action="/vpn/remove">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <input type="hidden" name="profile" value="{{ .Slug }}">
+                        <button type="submit" class="btn btn-danger">Удалить</button>
+                    </form>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ else }}
+    <p class="muted">Подключений пока нет.</p>
+    {{ end }}
+
+    <form method="post" action="/vpn/import" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <label>Название подключения
+            <input type="text" name="name" maxlength="60" placeholder="например, Основное">
+        </label>
+        <label>Файл подключения
+            <input type="file" name="config" accept="{{ .upload.Accept }}" required>
+        </label>
+        <button type="submit" class="btn">Загрузить</button>
+    </form>
+    <p class="muted">Принимаются файлы {{ range .upload.Kinds }}{{ .Sep }}{{ .Label }} (<code>{{ .Ext }}</code>){{ end }}
+    со всеми сертификатами внутри; протокол панель
+    узнаёт по содержимому. Секретный ключ и сертификаты из файла остаются на
+    сервере и не показываются ни здесь, ни в резервных копиях. Файлы со
+    встроенными командами, с логином и паролем или со сжатием панель не
+    принимает и объясняет почему. Подключение по TCP принимается, но
+    помечается: для разговоров оно не годится.</p>
+</div>
+
+<div class="card">
+    <h2>Режим работы</h2>
+    <div class="alert alert-warn">
+        <strong>Переключение прервёт текущие разговоры.</strong> Меняйте режим в
+        нерабочее время или предупредите сотрудников.
+    </div>
+    <form method="post" action="/vpn/apply">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+
+        <label class="checkbox">
+            <input type="radio" name="mode" value="white" {{ if not .black }}checked{{ end }}>
+            Прямой доступ в интернет
+        </label>
+        <p class="muted">Родная скорость канала. Оптимизация телефонии и защита
+        шлюза работают. Маршрут и адреса сайтов видны провайдеру.</p>
+
+        <label class="checkbox">
+            <input type="radio" name="mode" value="black" {{ if .black }}checked{{ end }}>
+            Весь офис через защищённый канал
+        </label>
+        <p class="muted">Весь трафик офиса идёт через сервер поставщика:
+        провайдер видит только сам факт подключения. Звонки внутри канала
+        получают приоритет так же, как и без него.</p>
+
+        {{ if .hasProfile }}
+        <label>Подключение
+            <select name="profile">
+                <option value="">— не выбрано —</option>
+                {{ range .profiles }}
+                <option value="{{ .Slug }}" {{ if .Active }}selected{{ end }}>{{ .Name }}</option>
+                {{ end }}
+            </select>
+        </label>
+        {{ end }}
+
+        <h3>Если канал пропадёт</h3>
+        <label class="checkbox">
+            <input type="radio" name="on_failure" value="strict" {{ if .strict }}checked{{ end }}>
+            Блокировать интернет в офисе (рекомендуем)
+        </label>
+        <p class="muted">Интернет в офисе прекратится, пока канал не вернётся.
+        Так трафик гарантированно не уйдёт в обход — ради этого канал и нужен.
+        Панель повторяет попытки подключения сама.</p>
+
+        <label class="checkbox">
+            <input type="radio" name="on_failure" value="direct" {{ if not .strict }}checked{{ end }}>
+            Выпускать напрямую с предупреждением
+        </label>
+        <p class="muted">Офис продолжит работать, но, пока канал не отвечает,
+        трафик виден провайдеру. Панель об этом громко предупредит и вернёт
+        защиту, как только канал оживёт.</p>
+
+        <details>
+            <summary>Расширенные настройки</summary>
+
+            <label>Размер пакетов (MTU)
+                <input type="number" name="mtu" min="{{ .minMTU }}" max="{{ .maxMTU }}"
+                       value="{{ if .mtu }}{{ .mtu }}{{ end }}" placeholder="подобрать автоматически">
+            </label>
+            <p class="muted">Пустое поле — панель подбирает сама. Меняйте, только
+            если сайты «начинают открываться и виснут»: это признак того, что
+            крупные пакеты по пути пропадают. Кнопка «Подобрать» ниже измеряет
+            путь и предлагает готовое число. На качество звука размер пакетов не
+            влияет; если телефон зарегистрирован, а звонок не устанавливается —
+            переключите софтфон на SIP по TCP/TLS.</p>
+
+            {{ if .profiles }}
+            <h3>Серверы имён</h3>
+            <label class="checkbox">
+                <input type="radio" name="dns_choice" value="ours" {{ if not .dnsConfig }}checked{{ end }}>
+                Наш резолвер через защищённый канал (рекомендуем)
+            </label>
+            <label class="checkbox">
+                <input type="radio" name="dns_choice" value="config" {{ if .dnsConfig }}checked{{ end }}>
+                Пересылать запросы на сервер из файла подключения
+            </label>
+            {{ range .profiles }}{{ if and .Active .ConfigDNS }}
+            <p class="muted">Файл выбранного подключения просит сервер имён
+            <code>{{ .ConfigDNS }}</code>. По умолчанию панель его не применяет:
+            имена разрешает резолвер офиса, и в защищённом режиме его запросы
+            уходят только внутрь канала. Второй вариант перешлёт запросы на
+            сервер из файла — мы не можем ручаться за его политику.</p>
+            {{ end }}{{ end }}
+            {{ end }}
+        </details>
+
+        <button type="submit" class="btn">Применить</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Время сервера</h2>
+    <p class="muted">Если часы сервера уходят (обычная причина — севшая
+    батарейка на плате), защищённый канал перестаёт подниматься: сервер
+    поставщика отклоняет подключение со сбитым временем. Обычная
+    синхронизация в этот момент тоже не работает — её запрос уходит в
+    неработающий канал. Эта кнопка спрашивает точное время <strong>в обход
+    канала</strong> и, если нужно, поправляет часы; значение записывается и
+    в часы платы, поэтому переживёт перезагрузку.</p>
+    <form method="post" action="/vpn/timesync">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn">Проверить время сервера</button>
+    </form>
+</div>
+
+<div class="card">
+    <h2>Что защищённый канал не скрывает</h2>
+    <p>Канал прячет ваш трафик от провайдера: он видит только сам факт
+    подключения, но не адреса сайтов и не содержимое. Это его работа, и она
+    выполняется.</p>
+    <p><strong>Сайты — другое дело.</strong> Браузер на компьютере сотрудника
+    сам сообщает сайту часовой пояс системы, язык и другие приметы. Если
+    выход канала в одной стране, а компьютер настроен на другую, внимательный
+    сайт это заметит — и никакой шлюз тут не поможет: он не видит, что
+    браузер пишет о себе внутри защищённого соединения.</p>
+    <p class="muted"><strong>Менять часовой пояс на компьютерах офиса мы не
+    советуем</strong>, и панель этого не делает. Сдвинутый пояс ломает
+    расписания, отчётность, журналы и вход в доменную сеть — цена заметно
+    выше пользы. Если задача — чтобы конкретный сайт видел «местного»
+    пользователя, настраивать нужно тот компьютер, с которого работают, а не
+    шлюз. Панель отвечает за то, чтобы <em>время на сервере было точным</em>:
+    это нужно и каналу, и сертификатам, и журналам.</p>
+</div>
+
+{{ if .tunnelUp }}
+<div class="card"{{ if .checkRunning }} data-vpncheck-running="1"{{ end }}>
+    <h2>Проверка защищённого канала</h2>
+    <p class="muted">Панель измеряет канал сама и объясняет результат: сколько
+    теряют служебные пакеты и сколько — настоящие данные (это разные вещи, и
+    именно из-за них в программах для звонков загорается красный индикатор при
+    нормальном звуке), какая задержка до сервера подключения мимо канала и
+    внутри него, сколько пакетов отбросили очереди самого сервера.</p>
+    <p class="muted"><strong>Быстрая проверка</strong> занимает около полминуты
+    и разговорам не мешает. <strong>Полная</strong> дополнительно скачивает
+    файлы через канал: она даёт настоящую скорость, но на время закачки
+    разговоры могут стать хуже — запускайте её в нерабочее время или
+    предупредите сотрудников.</p>
+    {{ if .checkRunning }}
+    <p><strong>Проверка идёт…</strong> Страница обновится сама.</p>
+    {{ else }}
+    <form method="post" action="/vpn/check" class="inline-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="mode" value="quick">
+        <button type="submit" class="btn">Быстрая проверка</button>
+    </form>
+    <form method="post" action="/vpn/check" class="inline-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="mode" value="full">
+        <button type="submit" class="btn">Полная проверка со скоростью</button>
+    </form>
+    <form method="post" action="/vpn/check" class="inline-form" data-direct-form>
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="mode" value="full">
+        <input type="hidden" name="direct" value="1">
+        <button type="button" class="btn" data-direct-open>Полная проверка + скорость без канала</button>
+    </form>
+    {{ end }}
+    {{ if .checkError }}<p class="muted">Проверка не выполнена: {{ .checkError }}</p>{{ end }}
+
+    {{ with .check }}{{ if .Has }}
+    <h3>Результат проверки от {{ .When }} ({{ .Mode }}, {{ .TookSec }} с)</h3>
+    {{ if .Past }}<p class="muted">Эта проверка снята до переподключения канала или с другим профилем: к нынешнему соединению она не относится и в разборе выше не учитывается. Нажмите «Проверить», чтобы получить свежий результат.</p>{{ end }}
+    <table>
+        <thead><tr><th>Что измеряли</th><th>Потери</th><th>Задержка</th><th>Джиттер</th><th>Качество разговора</th><th>Достоверность</th></tr></thead>
+        <tbody>
+        {{ range .Probes }}
+        <tr>
+            <td>{{ .Title }}<br><span class="muted">цель: {{ .Target }}</span></td>
+            {{ if .Err }}
+            <td colspan="4">{{ .Err }}</td>
+            {{ else }}
+            <td>{{ .Loss }}{{ if .Burst }}<br><span class="muted">{{ .Burst }}</span>{{ end }}</td>
+            <td>{{ .RTT }}</td><td>{{ .Jitter }}</td>
+            <td>{{ .Grade }}<br><span class="muted">{{ .Why }}</span></td>
+            {{ end }}
+            <td class="muted">{{ .Note }}</td>
+        </tr>
+        {{ end }}
+        </tbody>
+    </table>
+    <ul class="check-facts">
+        <li>Отброшено очередями сервера за время проверки: <strong>{{ .Queue }}</strong></li>
+        {{ if .Tariff }}<li>Тариф в настройках: {{ .Tariff }}; потолок очереди внутри канала: {{ .Ceiling }}</li>{{ end }}
+        <li>Ядер процессора: {{ .Cores }}, наибольшая нагрузка за проверку: {{ .Load }}</li>
+        {{ if .HasSpeed }}
+        <li>Скорость через канал: <strong>{{ if .Speed }}{{ .Speed }}{{ else }}измерить не удалось{{ end }}</strong>{{ if .Sources }} (ответили: {{ .Sources }}){{ end }}</li>
+        <li>Базовая линия без канала: {{ .Baseline }}</li>
+        {{ if .SpeedErr }}<li>{{ .SpeedErr }}</li>{{ end }}
+        {{ end }}
+        {{ range .Notes }}<li>{{ . }}</li>{{ end }}
+    </ul>
+    <p class="muted">Проверка шлёт пять пакетов в секунду, а настоящий
+    разговор — пятьдесят. Поэтому показанные потери — это <strong>нижняя
+    граница</strong>: измерено одновременно на боевом канале — проверка
+    показала 4,8 %, разговор в ту же минуту терял 7,6 %.</p>
+    <p class="muted">Полосы качества — общепринятые: «цель» — как у оператора
+    связи (потери до 0,5 %, задержка до 100 мс в одну сторону), «приемлемо» —
+    разговор идёт без жалоб (до 1 % и до 150 мс). Полного отсутствия потерь в
+    сети не бывает: одиночные пропуски программа связи прячет незаметно, а
+    вот потери пачками слышны как провалы в речи — поэтому характер потерь
+    показан отдельно.</p>
+    <p class="muted">Скорость через канал имеет смысл только вместе с тремя
+    числами выше: тарифом, потолком нашей очереди и числом отброшенных
+    пакетов. Если скорость упёрлась в потолок очереди — измерена настройка, а
+    не канал; если очереди отбросили ноль пакетов, а скорость всё равно ниже
+    базовой линии — ограничение находится на пути к серверу поставщика.</p>
+    {{ end }}{{ end }}
+
+    <dialog id="direct-dialog" class="confirm-dialog">
+        <h3>Сервер выйдет в интернет мимо защищённого канала</h3>
+        <p>Чтобы измерить, сколько даёт ваш провайдер <strong>без канала</strong>,
+        сервер один раз обратится к источнику замера <strong>напрямую</strong> —
+        своим настоящим адресом, а не адресом сервера подключения.</p>
+        <p><strong>Что это значит для анонимности.</strong> Источник замера
+        увидит настоящий публичный адрес вашего офиса и факт обращения. Ваш
+        провайдер увидит одно зашифрованное соединение к нему. Содержимое и
+        адреса сайтов, которые открывают сотрудники, при этом не раскрываются:
+        весь остальной трафик офиса продолжает идти через канал.</p>
+        <p><strong>Что произойдёт:</strong> одно соединение, около восьми
+        секунд, один источник. Событие будет записано в журнал безопасности.</p>
+        <p class="muted">Без этого замера сравнивать скорость канала не с чем:
+        панель не может отличить «канал медленный» от «у провайдера столько же».</p>
+        <div class="dialog-actions">
+            <button type="button" class="btn btn-small" data-direct-cancel>Отмена</button>
+            <button type="button" class="btn" data-direct-confirm disabled>Подтверждаю (3)</button>
+        </div>
+    </dialog>
+</div>
+
+{{ if .pathKnown }}
+<div class="card">
+    <h2>Наблюдение пути</h2>
+    <p class="muted">Панель постоянно наблюдает путь одной пробой около раза в
+    секунду: в защищённом режиме — только внутри канала, мимо канала не уходит
+    ни одного пакета; в прямом доступе — до тех же серверов имён, к которым
+    и так идут запросы. Тревога — только при смене состояния.</p>
+    {{ if .paths }}
+    <table>
+        <thead><tr><th>Путь</th><th>Карта</th><th>Цели</th><th>Состояние</th><th>Задержка</th><th>Потери</th><th>С</th></tr></thead>
+        <tbody>
+            {{ range .paths }}
+            <tr>
+                <td>{{ .Name }}</td>
+                <td><code>{{ .Iface }}</code></td>
+                <td><code>{{ .Targets }}</code>{{ if .Chosen }} <span class="muted">({{ .Chosen }})</span>{{ end }}</td>
+                <td>{{ if .Up }}<span class="state-up">{{ .State }}</span>{{ else }}<span class="state-down">{{ .State }}</span>{{ end }}</td>
+                <td>{{ if .RTT }}{{ .RTT }}{{ else }}—{{ end }}</td>
+                <td>{{ .Loss }}</td>
+                <td>{{ .Since }}</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ else }}
+    <p class="muted">Путей для наблюдения сейчас нет: нет ни действующего WAN, ни поднятого канала.</p>
+    {{ end }}
+    {{ if .resolverServers }}
+    <p class="muted">Задержка серверов имён по кэшу резолвера шлюза (в защищённом
+    режиме запросы идут через канал):{{ range .resolverServers }} <code>{{ . }}</code>{{ end }}.</p>
+    {{ end }}
+    {{ if .underlayRTT }}
+    <p class="muted">Путь до сервера канала мимо канала (подложка) по последнему замеру
+    прямого режима: {{ .underlayRTT }} мс, {{ .underlayAge }} назад{{ if not .underlayFresh }} — <span class="state-down">замер устарел</span>, вердикт о цене канала не выносится{{ end }}.</p>
+    {{ end }}
+    {{ if .probeSlug }}
+    <form method="post" action="/vpn/probe-target">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="slug" value="{{ .probeSlug }}">
+        {{ template "components/field" .fieldProbeTarget }}
+        {{ template "components/button" .buttonProbeTarget }}
+    </form>
+    {{ end }}
+</div>
+{{ end }}
+
+<div class="card">
+    <h2>Проверка пути</h2>
+    <p class="muted">Панель отправит несколько проверочных пакетов разного
+    размера до сервера подключения и внутри канала и предложит подходящий
+    размер пакетов. Проверка занимает до полминуты и запускается не чаще
+    одного раза в минуту.</p>
+    <form method="post" action="/vpn/mtu">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn">Подобрать размер пакетов</button>
+    </form>
+</div>
+{{ end }}
+
+<script src="/public/js/vpn.js" defer></script>
+{{ template "app-bottom" . }}
+{{ end }}

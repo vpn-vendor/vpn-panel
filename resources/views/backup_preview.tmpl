@@ -1,0 +1,73 @@
+{{ define "backup_preview.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error" role="alert">{{ .error }}</div>{{ end }}
+
+<div class="card">
+    <h2>Что изменится</h2>
+    <p>Файл <strong>{{ .fileName }}</strong> —
+    {{ if .isCopy }}своя копия: разделы из файла заменят текущие целиком.{{ else }}шаблон: меняются только правила офиса.{{ end }}</p>
+    <table>
+        <thead><tr><th>Раздел</th><th>Что будет</th></tr></thead>
+        <tbody>
+            {{ range .sections }}
+            <tr>
+                <td>{{ .Title }}</td>
+                <td>{{ if .Absent }}<span class="muted">{{ .State }}</span>{{ else }}{{ .State }}{{ end }}
+                    {{ range .Items }}<br>{{ . }}{{ end }}</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+</div>
+
+{{ if .cards }}
+<div class="card">
+    <h2>Сетевые карты этого шлюза</h2>
+    <p>Файл сделан на другом железе. Скажите, какая карта этого шлюза берёт
+    роль каждой карты из файла. Подсказки ниже — что панель видит на картах
+    прямо сейчас.</p>
+    <table>
+        <thead><tr><th>Карта</th><th>MAC</th><th>Что видно</th></tr></thead>
+        <tbody>
+            {{ range .cardFacts }}<tr><td>{{ .Name }}</td><td><code>{{ .MAC }}</code></td><td>{{ .Facts }}</td></tr>{{ end }}
+        </tbody>
+    </table>
+    <form method="post" action="/backup/import/cards">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ range .cards }}
+        <p class="muted">В файле эта карта {{ .Role }}.</p>
+        {{ template "components/select" .Select }}
+        {{ end }}
+        {{ template "components/button" .cardBtn }}
+    </form>
+</div>
+{{ end }}
+
+{{ range .hints }}<div class="alert alert-warn">{{ . }}</div>{{ end }}
+{{ range .errors }}<div class="alert alert-error">{{ . }}</div>{{ end }}
+
+{{ if .ready }}
+<form method="post" action="/backup/import/apply">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    {{ if .danger }}
+    {{ template "components/danger-confirm" .danger }}
+    {{ else }}
+    <div class="card">
+        <p>После применения у вас будет время проверить работу и закрепить
+        настройки. Без решения в срок они вернутся к прежним сами.</p>
+        {{ template "components/button" .applyBtn }}
+    </div>
+    {{ end }}
+</form>
+{{ end }}
+
+<form method="post" action="/backup/import/discard">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    {{ template "components/button" .dropBtn }}
+</form>
+
+<script src="/public/js/backup.js" defer></script>
+
+{{ template "app-bottom" . }}
+{{ end }}

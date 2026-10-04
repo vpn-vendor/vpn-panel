@@ -1,0 +1,61 @@
+{{ define "speedtest-card" }}
+<div class="card" id="speedtest">
+    <h2>Замер скорости</h2>
+    <p class="muted">Меряется канал <strong>самого сервера</strong>, а не вашего
+    компьютера. Замер идёт по нескольким независимым публичным источникам,
+    итог — медиана по источникам: один сбойный источник не искажает
+    результат. Тест занимает до 30 секунд и скачивает несколько сотен
+    мегабайт.</p>
+
+    {{ if .measuring }}
+    <div class="alert alert-warn" data-speedtest-running>Идёт замер — страница
+    обновится сама. Если этого не произошло за минуту, обновите её вручную.</div>
+    {{ else }}
+
+    {{ if .measureError }}
+    <div class="alert alert-error">Замер не удался: {{ .measureError }}
+    Введите скорости из договора с провайдером.</div>
+    {{ end }}
+
+    {{ if .measureDownRows }}
+    <table>
+        <thead><tr><th>Источник</th><th>Скачивание</th></tr></thead>
+        <tbody>
+            {{ range .measureDownRows }}<tr><td>{{ .Name }}</td><td>{{ .Speed }}</td></tr>{{ end }}
+        </tbody>
+    </table>
+    <table>
+        <thead><tr><th>Источник</th><th>Отдача</th></tr></thead>
+        <tbody>
+            {{ range .measureUpRows }}<tr><td>{{ .Name }}</td><td>{{ .Speed }}</td></tr>{{ end }}
+        </tbody>
+    </table>
+    <p><strong>Итог: {{ .measureDownMbit }} Мбит/с на скачивание,
+    {{ .measureUpMbit }} Мбит/с на отдачу.</strong></p>
+    {{ if .measureDivergent }}
+    <p class="muted">Источники заметно расходятся — итог взят как медиана.
+    Повторите замер в другое время; если расхождение сохраняется, укажите
+    значение из договора с провайдером.</p>
+    {{ end }}
+    {{ if .measureDev }}
+    <div class="alert alert-warn">Среда разработки: цифры относятся к
+    контейнеру, а не к серверу, — подставлять их в тариф нельзя.</div>
+    {{ else }}
+    <p><a href="#" class="btn btn-small" data-fill-tariff
+          data-down="{{ .measureDownMbit }}" data-up="{{ .measureUpMbit }}">Подставить
+    в поля тарифа</a></p>
+    <p class="muted">Если кнопка не сработала — просто впишите итоговые числа
+    в поля выше.</p>
+    {{ end }}
+    {{ end }}
+
+    <form method="post" action="/qos/speedtest">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="back" value="{{ .speedBack }}">
+        <p class="muted">На время замера защита звонков временно снимается,
+        а канал будет занят — запускайте в спокойную минуту.</p>
+        <button type="submit" class="btn">Запустить замер</button>
+    </form>
+    {{ end }}
+</div>
+{{ end }}

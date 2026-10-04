@@ -1,0 +1,8 @@
+{{ define "components/chart-tip" }}
+<div class="chart-tip" data-chart-tip data-text-peak="пик" role="status" hidden>
+    <div class="chart-tip-time" data-tip-time></div>
+    {{ range .Slots }}
+    <div class="chart-tip-row" data-tip-row hidden><span class="chart-dot" aria-hidden="true"></span><span data-tip-label></span><span class="chart-tip-val" data-tip-val></span></div>
+    {{ end }}
+</div>
+{{ end }}

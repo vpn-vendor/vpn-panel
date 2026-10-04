@@ -1,0 +1,122 @@
+# Выпуск по тегу: сборка .deb в чистом контейнере, аттестация происхождения,
+# публикация в Releases. Секретов нет: репозиторий apt подписывается вне CI.
+name: Release
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build .deb
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    container:
+      image: mcr.microsoft.com/devcontainers/go:1.26-bookworm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Доступ git к дереву
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Инструменты упаковки
+        run: |
+          export DEBIAN_FRONTEND=noninteractive
+          apt-get update -qq
+          apt-get install -y -qq debhelper lintian librsvg2-bin
+
+      - name: Тег совпадает с debian/changelog
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          log="$(dpkg-parsechangelog -S Version)"
+          [ "$tag" = "$log" ] || { echo "Тег v$tag не совпадает с debian/changelog ($log)."; exit 1; }
+
+      # Кэш в выпуске не используется: сборка только из чистого дерева.
+      - name: Тесты
+        run: go test -race ./...
+
+      - name: Сборка пакета
+        env:
+          APT_REPO_LIVE: ${{ vars.APT_REPO_LIVE }}
+        run: dpkg-buildpackage -us -uc -b -d
+
+      - name: Lintian
+        run: lintian --fail-on error ../vpn-panel_*.deb
+
+      - name: Пакет, суммы и заметки
+        run: |
+          mkdir -p dist
+          cp ../vpn-panel_*.deb dist/
+          deb="$(basename dist/vpn-panel_*.deb)"
+          (cd dist && sha256sum "$deb" > SHA256SUMS)
+          url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$deb"
+          {
+            echo "## Изменения"
+            dpkg-parsechangelog -S Changes | sed -e '1,2d' -e 's/^ //' -e '/^\.$/d'
+            echo
+            echo "## Требования"
+            echo "- Чистая Ubuntu 26.04 LTS (amd64)."
+            echo
+            echo "## Установка"
+            echo '```bash'
+            echo "wget -O $deb $url"
+            echo '```'
+            echo '```bash'
+            echo "sudo apt install ./$deb"
+            echo '```'
+            echo
+            echo "## Обновление"
+            echo "Те же две команды поверх установленной версии. Настройки и данные сохраняются."
+          } > dist/notes.txt
+          cat dist/SHA256SUMS
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: deb
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Права на запись есть только здесь, и здесь не исполняется код из дерева.
+  publish:
+    name: Attest & publish
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: deb
+          path: dist
+
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.deb
+
+      - name: Выпуск на GitHub
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          flag=--latest
+          case "${GITHUB_REF_NAME#v}" in 0.*) flag=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/*.deb dist/SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "vpn-panel $GITHUB_REF_NAME" \
+            --notes-file dist/notes.txt \
+            --verify-tag "$flag"

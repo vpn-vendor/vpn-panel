@@ -1,0 +1,17 @@
+{{ define "components/facts" }}
+<section class="card facts-card{{ if .URL }} link-card{{ end }}">
+    <h2 class="link-card-title">
+        {{ if .URL }}<a href="{{ .URL }}">{{ .Title }}<span class="link-card-go" aria-hidden="true">{{ template "components/icon" "chevron" }}</span></a>
+        {{ else }}{{ .Title }}{{ end }}
+    </h2>
+    <dl class="facts">
+        {{ range .Items }}
+        <div class="{{ .Class }}">
+            <dt class="fact-label">{{ .Label }}</dt>
+            <dd class="fact-value">{{ .Shown }}</dd>
+            {{ if .Note }}<dd class="fact-note">{{ .Note }}</dd>{{ end }}
+        </div>
+        {{ end }}
+    </dl>
+</section>
+{{ end }}

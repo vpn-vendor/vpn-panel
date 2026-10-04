@@ -1,0 +1,8 @@
+[Plymouth Theme]
+Name=vpn-panel
+Description=Экран запроса пароля
+ModuleName=script
+
+[script]
+ImageDir=/usr/share/plymouth/themes/vpn-panel
+ScriptFile=/usr/share/plymouth/themes/vpn-panel/vpn-panel.script

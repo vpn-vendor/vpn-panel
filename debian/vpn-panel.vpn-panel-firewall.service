@@ -1,0 +1,23 @@
+# Защита раньше сети: правила панели загружаются до того, как менеджер сети
+# получит право поднять карты. Без этого правила и сеть поднимались бы
+# параллельно, и в короткое окно трафик офиса мог бы уйти мимо канала.
+#
+# Порядок гарантирует граф systemd, а не скорость. Одноразовая служба
+# «запущена» только ПОСЛЕ завершения сценария; network-pre.target не будет
+# достигнут раньше неё, а NetworkManager и systemd-networkd упорядочены
+# после network-pre.target. Устройство — то же, что у штатного
+# nftables.service дистрибутива; своего правила времени здесь нет.
+[Unit]
+Description=VPN Panel protection before the network comes up
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target shutdown.target
+Wants=network-pre.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/libexec/vpn-panel/firewall-boot
+
+[Install]
+WantedBy=sysinit.target

@@ -1,0 +1,5 @@
+{{ define "components/status-grid" }}
+<div class="status-lines">
+    {{ range .Lines }}{{ template "components/status-line" . }}{{ end }}
+</div>
+{{ end }}

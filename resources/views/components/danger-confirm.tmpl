@@ -1,0 +1,25 @@
+{{ define "components/danger-confirm" }}
+<section class="danger-confirm" data-island="danger-confirm" data-word="{{ .Word }}" aria-labelledby="danger-title">
+    <h2 class="danger-title" id="danger-title">{{ template "components/icon" "warning" }} ВНИМАНИЕ!</h2>
+    <p>Файл меняет настройки, от которых зависит безопасность офиса. Отметьте
+    каждую строку, если понимаете, что она изменит, и наберите слово
+    <strong class="danger-word">{{ .Word }}</strong>.</p>
+    {{ if .Error }}<div class="alert alert-error" role="alert">{{ .Error }}</div>{{ end }}
+    <ul class="danger-list">
+        {{ range .Rows }}
+        <li>
+            <label class="checkbox danger-row">
+                <input type="checkbox" name="{{ .Name }}" value="1" required>
+                <span><mark class="danger-mark">{{ .Title }}</mark>{{ with .Item }} «{{ . }}»{{ end }} — {{ .Kind }}. {{ .Warn }}.</span>
+            </label>
+        </li>
+        {{ end }}
+    </ul>
+    <div class="field">
+        <label class="field-label" for="danger-word">Слово подтверждения</label>
+        <input class="field-input" id="danger-word" name="danger_word" type="text" autocomplete="off" required>
+        <div class="field-msg"></div>
+    </div>
+    {{ template "components/button" .Submit }}
+</section>
+{{ end }}

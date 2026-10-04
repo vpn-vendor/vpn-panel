@@ -1,0 +1,42 @@
+{{ define "setup.tmpl" }}
+{{ template "auth-top" . }}
+<h1>Первый запуск панели</h1>
+<p>Создайте учётную запись администратора. Это устройство станет
+<strong>главным доверенным</strong> — с него вы сможете подключать остальные.</p>
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+
+{{ if .needCode }}
+<div class="alert alert-warn">
+    Вы открыли мастер не с самого сервера. Введите установочный код —
+    его выдаёт консоль самого сервера.
+    <br>Проще: сядьте за сам сервер, откройте список программ, наберите
+    <strong>вход в панель</strong> и нажмите значок
+    «Вход в панель — с этого сервера» — мастер откроется без кода.
+</div>
+{{ end }}
+
+<form method="post" action="/setup">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    {{ if .needCode }}
+    <label>Установочный код с консоли сервера
+        <input name="setup_code" required autocomplete="off" placeholder="KJ4Q-7NPM"
+               value="{{ if .prefillCode }}{{ .prefillCode }}{{ end }}">
+    </label>
+    {{ end }}
+    <label>Имя администратора
+        <input name="name" value="Администратор" required maxlength="50">
+    </label>
+    <label>Название этого устройства
+        <input name="device_label" value="Компьютер установки" required maxlength="50">
+    </label>
+    <label>Максимум учётных записей (по умолчанию — 1)
+        <input name="max_users" type="number" value="1" min="1" max="50">
+    </label>
+    <button type="submit" class="btn">Настроить всё по умолчанию</button>
+</form>
+
+<p class="muted">Локальная сеть не является доверенной средой.
+Доверяйте только личным устройствам администратора.</p>
+{{ template "auth-bottom" . }}
+{{ end }}

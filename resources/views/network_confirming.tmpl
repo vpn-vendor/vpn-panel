@@ -1,0 +1,25 @@
+{{ define "network_confirming.tmpl" }}
+{{ template "app-top" . }}
+
+<div class="card" id="confirm-box" data-csrf="{{ .csrf }}" data-timeout="{{ .timeout }}"
+     data-confirm="{{ or .confirmURL "/network/confirm" }}" data-return="{{ or .returnURL "/network" }}">
+    <h2>Применяем настройки сети…</h2>
+    <p>Панель проверяет, что связь с вами не потеряна. Если всё в порядке —
+    изменения закрепятся <strong>автоматически</strong>, ничего нажимать не нужно.</p>
+    <p>Если связь пропадёт, через <strong><span id="confirm-counter">{{ .timeout }}</span> сек</strong>
+    всё вернётся как было — просто обновите страницу.</p>
+
+    <form method="post" action="{{ or .confirmURL "/network/confirm" }}">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn">Оставить изменения сейчас</button>
+    </form>
+    <form method="post" action="{{ or .cancelURL "/network/cancel" }}">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn btn-danger">Откатить сейчас</button>
+    </form>
+</div>
+
+<script src="/public/js/confirm.js"></script>
+
+{{ template "app-bottom" . }}
+{{ end }}

@@ -1,0 +1,15 @@
+{{ define "components/window-chips" }}
+<div class="chips" role="group" aria-label="Окно времени графиков" data-island="chart-window" hidden>
+    <span class="chip-set" data-chip-set>
+        {{ range .Chips }}
+        <button type="button" class="chip" data-window-set="{{ .Key }}" aria-pressed="{{ if .Pressed }}true{{ else }}false{{ end }}">{{ .Label }}</button>
+        {{ end }}
+    </span>
+    
+    <button type="button" class="chip chip-pick" data-range-pick hidden>{{ template "components/icon" "search" }}Выбрать промежуток</button>
+    <span class="chip-range" data-range-note hidden>
+        Показан отрезок <b data-range-text></b>
+        <button type="button" class="btn btn-ghost btn-small" data-range-back>Вернуть окно «<span data-range-window>{{ .Label }}</span>»</button>
+    </span>
+</div>
+{{ end }}

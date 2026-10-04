@@ -1,0 +1,6 @@
+{{ define "components/button" }}
+<button class="{{ .Class }}" type="{{ .ButtonType }}"
+        {{ if .Name }}name="{{ .Name }}"{{ end }}
+        {{ if .Value }}value="{{ .Value }}"{{ end }}
+        {{ if .Disabled }}disabled{{ end }}>{{ .Label }}</button>
+{{ end }}

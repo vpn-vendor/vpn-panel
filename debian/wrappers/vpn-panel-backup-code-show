@@ -1,0 +1,21 @@
+#!/bin/sh
+# Значок «Код для копии настроек» на рабочем столе сервера: подтверждение
+# прав штатным окном системы и код крупно на экране.
+set -eu
+
+TITLE="Код для копии настроек"
+
+OUT="$(pkexec /usr/sbin/vpn-panel-backup-code 2>&1)" || {
+    MSG="$(printf 'Код не выдан.\n\n%s\n\nЕсли окно подтверждения прав было отменено — нажмите значок ещё раз.' "$OUT")"
+    if command -v zenity >/dev/null 2>&1 && zenity --error --no-wrap --title="$TITLE" --text="$MSG" 2>/dev/null; then
+        exit 1
+    fi
+    printf '%s\n' "$MSG" >&2
+    exit 1
+}
+CODE="$(printf '%s\n' "$OUT" | grep -oE '[A-Z0-9]{4}-[A-Z0-9]{4}' | head -n 1)"
+MSG="$(printf 'Код для выгрузки копии:\n\n<big><b>%s</b></big>\n\nВведите его в браузере на странице «Резервная копия».\nКод срабатывает один раз и действует несколько минут.' "$CODE")"
+if command -v zenity >/dev/null 2>&1 && zenity --info --no-wrap --title="$TITLE" --text="$MSG" 2>/dev/null; then
+    exit 0
+fi
+printf '%s\n' "$OUT"

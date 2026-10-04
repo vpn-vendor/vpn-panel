@@ -1,0 +1,58 @@
+{{ define "login.tmpl" }}
+{{ template "auth-top" . }}
+<h1>Подключение устройства</h1>
+
+{{ if .autoLogin }}
+<div class="alert alert-code" id="autologin-note">
+    <strong>Код получен с этого сервера — входим…</strong>
+    <p class="muted">Если через несколько секунд ничего не произошло, нажмите
+    кнопку «Доверить это устройство» ниже: код уже подставлен.</p>
+</div>
+{{ else }}
+<p>Вход выполняется <strong>кодом подключения</strong>. Получите его
+на уже доверенном устройстве (страница «Устройства»)
+{{ if .onServer }}или командой <code>vpn-panel-code</code> в терминале этого сервера.{{ else }}или на консоли самого сервера.{{ end }}</p>
+{{ end }}
+
+{{ if .desktopHint }}
+<div class="alert alert-code">
+    <strong>Вы открыли панель на самом сервере — код вводить не нужно.</strong>
+    <ol>
+        <li>Сверните браузер и откройте список программ этого компьютера
+        (кнопка «Показать приложения» внизу панели задач).</li>
+        <li>Наберите <strong>вход в панель</strong> — появится значок
+        <strong>«Вход в панель — с этого сервера»</strong>.</li>
+        <li>Нажмите его и введите пароль администратора <em>этого
+        компьютера</em> в окне, которое покажет система.</li>
+    </ol>
+    <p class="muted">Панель откроется сама, уже с доступом. Пароль спрашивает
+    сама система — так она убеждается, что вы действительно сидите за
+    сервером, а не подключились к нему по сети.</p>
+</div>
+{{ end }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+
+<form method="post" action="/login" id="login-form"
+      {{ if .autoLogin }}data-autologin="1"{{ end }}>
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <label>Код подключения
+        <input name="code" required autocomplete="off" placeholder="KJ4Q-7NPM"
+               value="{{ if .prefillCode }}{{ .prefillCode }}{{ end }}"
+               {{ if not .prefillCode }}autofocus{{ end }}>
+    </label>
+    <label>Название этого устройства
+        <input name="device_label" required maxlength="50" placeholder="Ноутбук админа"
+               value="{{ if .deviceLabel }}{{ .deviceLabel }}{{ end }}">
+    </label>
+    <button type="submit" class="btn" id="login-submit">Доверить это устройство</button>
+</form>
+
+<p class="muted">Никому не сообщайте код подключения. Будьте осторожны,
+входя с чужого компьютера: локальная сеть не является доверенной средой.</p>
+<p class="muted">Предупреждение браузера о сертификате появляется только
+при первом входе с устройства. Появилось внезапно — не входите
+и позвоните в поддержку.</p>
+<script src="/public/js/login.js" defer></script>
+{{ template "auth-bottom" . }}
+{{ end }}

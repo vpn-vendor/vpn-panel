@@ -1,0 +1,3 @@
+g vpn-panel -
+u vpn-admin - "VPN Panel" - /usr/sbin/nologin
+m vpn-admin vpn-panel

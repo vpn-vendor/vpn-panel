@@ -1,0 +1,13 @@
+{{ define "components/file-field" }}
+<div class="field">
+    <label class="field-label" for="{{ .ID }}">{{ .Label }}{{ if .Required }} <span class="field-req" aria-hidden="true">*</span>{{ end }}</label>
+    <input class="field-input field-file"
+           id="{{ .ID }}"
+           name="{{ .Name }}"
+           type="file"
+           {{ if .Accept }}accept="{{ .Accept }}"{{ end }}
+           {{ if .Required }}required{{ end }}
+           {{ with .DescribedBy }}aria-describedby="{{ . }}"{{ end }}>
+    <div class="field-msg">{{ if .Hint }}<span class="field-hint" id="{{ .ID }}-hint">{{ .Hint }}</span>{{ end }}</div>
+</div>
+{{ end }}

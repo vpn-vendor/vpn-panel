@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Уязвимость
+    url: https://github.com/vpn-vendor/vpn-panel/security/policy
+    about: Об уязвимостях сообщайте лично автору, не через открытые задачи.

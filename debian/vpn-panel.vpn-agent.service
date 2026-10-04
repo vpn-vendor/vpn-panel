@@ -1,0 +1,24 @@
+[Unit]
+Description=VPN Panel system service
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/vpn-agent
+Environment=AGENT_SOCKET=/run/vpn-panel/broker.sock
+User=root
+Group=vpn-panel
+RuntimeDirectory=vpn-panel
+RuntimeDirectoryMode=0750
+# Пределы ресурсов. Потолка процессора и порога торможения памяти нет
+# намеренно: служба применяет сетевые настройки с ограниченным окном
+# подтверждения, и ни замедлять, ни усыплять её нельзя.
+TasksMax=512
+LogRateLimitIntervalSec=30s
+LogRateLimitBurst=2000
+ProtectHome=yes
+PrivateTmp=yes
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

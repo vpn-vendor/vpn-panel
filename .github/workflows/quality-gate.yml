@@ -1,0 +1,95 @@
+# Гейт качества: формат, анализ, сборка, тесты, проверка на личные данные.
+# Секретов нет; токен только для чтения.
+name: Quality Gate
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.editorconfig'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - '.editorconfig'
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint-test:
+    name: Lint & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Тот же образ, что у выпуска и локальной сборки пакета.
+    container:
+      image: mcr.microsoft.com/devcontainers/go:1.26-bookworm
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # В контейнере дерево принадлежит другому пользователю.
+      - name: Доступ git к дереву
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      # Пути кэша спрашиваем у Go: в контейнере HOME подменён.
+      - name: Пути кэша Go
+        run: |
+          echo "GOCACHE=$(go env GOCACHE)" >> "$GITHUB_ENV"
+          echo "GOMODCACHE=$(go env GOMODCACHE)" >> "$GITHUB_ENV"
+
+      # Ключ меняется каждым коммитом, иначе кэш не обновляется.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ env.GOMODCACHE }}
+            ${{ env.GOCACHE }}
+          key: gate-go-${{ hashFiles('go.sum') }}-${{ github.sha }}
+          restore-keys: |
+            gate-go-${{ hashFiles('go.sum') }}-
+            gate-go-
+
+      - name: Версии инструментов
+        run: go version
+
+      - name: gofmt
+        run: test -z "$(gofmt -l .)" || { echo "Не отформатировано gofmt:"; gofmt -l .; exit 1; }
+
+      - name: go vet
+        run: go vet ./...
+
+      # Сборка разработчика отличается тегом dev.
+      - name: go build + vet (тег dev)
+        run: go build -tags dev ./... && go vet -tags dev ./...
+
+      # Установщик и линтер закреплены версией.
+      - name: golangci-lint + gosec
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/v2.12.2/install.sh \
+            | sh -s -- -b "$RUNNER_TEMP/bin" v2.12.2
+          "$RUNNER_TEMP/bin/golangci-lint" run --enable=gosec ./...
+
+      - name: go test
+        run: go test ./...
+
+      - name: Личные данные
+        run: bash scripts/check-leaks.sh
+
+      # Правила интерфейса: без инлайна, только токены и шкала, ничего извне.
+      - name: Интерфейс
+        run: bash scripts/check-ui.sh
+
+      # Тема экрана пароля в пакете собрана из текущих входов.
+      - name: Тема экрана
+        run: bash scripts/check-brand.sh

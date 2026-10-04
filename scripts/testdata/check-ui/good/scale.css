@@ -1,0 +1,9 @@
+/* Фикстура: то же самое по шкале. Числа 0.45rem и 36px в комментарии
+   нарушением не считаются. */
+:root { --s2: .5rem; --s4: 1rem; }
+/* ==== КОНЕЦ ТОКЕНОВ ==== */
+.card { padding: var(--s2) var(--s4); border: 1px solid var(--border); outline: 2px solid var(--focus); }
+.card-wide { width: min(100%, var(--w-md)); padding-right: calc(var(--s7) + var(--s5)); }
+@media (min-width: 48em) { .card { padding: var(--s4); } }
+@media (min-width: 75em) { .card { padding: var(--s4); } }
+@container (max-width: 16rem) { .card { padding: var(--s2); } }

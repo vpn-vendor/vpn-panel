@@ -1,0 +1,14 @@
+{{ define "overview.tmpl" }}
+{{ template "app-top" . }}
+{{ template "components/status-grid" .lights }}
+{{ template "components/window-chips" .chips }}
+{{ template "components/chart-grid" .bands }}
+{{ template "components/chart-grid" .sparks }}
+{{ template "components/card-grid" .blocks }}
+{{ template "components/facts" .server }}
+{{ template "components/facts" .reliability }}
+{{ template "components/chart-tip" .tip }}
+{{ template "components/chart-panel" .panel }}
+<script src="/public/js/dashboard.js" defer></script>
+{{ template "app-bottom" . }}
+{{ end }}

@@ -1,0 +1,7 @@
+/* Фикстура: подогнанные числа мимо шкалы. Слова 2.35rem и 36px в этом
+   комментарии нарушением не считаются. */
+:root { --s4: 1rem; }
+/* ==== КОНЕЦ ТОКЕНОВ ==== */
+.card { padding: .45rem 2.35rem; }
+.chrome-btn { width: 36px; }
+@container (max-width: 15rem) { .card { padding: 0; } }

@@ -1,0 +1,25 @@
+{{ define "components/icon" }}<svg class="icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{{- if eq . "home" }}<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/><path d="M10 21v-6h4v6"/>
+{{- else if eq . "network" }}<rect x="9" y="3" width="6" height="5" rx="1"/><rect x="3" y="16" width="6" height="5" rx="1"/><rect x="15" y="16" width="6" height="5" rx="1"/><path d="M12 8v4M6 16v-2h12v2"/>
+{{- else if eq . "dhcp" }}<rect x="3" y="4" width="18" height="6" rx="1.5"/><rect x="3" y="14" width="18" height="6" rx="1.5"/><path d="M7 7h.01M7 17h.01"/>
+{{- else if eq . "dns" }}<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18"/>
+{{- else if eq . "qos" }}<path d="M4 20V14"/><path d="M10 20V9"/><path d="M16 20V4"/><path d="M20 20H3"/>
+{{- else if eq . "vpn" }}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+{{- else if eq . "shield" }}<path d="M12 3 20 6v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="m9 12 2 2 4-4"/>
+{{- else if eq . "devices" }}<rect x="3" y="4" width="13" height="10" rx="1.5"/><path d="M7 18h5"/><rect x="17" y="9" width="4" height="11" rx="1"/>
+{{- else if eq . "diagnostics" }}<path d="M3 12h4l2-6 4 12 2-6h6"/>
+{{- else if eq . "search" }}<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>
+{{- else if eq . "bell" }}<path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>
+{{- else if eq . "user" }}<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>
+{{- else if eq . "theme" }}<circle cx="12" cy="12" r="8"/><path d="M12 4a8 8 0 0 0 0 16z" fill="currentColor"/>
+{{- else if eq . "menu" }}<path d="M4 7h16M4 12h16M4 17h16"/>
+{{- else if eq . "logout" }}<path d="M15 4h4v16h-4"/><path d="M10 8 6 12l4 4"/><path d="M6 12h10"/>
+{{- else if eq . "chevron" }}<path d="m9 6 6 6-6 6"/>
+{{- else if eq . "close" }}<path d="M6 6l12 12M18 6L6 18"/>
+{{- else if eq . "eye" }}<path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>
+{{- else if eq . "backup" }}<path d="M4 7c0-2 3.6-3 8-3s8 1 8 3-3.6 3-8 3-8-1-8-3"/><path d="M4 7v10c0 2 3.6 3 8 3s8-1 8-3V7"/><path d="M4 12c0 2 3.6 3 8 3s8-1 8-3"/>
+{{- else if eq . "warning" }}<path d="M12 3 2 20h20L12 3z"/><path d="M12 10v4M12 17h.01"/>
+{{- else if eq . "lock" }}<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>
+{{- else if eq . "external" }}<path d="M14 4h6v6"/><path d="M20 4 11 13"/><path d="M18 14v6H4V6h6"/>
+{{- else }}<circle cx="12" cy="12" r="2"/>
+{{- end }}</svg>{{ end }}

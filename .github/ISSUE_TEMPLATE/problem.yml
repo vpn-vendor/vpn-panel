@@ -1,0 +1,60 @@
+name: Неполадка
+description: Панель или шлюз ведут себя не так, как должны
+labels: ["неполадка"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Не прикладывайте пароли, ключи и файлы подключения. Об уязвимостях сообщайте не здесь — см. SECURITY.md.
+  - type: textarea
+    id: what
+    attributes:
+      label: Что случилось
+      description: Что вы делали и что увидели. Текст сообщения панели — дословно.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Что ожидалось
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Версия пакета и Ubuntu
+      description: Вывод команд dpkg -s vpn-panel (строка Version) и lsb_release -ds
+    validations:
+      required: true
+  - type: dropdown
+    id: wan
+    attributes:
+      label: Подключение к провайдеру
+      options:
+        - DHCP
+        - PPPoE
+        - Статический адрес
+        - Не знаю
+    validations:
+      required: true
+  - type: dropdown
+    id: channel
+    attributes:
+      label: Канал VPN
+      options:
+        - WireGuard
+        - OpenVPN
+        - Канал не используется
+        - Не знаю
+    validations:
+      required: true
+  - type: textarea
+    id: when
+    attributes:
+      label: Когда это началось
+      description: Дата и время, что менялось перед этим — обновление, перезагрузка, отключение питания, новая настройка.
+  - type: textarea
+    id: support
+    attributes:
+      label: Файл сведений для поддержки
+      description: Если панель предлагает собрать сведения для поддержки, соберите файл и приложите его. В нём нет паролей и ключей; перед отправкой его можно открыть и прочитать.

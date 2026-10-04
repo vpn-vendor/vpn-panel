@@ -1,0 +1,25 @@
+# Смена пароля диска при загрузке: панель только просит о ней, а человек
+# вводит текущий и новый пароль на текстовой консоли сервера, до сети — с той
+# же клавиатуры и в той же английской раскладке, где пароль потом вводят.
+# Экран загрузки на это время закрывается. Служба запускается, только пока
+# лежит отметка запроса. Сбой смены загрузку не останавливает: прежний пароль
+# действует, смена повторится при следующем включении.
+[Unit]
+Description=VPN Panel disk password change at boot
+DefaultDependencies=no
+ConditionPathExists=/etc/vpn-panel/disk-change.request
+ConditionPathExists=!/etc/cryptsetup-keys.d/system.key
+After=local-fs.target plymouth-start.service console-setup.service vpn-panel-disk-setup.service
+Before=network-pre.target display-manager.service systemd-user-sessions.service getty.target shutdown.target
+Wants=network-pre.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/vpn-agent disk-change
+TimeoutStartSec=infinity
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=sysinit.target

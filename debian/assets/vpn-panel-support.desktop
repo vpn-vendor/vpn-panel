@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=Support report
+Name[ru]=Сведения для поддержки
+Comment=Collect a text report about the gateway to send to support yourself
+Comment[ru]=Собрать текстовый файл о состоянии шлюза, чтобы самому передать его в поддержку
+Keywords=vpn;panel;support;report;
+Keywords[ru]=впн;панель;поддержка;сведения;отчёт;
+Exec=/usr/bin/vpn-panel-support-show
+Icon=vpn-panel
+Terminal=false
+Categories=Network;
+StartupNotify=true

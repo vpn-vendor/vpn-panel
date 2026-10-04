@@ -1,0 +1,5 @@
+{{ define "components/card-grid" }}
+<div class="overview-blocks">
+    {{ range .Cards }}{{ template "components/link-card" . }}{{ end }}
+</div>
+{{ end }}

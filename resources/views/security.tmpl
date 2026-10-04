@@ -1,0 +1,27 @@
+{{ define "security.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+{{ if .agentDown }}
+<div class="alert alert-error">
+    <strong>Системная служба недоступна.</strong>
+    Состояние защиты получить не удалось. Если это повторяется —
+    перезагрузите сервер или обратитесь в поддержку.
+</div>
+{{ end }}
+
+{{ template "security/exposure" . }}
+{{ template "security/listen" . }}
+{{ template "security/settings" . }}
+{{ template "security/retention" . }}
+{{ template "security/storage" . }}
+{{ template "security/metrics" . }}
+{{ template "security/access" . }}
+{{ template "security/disk" . }}
+{{ template "security/updates" . }}
+
+<script src="/public/js/security.js" defer></script>
+{{ template "app-bottom" . }}
+{{ end }}

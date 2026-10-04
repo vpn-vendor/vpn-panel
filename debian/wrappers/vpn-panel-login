@@ -1,0 +1,66 @@
+#!/bin/sh
+# Значок «Вход в панель — с этого сервера» на рабочем столе.
+#
+# Что делает за один клик: спрашивает подтверждение прав администратора
+# штатным окном системы, получает одноразовый код и сразу открывает панель
+# в браузере — вводить ничего не нужно. Если браузер не открылся, показывает
+# код крупно и кладёт его в буфер обмена.
+#
+# Ни один путь не молчит: если окна показать нечем, текст уходит в вывод.
+set -eu
+
+TITLE="Вход в панель управления"
+
+# say_error / say_info — окно, если есть чем его показать, иначе текст.
+say_error() {
+    if command -v zenity >/dev/null 2>&1 &&
+       zenity --error --no-wrap --title="$TITLE" --text="$1" 2>/dev/null; then
+        return 0
+    fi
+    printf '%s\n' "$1" >&2
+}
+
+say_info() {
+    if command -v zenity >/dev/null 2>&1 &&
+       zenity --info --no-wrap --title="$TITLE" --text="$1" 2>/dev/null; then
+        return 0
+    fi
+    printf '%s\n' "$1"
+}
+
+fail() {
+    say_error "$1"
+    exit 1
+}
+
+OUT="$(pkexec /usr/sbin/vpn-panel-desktop-login 2>/dev/null)" || OUT=""
+if [ -z "$OUT" ]; then
+    fail "$(printf 'Войти не удалось.\n\nЕсли окно подтверждения прав было отменено — нажмите значок ещё раз\nи введите пароль администратора этого компьютера.\n\nЕсли окна не появилось, панель могла установиться не до конца:\nперезагрузите сервер или обратитесь в поддержку.')"
+fi
+
+URL="$(printf '%s\n' "$OUT" | sed -n '1p')"
+CODE="$(printf '%s\n' "$OUT" | sed -n '2p')"
+if [ -z "$URL" ] || [ -z "$CODE" ]; then
+    fail "$(printf 'Войти не удалось: панель вернула неожиданный ответ.\nОбратитесь в поддержку.')"
+fi
+
+# Код в буфер обмена — на случай, если браузер придётся открыть вручную.
+CLIP=""
+if command -v wl-copy >/dev/null 2>&1; then
+    printf '%s' "$CODE" | wl-copy 2>/dev/null && CLIP=1 || CLIP=""
+elif command -v xclip >/dev/null 2>&1; then
+    printf '%s' "$CODE" | xclip -selection clipboard 2>/dev/null && CLIP=1 || CLIP=""
+elif command -v xsel >/dev/null 2>&1; then
+    printf '%s' "$CODE" | xsel --clipboard --input 2>/dev/null && CLIP=1 || CLIP=""
+fi
+
+if command -v xdg-open >/dev/null 2>&1 && xdg-open "$URL" >/dev/null 2>&1; then
+    exit 0
+fi
+
+# Браузер не открылся — показываем код крупно и ведём за руку.
+PASTE="и введите код в поле «Код подключения»"
+if [ -n "$CLIP" ]; then
+    PASTE="и вставьте код в поле «Код подключения» (Ctrl+V — он уже скопирован)"
+fi
+say_info "$(printf 'Код входа в панель:\n\n<big><b>%s</b></big>\n\nОткройте в браузере адрес\n<b>%s</b>\n%s.\n\nКод действует несколько минут и срабатывает один раз.' "$CODE" "$URL" "$PASTE")"

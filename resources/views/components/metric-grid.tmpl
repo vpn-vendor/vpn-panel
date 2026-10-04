@@ -1,0 +1,5 @@
+{{ define "components/metric-grid" }}
+{{ if .Metrics }}<div class="metrics">
+    {{ range .Metrics }}{{ template "components/metric" . }}{{ end }}
+</div>{{ end }}
+{{ end }}

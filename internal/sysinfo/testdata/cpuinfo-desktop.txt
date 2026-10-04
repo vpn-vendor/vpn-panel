@@ -1,0 +1,36 @@
+processor	: 0
+vendor_id	: AuthenticAMD
+cpu family	: 25
+model name	: AMD Ryzen 5 5600G with Radeon Graphics
+physical id	: 0
+siblings	: 4
+core id		: 0
+cpu cores	: 2
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep aes xsave avx sha_ni
+
+processor	: 1
+vendor_id	: AuthenticAMD
+model name	: AMD Ryzen 5 5600G with Radeon Graphics
+physical id	: 0
+siblings	: 4
+core id		: 0
+cpu cores	: 2
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep aes xsave avx sha_ni
+
+processor	: 2
+vendor_id	: AuthenticAMD
+model name	: AMD Ryzen 5 5600G with Radeon Graphics
+physical id	: 0
+siblings	: 4
+core id		: 1
+cpu cores	: 2
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep aes xsave avx sha_ni
+
+processor	: 3
+vendor_id	: AuthenticAMD
+model name	: AMD Ryzen 5 5600G with Radeon Graphics
+physical id	: 0
+siblings	: 4
+core id		: 1
+cpu cores	: 2
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep aes xsave avx sha_ni

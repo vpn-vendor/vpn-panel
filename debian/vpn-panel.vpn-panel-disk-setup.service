@@ -1,0 +1,23 @@
+# Пароль диска при первой загрузке: шлюз открыт временным ключом установки,
+# и пока человек не задаст пароль, сеть и рабочий стол не поднимаются.
+# Служба запускается, только пока временный ключ лежит на корне; сбой шага —
+# выключение: с действующим временным ключом загрузку дальше не пускаем.
+[Unit]
+Description=VPN Panel disk password on first boot
+DefaultDependencies=no
+ConditionPathExists=/etc/cryptsetup-keys.d/system.key
+After=local-fs.target plymouth-start.service systemd-ask-password-plymouth.path console-setup.service
+Before=network-pre.target display-manager.service systemd-user-sessions.service getty.target shutdown.target
+Wants=network-pre.target
+Conflicts=shutdown.target
+FailureAction=poweroff
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/vpn-agent disk-setup
+TimeoutStartSec=infinity
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=sysinit.target

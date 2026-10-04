@@ -1,0 +1,105 @@
+#!/bin/sh
+set -e
+
+ENV_FILE=/etc/vpn-panel/panel.env
+
+if [ "$1" = "configure" ] && [ ! -f "$ENV_FILE" ]; then
+    mkdir -p /etc/vpn-panel
+    APP_KEY="$(head -c 64 /dev/urandom | od -An -tx1 | tr -d ' \n' | cut -c1-32)"
+    umask 077
+    cat > "$ENV_FILE" <<EOF
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=${APP_KEY}
+APP_HOST=0.0.0.0
+APP_PORT=80
+APP_TLS_PORT=443
+APP_EXTERNAL_TLS_PORT=
+APP_URL=https://vpn.lan
+AGENT_SOCKET=/run/vpn-panel/broker.sock
+TLS_CERT=/var/lib/vpn-panel/tls/cert.pem
+TLS_KEY=/var/lib/vpn-panel/tls/key.pem
+DB_CONNECTION=sqlite
+DB_DATABASE=/var/lib/vpn-panel/panel.sqlite
+LOG_CHANNEL=stack
+LOG_LEVEL=info
+SESSION_DRIVER=file
+EOF
+    chmod 0640 "$ENV_FILE"
+    chown root:root "$ENV_FILE"
+fi
+
+if [ "$1" = "configure" ]; then
+    systemd-sysusers /usr/lib/sysusers.d/vpn-panel.conf 2>/dev/null || systemd-sysusers || true
+    systemctl daemon-reload 2>/dev/null || true
+
+    DB=/var/lib/vpn-panel/panel.sqlite
+    install -d -o vpn-admin -g vpn-panel -m 0750 /var/lib/vpn-panel
+
+    # Журнал пишется только в системный журнал: файлы прежних версий больше
+    # никто не пишет и не ротирует — убираем их, чтобы они не лежали вечно.
+    rm -rf /var/log/vpn-panel
+
+    BACKUP=""
+    if [ -f "$DB" ]; then
+        BACKUP="$DB.bak-$(date +%Y%m%d%H%M%S)"
+        cp -a "$DB" "$BACKUP"
+    fi
+    set -a
+    . /etc/vpn-panel/panel.env
+    set +a
+    if ! runuser -u vpn-admin -- /usr/sbin/vpn-panel artisan migrate; then
+        echo "vpn-panel: database migration failed" >&2
+        if [ -n "$BACKUP" ]; then
+            cp -a "$BACKUP" "$DB"
+            echo "vpn-panel: database restored from backup" >&2
+        fi
+        exit 1
+    fi
+
+    # Держим последние KEEP копий базы: они нужны для возврата на прошлую
+    # версию, а не как архив. Без ограничения копии копились бы годами.
+    KEEP=5
+    ls -1t "$DB".bak-* 2>/dev/null | tail -n +$((KEEP + 1)) | while read -r old_backup; do
+        rm -f "$old_backup"
+    done
+
+    # Экран запроса пароля диска — наша тема на английской раскладке.
+    # initramfs пересобирается только когда тема или настройка раскладки
+    # действительно изменились: на слабом железе это долгая операция, и
+    # гонять её при каждом обновлении пакета нельзя.
+    THEME=/usr/share/plymouth/themes/vpn-panel/vpn-panel.plymouth
+    STAMP=/var/lib/vpn-panel/boot-theme.sha256
+    if [ -f "$THEME" ]; then
+        NOW="$(cat /usr/share/plymouth/themes/vpn-panel/* /usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-keymap.conf /usr/lib/dracut/modules.d/99vpn-panel-keymap/module-setup.sh 2>/dev/null | sha256sum | cut -d' ' -f1)"
+        if [ "$(cat "$STAMP" 2>/dev/null)" != "$NOW" ]; then
+            update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME" 200
+            update-alternatives --set default.plymouth "$THEME"
+            if command -v update-initramfs >/dev/null 2>&1; then
+                update-initramfs -u >/dev/null 2>&1 \
+                    || echo "vpn-panel: initramfs не пересобран — экран пароля обновится при следующей сборке" >&2
+            fi
+            echo "$NOW" > "$STAMP"
+        fi
+    fi
+
+    # Источник обновлений. Ставится и при первой установке, и при
+    # обновлении поставленного вручную пакета — так система переходит на
+    # проверяемые обновления сама, без действий администратора.
+    #
+    # Файл источника НЕ является conffile: администратор вправе его удалить,
+    # если не хочет автоматических источников, и обновление пакета не
+    # вернёт его назад молча.
+    SRC=/etc/apt/sources.list.d/vpn-panel.sources
+    SHIPPED=/usr/share/vpn-panel/vpn-panel.sources
+    if [ -f "$SHIPPED" ] && [ -f /usr/share/keyrings/vpn-panel.asc ]; then
+        if [ ! -f "$SRC" ] && [ ! -f "$SRC.disabled" ]; then
+            cp -a "$SHIPPED" "$SRC"
+            echo "vpn-panel: источник обновлений подключён" >&2
+        fi
+    fi
+fi
+
+#DEBHELPER#
+
+exit 0

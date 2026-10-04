@@ -1,0 +1,2 @@
+vpn-panel: statically-linked-binary [usr/sbin/vpn-agent]
+vpn-panel: statically-linked-binary [usr/sbin/vpn-panel]

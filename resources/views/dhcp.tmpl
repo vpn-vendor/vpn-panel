@@ -1,0 +1,114 @@
+{{ define "dhcp.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+{{ if .pools }}
+<div class="card">
+    <h2>Свободные адреса</h2>
+    <table>
+        <thead><tr><th>Сегмент</th><th>Занято</th><th>Заполненность</th></tr></thead>
+        <tbody>
+            {{ range .pools }}
+            <tr>
+                <td><code>{{ .CIDR }}</code> <span class="muted">({{ .Name }})</span></td>
+                <td>{{ .Used }} из {{ .Size }}</td>
+                <td>
+                    <div class="pool-bar{{ if ge .Percent 80 }} pool-warn{{ end }}"><span class="pool-fill-{{ .Step }}"></span></div>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    <p class="muted">Адрес выдаётся устройству на {{ .leaseTime }} суток — он сохраняется
+    после выключения на ночь и на выходные.</p>
+</div>
+{{ end }}
+
+<div class="card">
+    <h2>Закреплённые адреса</h2>
+    <p class="muted">Закрепление нужно устройствам, чей адрес не должен меняться:
+    локальной АТС, принтерам, камерам, настольным телефонам.</p>
+    {{ if .reservations }}
+    <table>
+        <thead><tr><th>Устройство</th><th>Адрес</th><th>Аппаратный адрес</th><th>Состояние</th><th></th></tr></thead>
+        <tbody>
+            {{ range .reservations }}
+            <tr>
+                <td>{{ .Label }}</td>
+                <td><code>{{ .IP }}</code></td>
+                <td><code>{{ .MAC }}</code></td>
+                <td>
+                    {{ if .Stale }}<span class="state-down">не подходит настройкам сети</span>
+                    {{ else if .Waiting }}<span class="muted">ожидает применения</span>
+                    {{ else }}<span class="state-up">действует</span>{{ end }}
+                </td>
+                <td>
+                    <form method="post" action="/dhcp/unreserve">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <input type="hidden" name="id" value="{{ .ID }}">
+                        <button type="submit" class="btn btn-danger">Снять</button>
+                    </form>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ else }}
+    <p class="muted">Закреплённых адресов пока нет.</p>
+    {{ end }}
+
+    {{ if .suggestIP }}
+    <h2>Закрепить адрес вручную</h2>
+    <form method="post" action="/dhcp/reserve">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <label>Название устройства
+            <input name="label" placeholder="Принтер бухгалтерии" maxlength="50" required>
+        </label>
+        <label>Аппаратный адрес устройства (MAC)
+            <input name="mac" placeholder="a4:bb:6d:1f:22:90" required>
+        </label>
+        <label>Адрес, который закрепить
+            <input name="ip" value="{{ .suggestIP }}" required>
+        </label>
+        <button type="submit" class="btn">Закрепить адрес</button>
+    </form>
+    {{ end }}
+</div>
+
+<div class="card">
+    <h2>Устройства в локальной сети</h2>
+    {{ if .leases }}
+    <table>
+        <thead><tr><th>Адрес</th><th>Устройство</th><th>Аппаратный адрес</th><th>Адрес действует до</th><th></th></tr></thead>
+        <tbody>
+            {{ range .leases }}
+            <tr>
+                <td><code>{{ .Address }}</code></td>
+                <td>{{ if .Hostname }}{{ .Hostname }}{{ else }}<span class="muted">имя не сообщило</span>{{ end }}</td>
+                <td><code>{{ .MAC }}</code></td>
+                <td>{{ .Until }}</td>
+                <td>
+                    {{ if .Pinned }}<span class="tag tag-main">адрес закреплён</span>
+                    {{ else }}
+                    <form method="post" action="/dhcp/reserve">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <input type="hidden" name="mac" value="{{ .MAC }}">
+                        <input type="hidden" name="label" value="{{ if .Hostname }}{{ .Hostname }}{{ else }}Устройство{{ end }}">
+                        <button type="submit" class="btn btn-small">Закрепить адрес</button>
+                    </form>
+                    {{ end }}
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ else }}
+    <p class="muted">Пока ни одно устройство не получило адрес. Проверьте, что кабель
+    локальной сети подключён, а на устройствах включено автоматическое получение адреса.</p>
+    {{ end }}
+</div>
+
+{{ template "app-bottom" . }}
+{{ end }}

@@ -1,0 +1,38 @@
+{{ define "setup_speed.tmpl" }}
+{{ template "auth-top" . }}
+<h1>Шаг 2 из 2 — скорость интернета</h1>
+<p>Главная забота панели — чистый звук ваших звонков. Для этого ей нужно
+знать настоящую скорость интернета: нажмите «Запустить замер», затем
+«Подставить» — панель сделает остальное сама.</p>
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+{{ template "speedtest-card" . }}
+
+<div class="card">
+    <h2>Скорость тарифа</h2>
+    <form method="post" action="/setup/speed">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <label>Скачивание, Мбит/с
+            <input type="number" name="down_mbit" min="1" max="10000" required
+                   value="{{ if .measureDownMbit }}{{ .measureDownMbit }}{{ end }}" placeholder="из замера или договора">
+        </label>
+        <label>Отдача, Мбит/с
+            <input type="number" name="up_mbit" min="1" max="10000" required
+                   value="{{ if .measureUpMbit }}{{ .measureUpMbit }}{{ end }}" placeholder="из замера или договора">
+        </label>
+        <p class="muted">В договоре обычно одна цифра — это скачивание; отдача
+        почти всегда ниже. Замер выше покажет обе настоящие скорости.</p>
+        <button type="submit" class="btn">Сохранить и продолжить</button>
+    </form>
+    <p class="muted">Защита включится автоматически после настройки сети —
+    отдельно возвращаться сюда не нужно.</p>
+    <p class="muted"><a href="/network">Настроить позже</a> — не рекомендуем:
+    без этого шага звонки не защищены от больших закачек. Напоминание
+    останется на странице «QoS».</p>
+</div>
+
+<script src="/public/js/qos.js" defer></script>
+{{ template "auth-bottom" . }}
+{{ end }}

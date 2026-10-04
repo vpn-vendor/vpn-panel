@@ -1,0 +1,167 @@
+{{ define "html-head" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ .title }} — vpn-panel</title>
+    <link rel="stylesheet" href="/public/css/app.css">
+    {{ template "components/brand-favicon" }}
+    <script src="/public/js/app.js"></script>
+    <script src="/public/js/islands.js" defer></script>
+    <script src="/public/js/search.js" defer></script>
+</head>
+{{ end }}
+
+{{ define "plain-head" }}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex, nofollow">
+    <title>{{ .title }}</title>
+    <link rel="stylesheet" href="/public/css/app.css">
+    <link rel="icon" href="data:,">
+    <script src="/public/js/app.js"></script>
+</head>
+{{ end }}
+
+{{ define "app-top" }}
+{{ template "html-head" . }}
+<body>
+<header class="chrome">
+    <div class="chrome-left">
+        <button id="sidebar-toggle" class="chrome-btn" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Свернуть меню" title="Свернуть меню">{{ template "components/icon" "menu" }}</button>
+        <a class="chrome-brand" href="/" aria-label="vpn-panel — на главную">
+            {{ template "components/brand-mark" }}
+            <span class="brand-text">
+                <span class="brand-name">vpn-panel</span>
+            </span>
+            {{ if .version }}<span class="brand-version">{{ .version }}</span>{{ end }}
+        </a>
+    </div>
+
+    <form class="chrome-search" method="get" action="/search" role="search" data-island="search">
+        <label class="visually-hidden" for="global-search">Поиск по разделам и настройкам</label>
+        {{ template "components/icon" "search" }}
+        <input id="global-search" class="search-input" type="search" name="q"
+               value="{{ .searchQuery }}" maxlength="64" autocomplete="off" spellcheck="false"
+               placeholder="Поиск разделов и настроек"
+               aria-controls="search-pop" aria-expanded="false" aria-autocomplete="list">
+        <kbd class="search-kbd" data-search-kbd>Ctrl K</kbd>
+        <div class="search-pop" id="search-pop" role="listbox" aria-label="Результаты поиска" hidden></div>
+    </form>
+
+    <div class="chrome-actions">
+        <details class="menu">
+            <summary class="chrome-btn" aria-label="Уведомления" title="Уведомления">{{ template "components/icon" "bell" }}</summary>
+            <div class="menu-panel">
+                <div class="menu-head"><strong>Уведомления</strong><span>Центр событий шлюза</span></div>
+                <p class="menu-note">Здесь появятся события шлюза: обрывы канала, обновления, новые устройства.</p>
+                <span class="menu-item is-soon">{{ template "components/icon" "bell" }}Центр уведомлений<span class="menu-soon">в разработке</span></span>
+            </div>
+        </details>
+        <button id="theme-toggle" class="chrome-btn chrome-theme" type="button" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">{{ template "components/icon" "theme" }}</button>
+        <details class="menu">
+            <summary class="chrome-account" aria-label="Аккаунт" title="Аккаунт">
+                <span class="avatar" aria-hidden="true">А</span>
+                <span class="account-name">Администратор</span>
+            </summary>
+            <div class="menu-panel">
+                <div class="menu-head"><strong>Администратор</strong><span>Вход с доверенного устройства</span></div>
+                <a class="menu-item" href="/devices">{{ template "components/icon" "devices" }}Доверенные устройства</a>
+                
+                <button type="button" class="menu-item menu-only-phone" data-theme-toggle>{{ template "components/icon" "theme" }}Сменить тему</button>
+                <span class="menu-item is-soon">{{ template "components/icon" "user" }}Профиль<span class="menu-soon">в разработке</span></span>
+                <form class="menu-form" method="post" action="/logout">
+                    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                    <button type="submit" class="menu-item">{{ template "components/icon" "logout" }}Выйти</button>
+                </form>
+            </div>
+        </details>
+    </div>
+</header>
+
+<div class="shell">
+    
+    <button type="button" class="scrim" data-scrim aria-label="Закрыть меню" hidden></button>
+    <button type="button" class="nav-edge" id="sidebar-edge" data-sidebar-edge
+            aria-controls="sidebar" aria-expanded="true" title="Свернуть меню" hidden>
+        {{ template "components/icon" "chevron" }}<span class="visually-hidden">Свернуть меню</span>
+    </button>
+    <aside class="sidebar" id="sidebar">
+        <nav class="nav" aria-label="Разделы панели">
+            {{ range .nav }}
+            <div class="nav-group">
+                {{ if .Title }}<div class="nav-group-title">{{ .Title }}</div>{{ end }}
+                {{ range .Sections }}
+                {{ $key := .Key }}
+                <a href="{{ .URL }}"{{ if eq $.active .Key }} class="active" aria-current="page"{{ end }}>
+                    {{ template "components/icon" .Icon }}
+                    <span class="nav-text"><span class="nav-title">{{ .Title }}{{ with $.navBadges }}{{ with index . $key }} <span class="tag tag-main">{{ . }}</span>{{ end }}{{ end }}</span><span class="nav-sub">{{ .Subtitle }}</span></span>
+                </a>
+                {{ end }}
+            </div>
+            {{ end }}
+        </nav>
+    </aside>
+    <div class="content" data-width="{{ .pageWidth }}">
+        <div class="pagehead">
+            <h1 class="pagehead-title">{{ .title }}</h1>
+            {{ if .subtitle }}<p class="pagehead-sub">{{ .subtitle }}</p>{{ end }}
+        </div>
+        <main class="page">
+{{ template "island-fuse" . }}
+{{ template "notices" . }}
+{{ end }}
+
+{{ define "island-fuse" }}
+<div class="fuse-note" id="island-fuse" role="alert" hidden>
+    <strong>Обновление остановлено.</strong>
+    Сценарий страницы ведёт себя неправильно. Обновите страницу; данные на сервере целы.
+</div>
+{{ end }}
+
+{{ define "notices" }}
+{{ if .notices }}
+<div class="notices" id="notices" data-count="{{ len .notices }}">
+    <button type="button" class="notices-toggle" id="notices-toggle">
+        <span class="notices-title">Уведомления ({{ len .notices }})</span>
+        <span class="notices-chevron">▾</span>
+    </button>
+    <div class="notices-body" id="notices-body">
+        {{ range .notices }}
+        <div class="notice notice-{{ .Level }}">{{ .Text }}</div>
+        {{ end }}
+    </div>
+</div>
+{{ end }}
+{{ end }}
+
+{{ define "app-bottom" }}
+        </main>
+        <footer class="appfoot">
+            <span>vpn-panel{{ if .version }} {{ .version }}{{ end }}</span>
+        </footer>
+    </div>
+</div>
+</body>
+</html>
+{{ end }}
+
+{{ define "auth-top" }}
+{{ template "plain-head" . }}
+<body>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="plain-mark">{{ template "components/icon" "shield" }}<span>Шлюз офиса</span></div>
+{{ end }}
+
+{{ define "auth-bottom" }}
+    </div>
+</div>
+</body>
+</html>
+{{ end }}

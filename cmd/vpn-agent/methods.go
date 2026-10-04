@@ -1,0 +1,56 @@
+package main
+
+import (
+	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+)
+
+func agentMethods(applier *netplanApplier, firewall *firewallApplier, dns *dnsApplier, dhcp *dhcpApplier,
+	qos *qosApplier, diag *diagApplier, vpn *vpnApplier, clock *timeApplier, updates *updatesApplier,
+	logs *logsApplier, disk *diskApplier, backup *backupApplier, support *supportApplier) *agentrpc.Server {
+	return agentrpc.NewServer(map[string]agentrpc.Handler{
+		"system.ping":                systemPing,
+		"network.status":             networkStatus,
+		"network.apply":              devGate(applier.networkApply),
+		"network.confirm":            devGate(applier.networkConfirm),
+		"network.cancel":             devGate(applier.networkCancel),
+		"network.pending":            applier.networkPending,
+		"firewall.apply":             devGate(firewall.firewallApply),
+		"firewall.status":            firewall.firewallStatus,
+		"dns.apply":                  devGate(dns.dnsApply),
+		"dns.infra":                  dns.dnsInfra,
+		"dhcp.apply":                 devGate(dhcp.dhcpApply),
+		"dhcp.leases":                dhcp.dhcpLeases,
+		"qos.apply":                  devGate(qos.qosApply),
+		"qos.status":                 qos.qosStatus,
+		"qos.wan_up":                 devGate(qos.qosWANUp),
+		"diag.facts":                 diag.diagFacts,
+		"diag.probe":                 devGate(diag.diagProbe),
+		"vpn.import":                 devGate(vpn.vpnImport),
+		"vpn.apply":                  devGate(vpn.vpnApply),
+		"vpn.status":                 vpn.vpnStatus,
+		"vpn.remove":                 devGate(vpn.vpnRemove),
+		"vpn.mtu_probe":              devGate(vpn.vpnMTUProbe),
+		"vpn.measure":                vpn.vpnMeasure,
+		"vpn.measure_get":            vpn.vpnMeasureStatus,
+		"vpn.speed_direct":           vpn.vpnSpeedDirect,
+		"qos.counters":               qos.qosCounters,
+		"system.timesync":            devGate(clock.timeSync),
+		"updates.status":             updates.updatesStatus,
+		"updates.set":                devGate(updates.updatesSet),
+		"logs.trim":                  devGate(logs.logsTrim),
+		"disk.status":                disk.diskStatus,
+		"disk.change_request":        devGate(disk.diskChangeRequest),
+		"backup.code":                backup.backupCode,
+		"backup.export":              backup.backupExport,
+		"backup.open":                backup.backupOpen,
+		"backup.apply_secrets":       devGate(backup.backupApplySecrets),
+		"backup.checkpoint":          devGate(backup.backupCheckpoint),
+		"backup.checkpoint_status":   backup.backupCheckpointStatus,
+		"backup.checkpoint_document": backup.backupCheckpointDocument,
+		"backup.checkpoint_secrets":  devGate(backup.backupCheckpointSecrets),
+		"backup.checkpoint_drop":     devGate(backup.backupCheckpointDrop),
+		"support.collect":            support.supportCollect,
+		"support.status":             support.supportStatus,
+		"support.names":              support.supportNames,
+	}).RootOnly("backup.code")
+}

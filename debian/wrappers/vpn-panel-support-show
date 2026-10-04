@@ -1,0 +1,21 @@
+#!/bin/sh
+# Значок «Сведения для поддержки» на рабочем столе сервера: подтверждение
+# прав штатным окном системы, затем путь к готовому файлу на экране.
+set -eu
+
+TITLE="Сведения для поддержки"
+
+OUT="$(pkexec /usr/sbin/vpn-panel-support 2>&1)" || {
+    MSG="$(printf 'Сведения не собраны.\n\n%s\n\nЕсли окно подтверждения прав было отменено — нажмите значок ещё раз.' "$OUT")"
+    if command -v zenity >/dev/null 2>&1 && zenity --error --no-wrap --title="$TITLE" --text="$MSG" 2>/dev/null; then
+        exit 1
+    fi
+    printf '%s\n' "$MSG" >&2
+    exit 1
+}
+FILE="$(printf '%s\n' "$OUT" | tail -n 1)"
+MSG="$(printf 'Файл готов:\n\n<b>%s</b>\n\nВ нём нет паролей и ключей; адреса и имена устройств заменены условными.\nПанель никуда его не отправляет — передайте файл сами.\nПеред отправкой его можно открыть и прочитать.' "$FILE")"
+if command -v zenity >/dev/null 2>&1 && zenity --info --no-wrap --title="$TITLE" --text="$MSG" 2>/dev/null; then
+    exit 0
+fi
+printf 'Файл готов: %s\n' "$FILE"

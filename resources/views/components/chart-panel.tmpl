@@ -1,0 +1,24 @@
+{{ define "components/chart-panel" }}
+<dialog class="chart-panel" data-island="chart-panel" aria-labelledby="chart-panel-title">
+    <header class="chart-panel-head">
+        <div class="chart-panel-titles">
+            <h2 class="chart-panel-title" id="chart-panel-title" data-panel-title></h2>
+            <p class="chart-panel-sub" data-panel-sub></p>
+        </div>
+        <button type="button" class="btn btn-secondary btn-small" data-panel-reset hidden>Весь отрезок</button>
+        <button type="button" class="chrome-btn chart-panel-close" data-panel-close aria-label="Закрыть" title="Закрыть">{{ template "components/icon" "close" }}</button>
+    </header>
+    <div class="chart-panel-values" data-panel-values></div>
+    <div class="chart-panel-plot">
+        <canvas class="chart-canvas chart-panel-canvas" aria-hidden="true"></canvas>
+        <div class="chart-select" data-chart-select hidden></div>
+    
+    <div class="chart-coach" data-panel-coach role="status" hidden>
+        <p class="chart-coach-text">Проведите мышью по графику слева направо — панель покажет выбранный отрезок, и его же покажут остальные графики страницы.</p>
+        <button type="button" class="btn btn-small" data-coach-ok>Понятно</button>
+    </div>
+    </div>
+    <p class="chart-panel-note" data-panel-note>Выделите мышью отрезок, чтобы рассмотреть его ближе. Отрезок применится ко всем графикам страницы.</p>
+
+</dialog>
+{{ end }}

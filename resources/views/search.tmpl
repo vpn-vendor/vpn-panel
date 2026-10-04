@@ -1,0 +1,28 @@
+{{ define "search.tmpl" }}
+{{ template "app-top" . }}
+<div class="card">
+    <form method="get" action="/search" class="search-page-form">
+        {{ template "components/field" .searchField }}
+        {{ template "components/button" .searchButton }}
+    </form>
+
+    {{ if .query }}
+        {{ if .results }}
+        <ul class="search-results">
+            {{ range .results }}
+            <li><a class="search-item" href="{{ .URL }}">
+                <span class="search-item-title">{{ .Title }}</span>
+                <span class="search-item-section">{{ .Section }}</span>
+                <span class="search-item-hint">{{ .Hint }}</span>
+            </a></li>
+            {{ end }}
+        </ul>
+        {{ else }}
+        <p class="muted">По запросу «{{ .query }}» ничего не нашлось. Попробуйте слово, которое видели у провайдера: DNS, VPN, PPPoE, VLAN — или название раздела.</p>
+        {{ end }}
+    {{ else }}
+    <p class="muted">Введите название раздела или настройки. Поиск понимает и термины, и русские слова: «скорость», «код входа», «MTU».</p>
+    {{ end }}
+</div>
+{{ template "app-bottom" . }}
+{{ end }}

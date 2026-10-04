@@ -1,0 +1,27 @@
+Source: vpn-panel
+Section: net
+Priority: optional
+Maintainer: VPN Panel <147600695+vpn-vendor@users.noreply.github.com>
+Build-Depends: debhelper-compat (= 13), librsvg2-bin
+Standards-Version: 4.6.2
+Rules-Requires-Root: no
+
+Package: vpn-panel
+Architecture: amd64
+Depends: ${misc:Depends}, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping,
+         iputils-ping, wireguard-tools, openvpn, plymouth, kbd, console-setup,
+         console-setup-linux
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Homepage: https://github.com/vpn-vendor/vpn-panel
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.

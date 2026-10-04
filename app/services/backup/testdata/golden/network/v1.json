@@ -1,0 +1,4 @@
+{"confirm_timeout_sec": 120, "interfaces": [
+ {"name": "enp1s0", "mac": "02:00:00:00:00:01", "role": "wan", "ipv4_method": "pppoe", "ipv4_cidr": "", "ipv4_gateway": "", "ipv4_dns": "", "wan_metric": 100, "pppoe_username": "office-42", "vlan": 100},
+ {"name": "enp2s0", "mac": "02:00:00:00:00:02", "role": "lan", "ipv4_method": "static", "ipv4_cidr": "192.0.2.1/24", "ipv4_gateway": "", "ipv4_dns": "", "wan_metric": 0, "pppoe_username": "", "vlan": 0}
+]}

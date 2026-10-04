@@ -1,0 +1,6 @@
+35a69df8aa03bb3f0016e0209b407fc0006b5b1df8e4076fdfc6819aa3dd329d  scripts/brand/mark.txt
+ea12ff1b314d98cdc1922f810d8d6bde386887b4de9243bbc0d92c243a82dae2  scripts/brand/gen-icons.py
+40303891ce1564f3ae2a9ff81ae382a864002a24030c565f1873551096bc7a39  debian/assets/vpn-panel.svg
+f86c24ecdf8800fa0ac0993bec3ffedb3c95d89dfb6ef34a81ee23242498e697  resources/views/components/brand-mark.tmpl
+777aded420cbec64630a915a3157415d26a8491c3e5faae4f6f847d815c90f11  resources/views/components/brand-favicon.tmpl
+d9b951d999faf257568e456dfd41435288e1f3f5d2866babbfcd8d66a0ea00b4  public/css/app.css (тёмная тема)

@@ -1,0 +1,35 @@
+{
+ "bad-mtu": [
+  "config_mtu: размер пакета из файла — 0 или от 1280 до 1500"
+ ],
+ "bad-port": [
+  "endpoint_port: порт сервера — от 1 до 65535 или не записан"
+ ],
+ "bad-transport": [
+  "transport: транспорт — udp или tcp"
+ ],
+ "empty-protocol": [
+  "protocol: протокол — wireguard или openvpn"
+ ],
+ "ovpn-ok": null,
+ "ovpn-tcp": null,
+ "ovpn-with-key": [
+  "addresses: у OpenVPN это поле пусто: значение даёт сервер при подключении",
+  "peer_key: у OpenVPN это поле пусто: значение даёт сервер при подключении"
+ ],
+ "unknown-protocol": [
+  "protocol: протокол — wireguard или openvpn"
+ ],
+ "unset-port": null,
+ "wg-bad-key": [
+  "peer_key: ключ сервера WireGuard — 32 байта в base64"
+ ],
+ "wg-no-addresses": [
+  "addresses: адреса канала — список адресов с префиксом через запятую",
+  "allowed_ips: сети канала — список сетей с префиксом через запятую"
+ ],
+ "wg-ok": null,
+ "wg-tcp": [
+  "transport: WireGuard работает только поверх udp"
+ ]
+}

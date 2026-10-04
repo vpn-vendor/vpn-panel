@@ -1,0 +1,44 @@
+{{ define "dns.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+<div class="card">
+    <h2>Имя панели в локальной сети</h2>
+    {{ if .ready }}
+    <p>Панель открывается по адресу <strong>https://{{ .domain }}</strong> с любого
+    устройства офиса — запоминать числовой адрес не нужно.</p>
+    {{ else }}
+    <p class="muted">Имя <code>{{ .domain }}</code> заработает после того, как
+    разрешение имён будет настроено и проверено.</p>
+    {{ end }}
+    {{ if .segments }}
+    <table>
+        <thead><tr><th>Сегмент</th><th>Адрес панели в нём</th></tr></thead>
+        <tbody>
+            {{ range .segments }}
+            <tr><td>{{ .Name }}</td><td><code>{{ .CIDR }}</code></td></tr>
+            {{ end }}
+        </tbody>
+    </table>
+    {{ end }}
+</div>
+
+<div class="card">
+    <h2>Как работают имена</h2>
+    <p class="muted">Запросы устройств офиса обрабатывает сам шлюз: ответы
+    кэшируются, поэтому страницы и звонки устанавливаются быстрее, а имена
+    продолжают работать при кратковременных сбоях у провайдера.</p>
+    {{ if .addresses }}
+    <p class="muted">Служба отвечает только на адресах локальной сети и самого
+    сервера: {{ range .addresses }}<code>{{ . }}</code> {{ end }} — из интернета
+    она недоступна.</p>
+    {{ end }}
+    <p class="muted">Внешние имена уточняются у публичных серверов
+    {{ range .upstream }}<code>{{ . }}</code> {{ end }}, а не у оборудования
+    провайдера — так запросы офиса не попадают к посторонним.</p>
+</div>
+
+{{ template "app-bottom" . }}
+{{ end }}

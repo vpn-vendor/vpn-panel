@@ -1,0 +1,39 @@
+#!/usr/bin/make -f
+# Сборка пакета vpn-panel. Собирать в чистом контейнере.
+
+export CGO_ENABLED := 0
+export GOFLAGS := -trimpath -buildvcs=false
+
+%:
+	dh $@
+
+# Корневой Makefile — для разработки; сборку и очистку задаём явно.
+override_dh_auto_build:
+	go build -ldflags="-s -w" -o debian/build/vpn-panel .
+	go build -ldflags="-s -w" -o debian/build/vpn-agent ./cmd/vpn-agent
+
+override_dh_auto_clean:
+	rm -rf debian/build
+
+override_dh_auto_test:
+	# Тесты гоняет CI; сборка пакета их не дублирует.
+
+# Что кладётся в пакет — по одному файлу на предмет в соседнем каталоге:
+# новый предмет добавляется своим файлом, этот не меняется.
+include $(sort $(wildcard debian/rules.d/*.mk))
+
+# Свой пустой рецепт: без него цель досталась бы общему правилу выше.
+override_dh_auto_install: $(INSTALL_PARTS)
+	@:
+
+# В compat 13 dh_installsysusers не входит в последовательность — вызываем явно.
+execute_after_dh_install:
+	dh_installsysusers
+
+# Пять systemd-юнитов одного пакета: dh_installsystemd вызывается по имени.
+override_dh_installsystemd:
+	dh_installsystemd --name=vpn-panel-firewall
+	dh_installsystemd --name=vpn-panel-disk-setup --no-start
+	dh_installsystemd --name=vpn-panel-disk-change --no-start
+	dh_installsystemd --name=vpn-agent
+	dh_installsystemd --name=vpn-panel

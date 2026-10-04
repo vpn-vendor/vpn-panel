@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.vpn_vendor.panel</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>Apache-2.0</project_license>
+  <name>VPN Panel</name>
+  <summary>Office gateway control panel</summary>
+  <summary xml:lang="ru">Панель управления офисным шлюзом</summary>
+  <description>
+    <p>Web control panel for a local office internet gateway: network, DHCP, DNS and VPN connections are managed in the browser, without the command line.</p>
+    <p xml:lang="ru">Веб-панель управления локальным интернет-шлюзом офиса: сеть, DHCP, DNS и VPN-подключения настраиваются в браузере, без командной строки.</p>
+    <p>Early test build: not intended for production offices.</p>
+    <p xml:lang="ru">Ранняя тестовая сборка: не предназначена для рабочих офисов.</p>
+  </description>
+  <launchable type="desktop-id">vpn-panel.desktop</launchable>
+  <!-- Значок по имени из системной темы: пакет кладёт его в hicolor.
+       Без этой строки магазин не догадывается, чем нас рисовать, и
+       показывает серый кружок. -->
+  <icon type="stock">vpn-panel</icon>
+  <url type="homepage">https://github.com/vpn-vendor/vpn-panel</url>
+  <developer id="com.vpn_vendor">
+    <name>VPN Vendor</name>
+    <name xml:lang="ru">VPN Vendor</name>
+  </developer>
+  <!-- Прежний тег для магазинов на AppStream до 1.0. -->
+  <developer_name>VPN Vendor</developer_name>
+  <categories>
+    <category>Network</category>
+  </categories>
+  <provides>
+    <binary>vpn-panel</binary>
+  </provides>
+  <content_rating type="oars-1.1"/>
+  <!--RELEASES-->
+</component>

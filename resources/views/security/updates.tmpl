@@ -1,0 +1,48 @@
+{{ define "security/updates" }}
+{{ if .updatesKnown }}
+<div class="card">
+    <h2>Обновления панели</h2>
+    {{ if .panelVersion }}<p>Установлена версия <strong>{{ .panelVersion }}</strong>.</p>{{ end }}
+
+    {{ if .autoUpdates }}
+    <p><strong>Автоматические обновления включены.</strong> Панель обновляется
+    сама, раз в сутки. Обновляется <strong>только она</strong> — системные
+    пакеты, ядро и сеть не трогаются, и сервер никогда не уходит в
+    перезагрузку сам.</p>
+    {{ if .updatesLastRun }}<p class="muted">Последняя проверка обновлений: {{ .updatesLastRun }}.</p>{{ end }}
+    <form method="post" action="/security/updates">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="auto_updates" value="0">
+        <button type="submit" class="btn btn-secondary">Выключить автоматические обновления</button>
+    </form>
+    <p class="muted">После выключения обновлять панель придётся вручную —
+    той же одной командой, которой она устанавливалась.</p>
+
+    {{ else }}
+    <p>Сейчас панель обновляется <strong>только вручную</strong>. Можно
+    поручить это системе: она будет ставить наши обновления сама.</p>
+    <div class="alert alert-warn">
+        <strong>Что произойдёт, если включить.</strong>
+        Раз в сутки система проверит обновления панели и установит их без
+        вопросов. В момент установки <strong>админка недоступна около
+        минуты</strong>. Интернет офиса, разговоры и защищённый канал при
+        этом не прерываются: они работают в ядре системы, а не в панели.
+        Обновляется только панель — ничего из системных пакетов.
+        Выключить можно в любой момент здесь же.
+    </div>
+    {{ if .updatesTool }}
+    <form method="post" action="/security/updates"
+          data-island="confirm-updates"
+          data-question="Включить автоматические обновления панели? Панель будет обновляться сама, во время установки админка будет недоступна около минуты. Интернет офиса и разговоры не прервутся.">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="auto_updates" value="1">
+        <button type="submit" class="btn">Включить автоматические обновления</button>
+    </form>
+    {{ else }}
+    <p class="muted">В системе нет службы автоматических обновлений, поэтому
+    включить их панель не может. Обратитесь в поддержку.</p>
+    {{ end }}
+    {{ end }}
+</div>
+{{ end }}
+{{ end }}

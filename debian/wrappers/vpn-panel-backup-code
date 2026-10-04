@@ -1,0 +1,8 @@
+#!/bin/sh
+# Одноразовый код выгрузки копии настроек для человека у экрана шлюза.
+set -e
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Запустите с правами администратора: sudo vpn-panel-backup-code" >&2
+    exit 1
+fi
+exec /usr/sbin/vpn-agent backup-code

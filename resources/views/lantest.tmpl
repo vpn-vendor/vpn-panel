@@ -1,0 +1,44 @@
+{{ define "lantest.tmpl" }}
+{{ template "plain-head" . }}
+<body>
+<div class="auth-wrap">
+    <div class="auth-card">
+        <div class="plain-mark">{{ template "components/icon" "network" }}<span>Сеть офиса</span></div>
+        <h1>Скорость до сервера</h1>
+        {{ if .loopback }}
+        <p class="muted">Тест запускается с компьютера сотрудника, не с самого сервера.</p>
+        {{ else if not .found }}
+        <p>Сервер пока не видит это устройство в локальной сети офиса — подключитесь к сети офиса и обновите страницу.</p>
+        {{ else }}
+        <p class="muted">Меряется путь <strong>от этого компьютера до сервера</strong>
+        внутри офиса{{ if .hostname }} (<code>{{ .hostname }}</code>){{ end }}: около 100 Мбит/с
+        означает узел на 100 Мбит/с на пути, рост задержки под нагрузкой — очередь на
+        коммутаторе или роутере.{{ if .lastMbit }} Прошлый результат: {{ .lastMbit }} Мбит/с ({{ .lastAt }}).{{ end }}</p>
+        {{ if .fullCheck }}
+        <p><span class="state-down">Идёт полная проверка сети</span> до {{ .fullCheckUntil }}:
+        администратор снял все пределы, качество звонков в это время не гарантируется.</p>
+        {{ end }}
+        {{ if not .windowOpen }}
+        <p><span class="state-down">Проверки скорости сейчас закрыты.</span>
+        Их открывает администратор на ограниченное время — обратитесь к нему.</p>
+        {{ else }}
+        <p class="muted">Проверки открыты администратором до {{ .windowUntil }}.</p>
+        <div id="lantest" data-csrf="{{ .csrf }}" data-probes="{{ if .activeProbes }}1{{ else }}0{{ end }}">
+            <p><button type="button" class="btn" data-mode="quick">Быстрая проверка (3 секунды)</button></p>
+            <p class="muted">Ограничена 150 Мбит/с — достаточно, чтобы отличить узел на 100 Мбит/с от гигабитного, и не мешает звонкам других сотрудников.</p>
+            {{ if .fullAllowed }}
+            <p><button type="button" class="btn btn-small" data-mode="full">Полный замер до гигабита (5 секунд)</button></p>
+            <p class="muted">Полный замер занимает порт сервера целиком — администратор разрешил его в этом окне.</p>
+            {{ end }}
+            <div id="lantest-status" class="muted" hidden></div>
+            <div id="lantest-result" class="alert alert-code" hidden></div>
+        </div>
+        {{ end }}
+        <p class="muted"><a href="/whoami">Назад к странице «Это я»</a></p>
+        {{ end }}
+    </div>
+</div>
+<script src="/public/js/lantest.js" defer></script>
+</body>
+</html>
+{{ end }}

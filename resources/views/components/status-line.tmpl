@@ -1,0 +1,9 @@
+{{ define "components/status-line" }}
+<div class="status-line status-{{ .LevelName }}" id="{{ .ID }}"{{ if .Live }} data-island="chart" data-kind="light" data-rows="{{ .RowNames }}"{{ if .AliveName }} data-alive="{{ .AliveName }}"{{ end }} data-window="2h" data-warn="{{ .Warn }}" data-bad="{{ .Bad }}"
+     data-text-ok="{{ .TextOK }}" data-text-warn="{{ .TextWarn }}" data-text-bad="{{ .TextBad }}" data-text-unknown="{{ .TextUnknown }}"{{ if .TextDown }} data-text-down="{{ .TextDown }}"{{ end }}
+     data-advice-ok="{{ .AdviceOK }}" data-advice-warn="{{ .AdviceWarn }}" data-advice-bad="{{ .AdviceBad }}" data-advice-unknown="{{ .AdviceUnknown }}"{{ if .AdviceDown }} data-advice-down="{{ .AdviceDown }}"{{ end }}{{ end }}>
+    <span class="status-dot" aria-hidden="true"></span>
+    <span class="status-text" data-status-text>{{ .Text }}</span>
+    <span class="status-advice" data-status-advice>{{ .Advice }}</span>
+</div>
+{{ end }}

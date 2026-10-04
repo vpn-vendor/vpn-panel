@@ -1,0 +1,9 @@
+{{ define "components/link-card" }}
+<section class="card link-card">
+    <h2 class="link-card-title">
+        <a href="{{ .URL }}">{{ .Title }}<span class="link-card-go" aria-hidden="true">{{ template "components/icon" "chevron" }}</span></a>
+    </h2>
+    {{ template "components/metric-grid" . }}
+    {{ if .Note }}<p class="muted">{{ .Note }}</p>{{ end }}
+</section>
+{{ end }}

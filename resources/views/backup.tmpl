@@ -1,0 +1,64 @@
+{{ define "backup.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error" role="alert">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+
+{{ if .pending }}
+<div class="card">
+    <h2>Импорт ждёт решения</h2>
+    {{ if .expired }}
+    <p>Срок подтверждения истёк — настройки возвращаются к прежним.</p>
+    {{ else }}
+    <p>Настройки из файла применены. Проверьте, что интернет, канал и
+    устройства офиса работают, и закрепите их до <strong>{{ .until }}</strong>.
+    Без решения в срок настройки вернутся к прежним сами.</p>
+    {{ end }}
+    <form method="post" action="/backup/confirm" class="inline-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/button" .confirmBtn }}
+    </form>
+    <form method="post" action="/backup/rollback" class="inline-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/button" .undoBtn }}
+    </form>
+</div>
+{{ end }}
+
+<div class="card">
+    <h2>Выгрузить настройки</h2>
+    <p><strong>Копия</strong> — всё, включая ключи подключений и пароль
+    провайдера, в зашифрованном файле. Нужна, чтобы вернуть этот шлюз или
+    перенести его на новое железо. Код для выгрузки выдаёт только экран
+    самого шлюза: так копию не унесёт тот, кто просто открыл панель.</p>
+    <form method="post" action="/backup/export/copy">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/field" .codeField }}
+        {{ template "components/field" .passField }}
+        {{ template "components/field" .pass2Field }}
+        {{ template "components/button" .exportBtn }}
+    </form>
+    <p class="muted"><strong>Шаблон</strong> — только правила офиса, без
+    ключей, адресов и привязки к железу: чтобы настроить второй шлюз так же.</p>
+    <form method="post" action="/backup/export/template">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/button" .tmplBtn }}
+    </form>
+</div>
+
+<div class="card">
+    <h2>Загрузить настройки из файла</h2>
+    <p>Сначала панель покажет, что изменится, и ничего не тронет без вашего
+    решения. После применения настройки нужно закрепить — иначе они вернутся
+    к прежним сами.</p>
+    {{ if .hasSlot }}<p><a href="/backup/import">Вернуться к открытому файлу</a></p>{{ end }}
+    <form method="post" action="/backup/import" enctype="multipart/form-data">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/file-field" .fileField }}
+        {{ template "components/field" .openField }}
+        {{ template "components/button" .uploadBtn }}
+    </form>
+</div>
+
+{{ template "app-bottom" . }}
+{{ end }}

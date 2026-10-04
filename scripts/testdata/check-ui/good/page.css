@@ -1,0 +1,4 @@
+/* Фикстура: то же самое средствами, общими для всех движков. Слова will-change
+   и zoom: в комментарии нарушением не считаются. */
+.list { scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent; }
+.card { transition: opacity 140ms ease; }

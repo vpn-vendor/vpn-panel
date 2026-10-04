@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=VPN Panel
+Comment=Office gateway control panel
+Comment[ru]=Панель управления офисным шлюзом
+Exec=xdg-open http://vpn.lan/
+Icon=vpn-panel
+Terminal=false
+Categories=Network;
+StartupNotify=false

@@ -1,0 +1,10 @@
+#!/bin/sh
+set -e
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Запустите с правами администратора: sudo vpn-panel-code" >&2
+    exit 1
+fi
+set -a
+. /etc/vpn-panel/panel.env
+set +a
+exec runuser -u vpn-admin -- /usr/sbin/vpn-panel artisan auth:code "$@"

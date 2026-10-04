@@ -1,0 +1,87 @@
+{{ define "devices.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+{{ if .done }}<div class="alert alert-code">{{ .done }}</div>{{ end }}
+
+{{ if .freshCode }}
+<div class="alert alert-code">
+    <strong>Код подключения (действует {{ .codeTTL }} минут, одноразовый):</strong>
+    <div class="code-big">{{ .freshCode }}</div>
+    Введите его на новом устройстве на странице входа. Никому не сообщайте код.
+</div>
+{{ end }}
+
+<div class="card">
+    <form method="post" action="/devices/code">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn" {{ if .inQuarantine }}disabled{{ end }}>Подключить новое устройство</button>
+        {{ if .inQuarantine }}<span class="muted">Это устройство добавлено недавно: первые часы оно не может приглашать другие и отзывать доступ.</span>{{ end }}
+    </form>
+    <p class="muted"><strong>Потеряли доступ ко всем устройствам?</strong>
+    Сядьте за сам сервер, откройте список программ, наберите
+    <strong>вход в панель</strong> и нажмите значок
+    «Вход в панель — с этого сервера»: система спросит пароль администратора
+    этого компьютера и откроет панель без кода. Тот же путь из окна
+    терминала — команда <code>vpn-panel-code</code>.</p>
+
+    <h2>Устройства</h2>
+    <p class="muted">Сейчас в панель могут войти {{ .aliveCount }} — только они перечислены ниже.{{ if .deadCount }}
+    Ещё {{ .deadCount }} вышли, были отозваны или давно не входили: пустить их уже нельзя, запись о них
+    хранится {{ .trustDays }} дней для журнала и потом удаляется сама.{{ end }}</p>
+    <table>
+        <thead>
+            <tr><th>Название</th><th>Последний вход</th><th>Адрес</th><th>Добавлено</th><th>Статус</th><th></th></tr>
+        </thead>
+        <tbody>
+            {{ range .devices }}
+            <tr{{ if .Revoked }} class="revoked"{{ end }}>
+                <td>{{ .Label }}{{ if .Current }} <span class="tag">это устройство</span>{{ end }}{{ if .Main }} <span class="tag tag-main">главное</span>{{ end }}</td>
+                <td>{{ .LastUsed }}</td>
+                <td><code>{{ .LastIP }}</code></td>
+                <td>{{ .Created }}</td>
+                <td>{{ if .Revoked }}доступ отозван{{ else if .Quarantine }}добавлено недавно{{ else }}активно{{ end }}</td>
+                <td>
+                    {{ if .Current }}
+                    <form method="post" action="/logout">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <button type="submit" class="btn btn-danger">Выйти</button>
+                    </form>
+                    {{ else }}
+                    <form method="post" action="/devices/revoke">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <input type="hidden" name="device_id" value="{{ .ID }}">
+                        <button type="submit" class="btn btn-danger">Отозвать</button>
+                    </form>
+                    {{ end }}
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    <form method="post" action="/devices/signout-others" data-island="confirm-signout"
+          data-question="Выйти на всех остальных устройствах? Войти с них снова можно будет только новым кодом подключения.">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" class="btn btn-danger" {{ if not .canSignOut }}disabled{{ end }}>Выйти на всех остальных устройствах</button>
+        {{ if not .canSignOut }}<span class="muted">Доступно только главному устройству — подключённому с самого сервера.</span>{{ end }}
+    </form>
+    <p class="muted">Доверие устройства истекает после {{ .slidingHours }} ч
+    неактивности и безусловно через {{ .absoluteDays }} дней. Полный сброс
+    всех устройств, включая это, — только с консоли сервера: <code>vpn-panel-reset</code>.</p>
+</div>
+
+<div class="card">
+    <h2>Журнал безопасности</h2>
+    <table>
+        <thead><tr><th>Когда</th><th>Событие</th><th>Адрес</th><th>Детали</th></tr></thead>
+        <tbody>
+            {{ range .events }}
+            <tr><td>{{ .When }}</td><td>{{ .Event }}</td><td><code>{{ .IP }}</code></td><td class="muted">{{ .Details }}{{ if .Repeats }}<br><strong>{{ .Repeats }}</strong>{{ end }}</td></tr>
+            {{ end }}
+        </tbody>
+    </table>
+</div>
+
+<script src="/public/js/security.js" defer></script>
+{{ template "app-bottom" . }}
+{{ end }}

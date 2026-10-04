@@ -1,0 +1,53 @@
+{{ define "security/metrics" }}
+{{ if .metricsKnown }}
+<div class="card">
+    <h2>Сбор показателей</h2>
+    <p class="muted">Панель снимает показатели шлюза сама, без прав и без
+    отдельных процессов, одним сборщиком на все открытые страницы. Память под
+    историю выделена один раз и не растёт. Сейчас сбор: <strong>{{ .metricsMaster }}</strong>.</p>
+    {{ if .metricsMasterOff }}
+    <p><span class="state-down">Сбор выключен насовсем.</span> Графики пусты,
+    диагнозы отвечают «не измеряется». Уведомление об этом показывается на всех
+    страницах, пока сбор не включён.</p>
+    {{ end }}
+    <form method="post" action="/security/metrics-master">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/select" .selectMetricsMaster }}
+        {{ template "components/field" .fieldMetricsPause }}
+        {{ template "components/button" .buttonMetricsMaster }}
+    </form>
+    <p class="muted"><strong>Датчики защиты шлюза не отключаются</strong> — без
+    них проверки скорости небезопасны. Сейчас: процессор занят {{ .metricsProtectCPU }} %,
+    ожидание процессора {{ .metricsProtectPSI }} %, порт LAN {{ .metricsProtectLAN }} Мбит/с
+    {{ if .metricsProtectOK }}<span class="state-up">(данные свежие)</span>{{ else }}<span class="state-down">(данных нет — проверки в тяжёлом режиме отказывают)</span>{{ end }}.</p>
+
+    <table>
+        <thead><tr><th>Источник</th><th>Задано</th><th>Действует</th><th>Цена чтения</th><th>От него зависит</th><th></th></tr></thead>
+        <tbody>
+            {{ range .metricsSources }}
+            <tr>
+                <td>{{ .Title }}</td>
+                <td>{{ .Own }}</td>
+                <td>{{ .Effective }}</td>
+                <td>{{ .Cost }}</td>
+                <td>{{ .Depends }}</td>
+                <td>
+                    <form method="post" action="/security/metrics-source">
+                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                        <input type="hidden" name="source" value="{{ .Name }}">
+                        <input type="hidden" name="pause_minutes" value="60">
+                        {{ template "components/select" .Select }}
+                        {{ template "components/button" .Button }}
+                    </form>
+                </td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+    <p class="muted">Источник, чьё чтение стало дороже бюджета несколько раз
+    подряд, сам встаёт на паузу — одна запись в журнале и уведомление наверху.
+    Рубильник действует как «И»: при включении обратно каждый источник
+    возвращается в своё состояние. Пауза у источника из этой таблицы — на час.</p>
+</div>
+{{ end }}
+{{ end }}

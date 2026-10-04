@@ -1,0 +1,19 @@
+{{ define "components/select" }}
+<div class="field{{ if .HasError }} field-invalid{{ end }}">
+    <label class="field-label" for="{{ .ID }}">{{ .Label }}</label>
+    <select class="field-input"
+            id="{{ .ID }}"
+            name="{{ .Name }}"
+            {{ if .Disabled }}disabled{{ end }}
+            {{ if .HasError }}aria-invalid="true"{{ end }}
+            {{ $s := . }}{{ with .DescribedBy }}aria-describedby="{{ . }}"{{ end }}>
+        {{ range .Options }}
+        <option value="{{ .Value }}"{{ if $s.IsChosen . }} selected{{ end }}{{ if .Disabled }} disabled{{ end }}>{{ .Label }}</option>
+        {{ end }}
+    </select>
+    <div class="field-msg">
+        {{ if .HasError }}<span class="field-error" id="{{ .ID }}-error">{{ .Error }}</span>
+        {{ else if .Hint }}<span class="field-hint" id="{{ .ID }}-hint">{{ .Hint }}</span>{{ end }}
+    </div>
+</div>
+{{ end }}

@@ -1,0 +1,15 @@
+{{ define "security/retention" }}
+<div class="card">
+    <h2>Хранение данных</h2>
+    <p class="muted">Панель сама следит, чтобы журнал и список устройств не
+    разрастались без предела и не заполнили диск сервера. Повторяющиеся
+    попытки с одного компьютера сводятся в одну запись со счётчиком.</p>
+    <form method="post" action="/security/retention">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/field" .fieldJournalDays }}
+        {{ template "components/field" .fieldForgetDays }}
+        {{ template "components/field" .fieldTrustDays }}
+        {{ template "components/button" .buttonRetention }}
+    </form>
+</div>
+{{ end }}

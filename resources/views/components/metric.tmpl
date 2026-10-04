@@ -1,0 +1,7 @@
+{{ define "components/metric" }}
+<div class="{{ .Class }}">
+    <div class="metric-label">{{ .Label }}</div>
+    <div class="metric-value">{{ .Value }}{{ if .Unit }} <span class="metric-unit">{{ .Unit }}</span>{{ end }}</div>
+    {{ if .Note }}<div class="metric-note">{{ .Note }}</div>{{ end }}
+</div>
+{{ end }}

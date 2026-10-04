@@ -1,0 +1,24 @@
+{{ define "components/field" }}
+<div class="field{{ if .HasError }} field-invalid{{ end }}">
+    <label class="field-label" for="{{ .ID }}">{{ .Label }}{{ if .Required }} <span class="field-req" aria-hidden="true">*</span>{{ end }}</label>
+    <input class="field-input"
+           id="{{ .ID }}"
+           name="{{ .Name }}"
+           type="{{ .InputType }}"
+           value="{{ .Value }}"
+           {{ if .Placeholder }}placeholder="{{ .Placeholder }}"{{ end }}
+           {{ if .Required }}required{{ end }}
+           {{ if .Disabled }}disabled{{ end }}
+           {{ if .Autocomplete }}autocomplete="{{ .Autocomplete }}"{{ end }}
+           {{ if .MaxLength }}maxlength="{{ .MaxLength }}"{{ end }}
+           {{ if .Min }}min="{{ .Min }}"{{ end }}
+           {{ if .Max }}max="{{ .Max }}"{{ end }}
+           {{ if .HasError }}aria-invalid="true"{{ end }}
+           {{ with .DescribedBy }}aria-describedby="{{ . }}"{{ end }}>
+    
+    <div class="field-msg">
+        {{ if .HasError }}<span class="field-error" id="{{ .ID }}-error">{{ .Error }}</span>
+        {{ else if .Hint }}<span class="field-hint" id="{{ .ID }}-hint">{{ .Hint }}</span>{{ end }}
+    </div>
+</div>
+{{ end }}

@@ -1,0 +1,276 @@
+# Экран запроса пароля. Знак — матрица клеток, клетка — целое число пикселей
+# от высоты экрана, поэтому он чёткий на любом разрешении. Тексты — готовые
+# картинки трёх размеров по кодам подсказок: экран не зависит от шрифтов в
+# initramfs. Системные сообщения не показываются — только наши коды.
+# Раскладка пересчитывается при смене экрана: прошивка отдаёт одно
+# разрешение, драйвер видеокарты потом ставит родное разрешение монитора.
+
+Window.SetBackgroundTopColor(@BG@);
+Window.SetBackgroundBottomColor(@BG@);
+
+@MARK_ROWS@
+
+@MESSAGES@
+
+px_mark = Image("px-mark.png");
+px_field = Image("px-field.png");
+px_line = Image("px-line.png");
+px_text = Image("px-text.png");
+
+# Прямоугольники знака: подряд идущие клетки строки — один; их число от
+# экрана не зависит, меняются только размер и место.
+runs = 0;
+for (y = 0; y < MARK_ROWS; y++) {
+    row = mark[y];
+    x = 0;
+    while (x < MARK_COLS) {
+        if (row.CharAt(x) == "#") {
+            run_y[runs] = y;
+            run_x[runs] = x;
+            while (x < MARK_COLS && row.CharAt(x) == "#") {
+                x++;
+            }
+            run_w[runs] = x - run_x[runs];
+            mark_sprite[runs] = Sprite();
+            mark_sprite[runs].SetZ(10);
+            runs++;
+        } else {
+            x++;
+        }
+    }
+}
+
+label = Sprite();
+field = Sprite();
+for (i = 0; i < 4; i++) {
+    border[i] = Sprite();
+}
+cursor = Sprite();
+cursor.SetZ(20);
+for (i = 0; i < MSG_COUNT; i++) {
+    msg[i] = Sprite();
+}
+hint = Sprite();
+caps = Sprite();
+dots_made = 0;
+
+global.prompt_visible = 0;
+global.answered = 0;
+global.kind = "unlock";
+global.bullets = 0;
+global.msg_now = "";
+
+fun center(sprite, img, y) {
+    sprite.SetImage(img);
+    sprite.SetX(Math.Int(W / 2) - Math.Int(img.GetWidth() / 2));
+    sprite.SetY(y);
+}
+
+fun place() {
+    global.W = Window.GetWidth();
+    global.H = Window.GetHeight();
+
+    # Шкала текстов: малый экран (ниже 600), средний (600, 720p, 768, 800), большой.
+    if (H < 600) {
+        size = "s";
+    } else {
+        if (H < 900) {
+            size = "m";
+        } else {
+            size = "l";
+        }
+    }
+    global.label_img["unlock"] = Image("text-unlock-" + size + ".png");
+    global.label_img["new"] = Image("text-new-" + size + ".png");
+    global.label_img["repeat"] = Image("text-repeat-" + size + ".png");
+    global.label_img["current"] = Image("text-current-" + size + ".png");
+    th = label_img["unlock"].GetHeight();
+    msg_h = th;
+    for (i = 0; i < MSG_COUNT; i++) {
+        msg_img[i] = Image(msg_file[i] + "-" + size + ".png");
+        if (msg_img[i].GetHeight() > msg_h) {
+            msg_h = msg_img[i].GetHeight();
+        }
+    }
+
+    # Доля: знак занимает четверть высоты экрана.
+    cell = Math.Int(H * 0.25 / MARK_ROWS);
+    if (cell < 1) {
+        cell = 1;
+    }
+    mark_h = MARK_ROWS * cell;
+    # Доля: поле — треть ширины экрана, не уже двенадцати высот строки.
+    field_w = Math.Int(W / 3);
+    if (field_w < th * 12) {
+        field_w = th * 12;
+    }
+    field_h = th * 2;
+    global.field_x = Math.Int(W / 2) - Math.Int(field_w / 2);
+
+    # Раскладка — стопка сверху вниз с отступами в высоту строки: элементы не
+    # могут налезть друг на друга ни на каком экране. Под сообщение — место
+    # самого высокого из них. Стопка чуть выше середины.
+    half = Math.Int(th / 2);
+    block = mark_h + th * 2 + th + half + field_h + th + msg_h + half + th;
+    mark_top = Math.Int((H - block) * 0.45);
+    if (mark_top < half) {
+        mark_top = half;
+    }
+    label_y = mark_top + mark_h + th * 2;
+    field_y = label_y + th + half;
+    msg_y = field_y + field_h + th;
+    keys_y = msg_y + msg_h + half;
+
+    mark_left = Math.Int(W / 2) - Math.Int(MARK_COLS * cell / 2);
+    for (i = 0; i < runs; i++) {
+        mark_sprite[i].SetImage(px_mark.Scale(run_w[i] * cell, cell));
+        mark_sprite[i].SetX(mark_left + run_x[i] * cell);
+        mark_sprite[i].SetY(mark_top + run_y[i] * cell);
+    }
+
+    global.label_y = label_y;
+    field.SetImage(px_field.Scale(field_w, field_h));
+    field.SetX(field_x);
+    field.SetY(field_y);
+    # Рамка поля — линии в один пиксель.
+    border[0].SetImage(px_line.Scale(field_w, 1));
+    border[0].SetX(field_x);
+    border[0].SetY(field_y);
+    border[1].SetImage(px_line.Scale(field_w, 1));
+    border[1].SetX(field_x);
+    border[1].SetY(field_y + field_h - 1);
+    border[2].SetImage(px_line.Scale(1, field_h));
+    border[2].SetX(field_x);
+    border[2].SetY(field_y);
+    border[3].SetImage(px_line.Scale(1, field_h));
+    border[3].SetX(field_x + field_w - 1);
+    border[3].SetY(field_y);
+
+    dot_img = Image("dot-" + size + ".png");
+    global.dot_step = Math.Int(dot_img.GetWidth() * 1.8);
+    global.pad = th;
+    global.max_dots = Math.Int((field_w - pad * 2) / dot_step);
+    # Присваивание в функции без global — локальное: точки обязаны пережить её.
+    while (dots_made < max_dots) {
+        global.dots[dots_made] = Sprite();
+        dots[dots_made].SetZ(20);
+        global.dots_made = dots_made + 1;
+    }
+    for (i = 0; i < dots_made; i++) {
+        dots[i].SetImage(dot_img);
+        dots[i].SetX(field_x + pad + i * dot_step);
+        dots[i].SetY(field_y + Math.Int(field_h / 2) - Math.Int(dot_img.GetHeight() / 2));
+    }
+
+    cursor_h = Math.Int(th * 1.1);
+    cursor.SetImage(px_text.Scale(Math.Int(th / 8) + 1, cursor_h));
+    cursor.SetY(field_y + Math.Int(field_h / 2) - Math.Int(cursor_h / 2));
+
+    for (i = 0; i < MSG_COUNT; i++) {
+        center(msg[i], msg_img[i], msg_y);
+    }
+    # Строка о клавиатуре: раскладка, а при включённом Caps Lock — предупреждение
+    # на её месте.
+    center(hint, Image("text-layout-" + size + ".png"), keys_y);
+    center(caps, Image("text-caps-" + size + ".png"), keys_y);
+
+    center(label, label_img[kind], label_y);
+    show_prompt(prompt_visible);
+    set_dots(bullets);
+    show_message(global.msg_now);
+}
+
+fun show_prompt(o) {
+    label.SetOpacity(o);
+    field.SetOpacity(o);
+    for (i = 0; i < 4; i++) {
+        border[i].SetOpacity(o);
+    }
+    cursor.SetOpacity(o);
+    hint.SetOpacity(o);
+    caps.SetOpacity(0);
+    global.prompt_visible = o;
+}
+
+fun set_dots(count) {
+    global.bullets = count;
+    shown = count;
+    if (shown > max_dots) {
+        shown = max_dots;
+    }
+    for (i = 0; i < dots_made; i++) {
+        if (i < shown) {
+            dots[i].SetOpacity(1);
+        } else {
+            dots[i].SetOpacity(0);
+        }
+    }
+    cursor.SetX(field_x + pad + shown * dot_step);
+}
+
+fun show_message(code) {
+    global.msg_now = code;
+    for (i = 0; i < MSG_COUNT; i++) {
+        if (msg_code[i] == code) {
+            msg[i].SetOpacity(1);
+        } else {
+            msg[i].SetOpacity(0);
+        }
+    }
+}
+
+# Подпись над полем — по коду запроса; запрос диска приходит своей строкой.
+fun display_password(prompt, bullets) {
+    kind = "unlock";
+    if (prompt == "vp:new") {
+        kind = "new";
+    }
+    if (prompt == "vp:repeat") {
+        kind = "repeat";
+    }
+    if (prompt == "vp:current") {
+        kind = "current";
+    }
+    # Повторный запрос диска после ответа — значит, пароль не подошёл.
+    if (kind == "unlock" && global.answered == 1 && bullets == 0) {
+        show_message("vp:wrong");
+    }
+    global.answered = 0;
+    global.kind = kind;
+    center(label, label_img[kind], global.label_y);
+    show_prompt(1);
+    set_dots(bullets);
+}
+
+fun display_normal() {
+    if (global.prompt_visible == 1 && global.kind == "unlock") {
+        global.answered = 1;
+    }
+    show_prompt(0);
+    set_dots(0);
+    show_message("");
+}
+
+fun refresh() {
+    if (global.prompt_visible == 1) {
+        if (Plymouth.GetCapslockState()) {
+            caps.SetOpacity(1);
+            hint.SetOpacity(0);
+        } else {
+            caps.SetOpacity(0);
+            hint.SetOpacity(1);
+        }
+    }
+}
+
+fun display_message(text) {
+    show_message(text);
+}
+
+place();
+
+Plymouth.SetDisplayPasswordFunction(display_password);
+Plymouth.SetDisplayNormalFunction(display_normal);
+Plymouth.SetRefreshFunction(refresh);
+Plymouth.SetDisplayMessageFunction(display_message);
+Plymouth.SetDisplayHotplugFunction(place);

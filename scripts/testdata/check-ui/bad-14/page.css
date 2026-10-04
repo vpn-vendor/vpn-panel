@@ -1,0 +1,5 @@
+/* Фикстура: контрольная точка в пикселях и точка вне реестра. */
+:root { --s4: 1rem; }
+/* ==== КОНЕЦ ТОКЕНОВ ==== */
+@media (min-width: 1024px) { .card { padding: var(--s4); } }
+@media (min-width: 90em) { .card { padding: var(--s4); } }

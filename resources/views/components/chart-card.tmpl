@@ -1,0 +1,20 @@
+{{ define "components/chart-card" }}
+<section class="chart-card" id="{{ .ID }}" data-island="chart" data-kind="{{ .KindName }}" data-rows="{{ .RowNames }}" data-window="{{ .WindowName }}" data-unit="{{ .UnitName }}"{{ if .Norm }} data-norm="{{ .Norm }}"{{ end }}{{ with .Scale }} data-warn="{{ .Warn }}" data-bad="{{ .Bad }}"{{ end }}
+         data-text-paused="Сбор показателей остановлен администратором." data-text-busy="Сервер занят, график обновится позже." data-text-empty="Данных за это время пока нет.">
+    <header class="chart-head">
+        <h3 class="chart-title">{{ .Title }}<span class="chart-zoom" data-chart-zoom aria-hidden="true" hidden>{{ template "components/icon" "search" }}</span></h3>
+        {{ if .Sub }}<p class="chart-sub">{{ .Sub }}</p>{{ end }}
+    </header>
+    <div class="chart-values">
+        {{ range .ShownRows }}
+        <div class="chart-value {{ .SeriesClass }}" data-row="{{ .Name }}" data-label="{{ .Label }}">
+            <span class="chart-dot" aria-hidden="true"></span>
+            <span class="chart-label">{{ .Label }}</span>
+            <span class="chart-num" data-row-value>{{ .Shown }}</span>
+        </div>
+        {{ end }}
+    </div>
+    <div class="chart-plot"><canvas class="chart-canvas" aria-hidden="true"></canvas></div>
+    <p class="chart-note" data-chart-note>{{ .Note }}</p>
+</section>
+{{ end }}

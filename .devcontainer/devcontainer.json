@@ -1,0 +1,34 @@
+{
+  "name": "vpn-panel-core",
+  "image": "mcr.microsoft.com/devcontainers/go:1.26-bookworm",
+  "forwardPorts": [8443, 8080],
+  "portsAttributes": {
+    "8443": {
+      "label": "panel-dev-https",
+      "onAutoForward": "notify"
+    },
+    "8080": {
+      "label": "panel-dev-redirect",
+      "onAutoForward": "silent"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "EditorConfig.EditorConfig"
+      ],
+      "settings": {
+        "go.lintOnSave": "package",
+        "go.formatTool": "gofmt",
+        "editor.formatOnSave": true
+      }
+    }
+  },
+  "postCreateCommand": "go version && if [ ! -f .env ]; then cp .env.example .env; fi",
+  "remoteUser": "vscode",
+  "hostRequirements": {
+    "cpus": 2,
+    "memory": "4gb"
+  }
+}

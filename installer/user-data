@@ -1,0 +1,38 @@
+#cloud-config
+# Профиль установки шлюза. Один и тот же файл лежит на носителе под именами
+# user-data (том с меткой CIDATA) и autoinstall.yaml (корень образа или
+# записываемой флешки). Секретов в тексте нет: ключ диска рождается на машине
+# в ранних шагах. Учётную запись создаёт человек в первой настройке Ubuntu
+# после шага с паролем диска; установку человек подтверждает — диск
+# стирается целиком. Текст профиля установщик показывает в окне подтверждения
+# дословно, поэтому здесь только латиница; объяснения по-русски — в шагах.
+autoinstall:
+  version: 1
+  locale: ru_RU.UTF-8
+  keyboard:
+    layout: us
+  early-commands:
+    - |
+      set -e
+      m=/cdrom
+      if [ ! -f "$m/vpn-panel/early.sh" ]; then
+        m=/run/vp-media
+        mkdir -p "$m"
+        dev="$(blkid -L cidata || blkid -L CIDATA || true)"
+        if [ -z "$dev" ]; then
+          echo "vpn-panel: CIDATA volume not found" >&2
+          exit 1
+        fi
+        mount -o ro "$dev" "$m"
+      fi
+      echo "$m" > /run/vp-media-path
+      VP_MEDIA="$m" sh "$m/vpn-panel/early.sh"
+  storage:
+    layout:
+      name: lvm
+      password: VP-TEMP-KEY-PLACEHOLDER
+  late-commands:
+    - |
+      m="$(cat /run/vp-media-path)"
+      VP_MEDIA="$m" sh "$m/vpn-panel/late.sh"
+  shutdown: reboot

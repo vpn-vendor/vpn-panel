@@ -1,0 +1,13 @@
+processor	: 0
+model name	: Intel(R) Celeron(R) CPU J1900 @ 1.99GHz
+physical id	: 0
+core id		: 0
+cpu cores	: 4
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat
+
+processor	: 1
+model name	: Intel(R) Celeron(R) CPU J1900 @ 1.99GHz
+physical id	: 0
+core id		: 1
+cpu cores	: 4
+flags		: fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat

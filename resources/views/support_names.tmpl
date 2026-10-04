@@ -1,0 +1,27 @@
+{{ define "support_names.tmpl" }}
+{{ template "app-top" . }}
+
+{{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
+
+<div class="card">
+    <h2>Условные имена устройств</h2>
+    <p class="muted">В файле сведений для поддержки устройства названы условными
+    именами. Эта таблица остаётся на шлюзе и никуда не отправляется: по ней вы
+    узнаёте, о каком устройстве говорит поддержка.</p>
+    <div class="table-wrap">
+    <table class="table">
+        <thead><tr><th>Имя в файле сведений</th><th>Устройство в панели</th></tr></thead>
+        <tbody>
+        {{ range .rows }}
+        <tr><td><code>{{ .Alias }}</code></td><td>{{ .Label }}</td></tr>
+        {{ else }}
+        <tr><td colspan="2" class="muted">Устройств пока нет.</td></tr>
+        {{ end }}
+        </tbody>
+    </table>
+    </div>
+    <p><a href="/diagnostics#support">Назад к диагностике</a></p>
+</div>
+
+{{ template "app-bottom" . }}
+{{ end }}
