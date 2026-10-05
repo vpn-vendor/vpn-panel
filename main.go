@@ -17,7 +17,9 @@ func main() {
 	log.SetOutput(out)
 	logsink.SetOutput(out)
 
-	applyMemoryLimit()
+	if len(os.Args) == 1 {
+		applyMemoryLimit()
+	}
 
 	app := bootstrap.Boot()
 

@@ -14,5 +14,5 @@
 # Хук не имеет права уронить подъём канала: любая наша ошибка гасится, выход
 # всегда нулевой.
 [ "$PPP_IPPARAM" = "vpn_panel_wan" ] || exit 0
-/usr/sbin/vpn-agent wan-up >/dev/null 2>&1 || true
+/usr/libexec/vpn-panel/vpn-agent wan-up >/dev/null 2>&1 || true
 exit 0

@@ -8,5 +8,8 @@ install-console:
 	# Консольные обёртки — корень доверия входа.
 	install -D -m 0755 debian/wrappers/vpn-panel-code debian/vpn-panel/usr/sbin/vpn-panel-code
 	install -D -m 0755 debian/wrappers/vpn-panel-reset debian/vpn-panel/usr/sbin/vpn-panel-reset
-	install -D -m 0755 debian/wrappers/vpn-panel-desktop-login debian/vpn-panel/usr/sbin/vpn-panel-desktop-login
-	install -D -m 0755 debian/wrappers/vpn-panel-login debian/vpn-panel/usr/bin/vpn-panel-login
+	install -D -m 0755 debian/wrappers/vpn-panel-desktop-login debian/vpn-panel/usr/libexec/vpn-panel/vpn-panel-desktop-login
+	install -D -m 0755 debian/wrappers/vpn-panel-login debian/vpn-panel/usr/libexec/vpn-panel/vpn-panel-login
+	# Подсказки: действия команды по клавише TAB и строка при входе на сервер.
+	install -D -m 0644 debian/assets/vpn-panel.bash-completion debian/vpn-panel/usr/share/bash-completion/completions/vpn-panel
+	install -D -m 0755 debian/assets/motd-vpn-panel debian/vpn-panel/etc/update-motd.d/60-vpn-panel

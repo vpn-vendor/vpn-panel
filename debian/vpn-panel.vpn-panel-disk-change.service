@@ -16,7 +16,7 @@ Conflicts=shutdown.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/vpn-agent disk-change
+ExecStart=/usr/libexec/vpn-panel/vpn-agent disk-change
 TimeoutStartSec=infinity
 StandardOutput=journal
 StandardError=journal

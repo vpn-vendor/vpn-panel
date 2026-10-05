@@ -3,6 +3,8 @@ package navigation
 import (
 	"strings"
 	"testing"
+
+	"github.com/vpn-vendor/vpn-panel-core/internal/help"
 )
 
 func TestEverySectionFindsItselfFirst(t *testing.T) {
@@ -138,5 +140,21 @@ func TestEverySectionDeclaresItsWidth(t *testing.T) {
 	}
 	if Width("").Valid() || Width("огромная").Valid() {
 		t.Error("пустая и выдуманная ширина обязаны быть недействительными")
+	}
+}
+
+func TestHelpTopicsPointAtRealSections(t *testing.T) {
+	known := func(key string) bool { _, ok := SectionByKey(key); return ok }
+	if err := help.Validate(help.Topics(), func(string) bool { return true }, known); err != nil {
+		t.Fatal(err)
+	}
+	for _, topic := range help.Topics() {
+		if topic.Section == "" {
+			continue
+		}
+		section, _ := SectionByKey(topic.Section)
+		if !strings.Contains(strings.Join(topic.Steps, " "), section.Title) {
+			t.Errorf("тема «%s» ведёт в раздел «%s», но совет его не называет", topic.Question, section.Title)
+		}
 	}
 }

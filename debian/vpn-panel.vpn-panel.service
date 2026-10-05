@@ -9,7 +9,7 @@ User=vpn-admin
 Group=vpn-panel
 EnvironmentFile=/etc/vpn-panel/panel.env
 WorkingDirectory=/usr/share/vpn-panel
-ExecStart=/usr/sbin/vpn-panel
+ExecStart=/usr/libexec/vpn-panel/vpn-panel
 StateDirectory=vpn-panel
 StateDirectoryMode=0750
 # Пределы ресурсов: перезапуск веб-интерфейса по пределу памяти не трогает

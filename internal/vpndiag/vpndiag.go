@@ -129,6 +129,14 @@ func Analyze(f Facts) []Finding {
 	return out
 }
 
+func State(f Facts) (Finding, bool) {
+	found := stateFindings(f)
+	if len(found) == 0 {
+		return Finding{}, false
+	}
+	return found[0], true
+}
+
 func stateFindings(f Facts) []Finding {
 	if !f.ModeBlack {
 		return nil

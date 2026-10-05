@@ -1,0 +1,21 @@
+#!/bin/sh
+# Команда vpn-panel. Человеку в терминале — управление шлюзом. Системе и
+# сценариям — сервер панели, как раньше: файл службы прежней версии и вызовы
+# «vpn-panel artisan …» продолжают работать во время обновления.
+set -e
+SERVER=/usr/libexec/vpn-panel/vpn-panel
+SERVICE=/usr/libexec/vpn-panel/vpn-agent
+
+if [ "${1:-}" = artisan ] || { [ $# -eq 0 ] && [ ! -t 0 ]; }; then
+    exec "$SERVER" "$@"
+fi
+# Справка и слова для клавиши TAB — не секрет: они отдаются и без прав.
+case "${1:-}" in
+    help|--help|-h|__complete) exec "$SERVICE" console "$@" ;;
+esac
+if [ "$(id -u)" -ne 0 ]; then
+    echo "Управление шлюзом с консоли — с правами администратора: sudo vpn-panel" >&2
+    echo "Что умеет команда: vpn-panel help" >&2
+    exit 1
+fi
+exec "$SERVICE" console "$@"

@@ -1,0 +1,19 @@
+VPN Panel - office gateway                                         version 0.3.1
+--------------------------------------------------------------------------------
+ Russian text is not readable on this terminal.
+ Use the server screen or SSH for the full text.
+
+ Internet         [OK]
+ Secure channel   [FAILED]
+ Panel            [UNKNOWN]
+
+  1  Login code and panel address
+  2  Gateway status in detail
+  3  Restart the panel (not the internet)
+  4  Support report
+  5  Save or restore settings
+  6  Sign out on all devices
+  9  Help (Russian only)   <- start here
+  0  Exit
+
+ Type a digit and press Enter [0-6, 9]: 0

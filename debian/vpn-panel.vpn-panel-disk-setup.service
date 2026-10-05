@@ -14,7 +14,7 @@ FailureAction=poweroff
 
 [Service]
 Type=oneshot
-ExecStart=/usr/sbin/vpn-agent disk-setup
+ExecStart=/usr/libexec/vpn-panel/vpn-agent disk-setup
 TimeoutStartSec=infinity
 StandardOutput=journal
 StandardError=journal

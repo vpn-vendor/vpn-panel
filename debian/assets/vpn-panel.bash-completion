@@ -1,0 +1,7 @@
+# Подсказки по клавише TAB для команды vpn-panel. Слова называет сама
+# команда: новое действие появляется здесь без правки этого файла.
+_vpn_panel() {
+    [ "$COMP_CWORD" -eq 1 ] || return 0
+    COMPREPLY=($(compgen -W "$(vpn-panel __complete 2>/dev/null)" -- "${COMP_WORDS[COMP_CWORD]}"))
+}
+complete -F _vpn_panel vpn-panel

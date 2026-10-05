@@ -7,7 +7,7 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "Запустите с правами администратора: sudo vpn-panel-support" >&2
     exit 1
 fi
-FILE="$(/usr/sbin/vpn-agent support)"
+FILE="$(/usr/libexec/vpn-panel/vpn-agent support)"
 case "$FILE" in
     /run/vpn-panel/vpn-panel-support-*) ;;
     *) echo "Сведения не собраны — повторите; если повторяется, обратитесь в поддержку." >&2; exit 1 ;;

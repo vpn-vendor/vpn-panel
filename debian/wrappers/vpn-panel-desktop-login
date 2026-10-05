@@ -13,4 +13,4 @@ fi
 set -a
 . /etc/vpn-panel/panel.env
 set +a
-exec runuser -u vpn-admin -- /usr/sbin/vpn-panel artisan auth:desktop-login
+exec runuser -u vpn-admin -- /usr/libexec/vpn-panel/vpn-panel artisan auth:desktop-login

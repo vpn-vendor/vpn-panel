@@ -5,4 +5,4 @@ if [ "$(id -u)" -ne 0 ]; then
     echo "Запустите с правами администратора: sudo vpn-panel-backup-code" >&2
     exit 1
 fi
-exec /usr/sbin/vpn-agent backup-code
+exec /usr/libexec/vpn-panel/vpn-agent backup-code

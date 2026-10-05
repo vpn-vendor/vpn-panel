@@ -33,7 +33,7 @@ fail() {
     exit 1
 }
 
-OUT="$(pkexec /usr/sbin/vpn-panel-desktop-login 2>/dev/null)" || OUT=""
+OUT="$(pkexec /usr/libexec/vpn-panel/vpn-panel-desktop-login 2>/dev/null)" || OUT=""
 if [ -z "$OUT" ]; then
     fail "$(printf 'Войти не удалось.\n\nЕсли окно подтверждения прав было отменено — нажмите значок ещё раз\nи введите пароль администратора этого компьютера.\n\nЕсли окна не появилось, панель могла установиться не до конца:\nперезагрузите сервер или обратитесь в поддержку.')"
 fi

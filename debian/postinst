@@ -48,7 +48,7 @@ if [ "$1" = "configure" ]; then
     set -a
     . /etc/vpn-panel/panel.env
     set +a
-    if ! runuser -u vpn-admin -- /usr/sbin/vpn-panel artisan migrate; then
+    if ! runuser -u vpn-admin -- /usr/libexec/vpn-panel/vpn-panel artisan migrate; then
         echo "vpn-panel: database migration failed" >&2
         if [ -n "$BACKUP" ]; then
             cp -a "$BACKUP" "$DB"

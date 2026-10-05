@@ -44,6 +44,9 @@ func main() {
 		if os.Args[1] == "support" {
 			os.Exit(runSupport())
 		}
+		if os.Args[1] == "console" {
+			os.Exit(runConsole(os.Args[2:]))
+		}
 		runHookCommand(os.Args[1])
 		return
 	}
@@ -101,7 +104,7 @@ func main() {
 	if devmode.Enabled {
 		log.Printf("режим разработки (тег сборки dev): системные методы отвечают отказом, чтение работает")
 	}
-	server := agentMethods(applier, firewall, dns, dhcp, qos, diag, vpn, clock, updates, logs, disk, backup, support)
+	server := agentMethods(applier, firewall, dns, dhcp, qos, diag, vpn, clock, updates, logs, disk, backup, support, newPanelApplier())
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)

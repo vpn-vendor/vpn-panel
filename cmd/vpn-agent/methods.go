@@ -6,7 +6,7 @@ import (
 
 func agentMethods(applier *netplanApplier, firewall *firewallApplier, dns *dnsApplier, dhcp *dhcpApplier,
 	qos *qosApplier, diag *diagApplier, vpn *vpnApplier, clock *timeApplier, updates *updatesApplier,
-	logs *logsApplier, disk *diskApplier, backup *backupApplier, support *supportApplier) *agentrpc.Server {
+	logs *logsApplier, disk *diskApplier, backup *backupApplier, support *supportApplier, panel *panelApplier) *agentrpc.Server {
 	return agentrpc.NewServer(map[string]agentrpc.Handler{
 		"system.ping":                systemPing,
 		"network.status":             networkStatus,
@@ -52,5 +52,6 @@ func agentMethods(applier *netplanApplier, firewall *firewallApplier, dns *dnsAp
 		"support.collect":            support.supportCollect,
 		"support.status":             support.supportStatus,
 		"support.names":              support.supportNames,
-	}).RootOnly("backup.code")
+		"panel.restart":              devGate(panel.panelRestart),
+	}).RootOnly("backup.code", "panel.restart")
 }

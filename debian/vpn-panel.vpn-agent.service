@@ -3,7 +3,7 @@ Description=VPN Panel system service
 
 [Service]
 Type=simple
-ExecStart=/usr/sbin/vpn-agent
+ExecStart=/usr/libexec/vpn-panel/vpn-agent
 Environment=AGENT_SOCKET=/run/vpn-panel/broker.sock
 User=root
 Group=vpn-panel

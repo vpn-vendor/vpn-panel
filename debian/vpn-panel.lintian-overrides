@@ -1,2 +1,2 @@
-vpn-panel: statically-linked-binary [usr/sbin/vpn-agent]
-vpn-panel: statically-linked-binary [usr/sbin/vpn-panel]
+vpn-panel: statically-linked-binary [usr/libexec/vpn-panel/vpn-agent]
+vpn-panel: statically-linked-binary [usr/libexec/vpn-panel/vpn-panel]

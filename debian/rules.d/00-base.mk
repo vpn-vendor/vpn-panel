@@ -2,8 +2,10 @@
 INSTALL_PARTS += install-base
 .PHONY: install-base
 install-base:
-	install -D -m 0755 debian/build/vpn-panel debian/vpn-panel/usr/sbin/vpn-panel
-	install -D -m 0755 debian/build/vpn-agent debian/vpn-panel/usr/sbin/vpn-agent
+	install -D -m 0755 debian/build/vpn-panel debian/vpn-panel/usr/libexec/vpn-panel/vpn-panel
+	install -D -m 0755 debian/build/vpn-agent debian/vpn-panel/usr/libexec/vpn-panel/vpn-agent
+	# Единственная команда для человека: меню управления шлюзом.
+	install -D -m 0755 debian/wrappers/vpn-panel debian/vpn-panel/usr/sbin/vpn-panel
 	mkdir -p debian/vpn-panel/usr/share/vpn-panel
 	cp -r public resources debian/vpn-panel/usr/share/vpn-panel/
 	# Снять комментарии со статики и проверить её на личные данные.
