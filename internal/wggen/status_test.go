@@ -34,6 +34,11 @@ func TestParseFwmark(t *testing.T) {
 		"off\n":    0,
 		"":         0,
 		"мусор":    0,
+		"0":        0,
+		"-5":       0,
+
+		"0x100000000":            0,
+		"0xffffffffffffffffffff": 0,
 	}
 	for in, want := range cases {
 		if got := ParseFwmark([]byte(in)); got != want {

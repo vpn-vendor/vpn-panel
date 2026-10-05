@@ -57,12 +57,13 @@ func keaCredential() *syscall.Credential {
 	if err != nil {
 		return nil
 	}
-	uid, err1 := strconv.Atoi(u.Uid)
-	gid, err2 := strconv.Atoi(u.Gid)
+
+	uid, err1 := strconv.ParseUint(u.Uid, 10, 32)
+	gid, err2 := strconv.ParseUint(u.Gid, 10, 32)
 	if err1 != nil || err2 != nil {
 		return nil
 	}
-	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)} //nolint:gosec
+	return &syscall.Credential{Uid: uint32(uid), Gid: uint32(gid)}
 }
 
 func keaGroup() (int, bool) {

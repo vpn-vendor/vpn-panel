@@ -103,7 +103,8 @@ func (c *DevicesController) SignOutOthers(ctx contractshttp.Context) contractsht
 
 func (c *DevicesController) Revoke(ctx contractshttp.Context) contractshttp.Response {
 	a := actor(ctx)
-	id, err := strconv.ParseUint(ctx.Request().Input("device_id"), 10, 64)
+
+	id, err := strconv.ParseUint(ctx.Request().Input("device_id"), 10, strconv.IntSize)
 	if err != nil {
 		setFlash(ctx, flashError, "Устройство не найдено.")
 		return ctx.Response().Redirect(contractshttp.StatusFound, "/devices")

@@ -69,7 +69,8 @@ func ParseFwmark(out []byte) int {
 	if strings.HasPrefix(s, "0x") || strings.HasPrefix(s, "0X") {
 		base, digits = 16, s[2:]
 	}
-	v, err := strconv.ParseInt(digits, base, 64)
+
+	v, err := strconv.ParseInt(digits, base, strconv.IntSize)
 	if err != nil || v <= 0 || v > 0xffffffff {
 		return 0
 	}
