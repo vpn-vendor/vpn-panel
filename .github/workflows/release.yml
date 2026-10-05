@@ -1,10 +1,13 @@
-# Выпуск по тегу: сборка .deb в чистом контейнере, аттестация происхождения,
-# публикация в Releases. Секретов нет: репозиторий apt подписывается вне CI.
+# Выпуск по тегу: сборка .deb в чистом контейнере, комплект носителя,
+# аттестация происхождения, черновик выпуска в Releases. Секретов нет:
+# суммы и репозиторий apt подписываются вне CI, публикует выпуск человек.
 name: Release
 
 on:
   push:
     tags: ['v*.*.*']
+  # Пробная сборка до тега: всё собирается, выпуск не создаётся.
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -38,6 +41,7 @@ jobs:
           apt-get install -y -qq debhelper lintian librsvg2-bin
 
       - name: Тег совпадает с debian/changelog
+        if: github.ref_type == 'tag'
         run: |
           tag="${GITHUB_REF_NAME#v}"
           log="$(dpkg-parsechangelog -S Version)"
@@ -55,12 +59,11 @@ jobs:
       - name: Lintian
         run: lintian --fail-on error ../vpn-panel_*.deb
 
-      - name: Пакет, суммы и заметки
+      - name: Пакет и заметки
         run: |
-          mkdir -p dist
-          cp ../vpn-panel_*.deb dist/
-          deb="$(basename dist/vpn-panel_*.deb)"
-          (cd dist && sha256sum "$deb" > SHA256SUMS)
+          mkdir -p dist/assets
+          cp ../vpn-panel_*.deb dist/assets/
+          deb="$(basename dist/assets/vpn-panel_*.deb)"
           url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/download/$GITHUB_REF_NAME/$deb"
           {
             echo "## Изменения"
@@ -80,19 +83,80 @@ jobs:
             echo "## Обновление"
             echo "Те же две команды поверх установленной версии. Настройки и данные сохраняются."
           } > dist/notes.txt
-          cat dist/SHA256SUMS
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: deb
+          name: asset-deb
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Комплект носителя: пакет и всё, что он тянет, из архива Ubuntu.
+  media:
+    name: Build media kit
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: asset-deb
+          path: dist
+
+      - name: Комплект
+        run: |
+          deb="$(ls dist/assets/vpn-panel_*.deb)"
+          version="$(dpkg-deb -f "$deb" Version)"
+          installer/build-media.sh --deb "$deb" --out "$RUNNER_TEMP/media" \
+            --kit "$PWD/kit/assets/vpn-panel-media-$version.zip"
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: asset-media
+          path: kit/
+          if-no-files-found: error
+          retention-days: 7
+
+  # Набор вложений и один файл сумм на все. Новое вложение — новое задание с
+  # артефактом asset-<имя>, внутри каталог assets; здесь меняется только needs.
+  assemble:
+    name: Assemble assets
+    needs: [build, media]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: asset-*
+          merge-multiple: true
+          path: dist
+
+      - name: Суммы
+        run: |
+          cd dist
+          [ -s notes.txt ] || { echo "нет заметок выпуска"; exit 1; }
+          (cd assets && sha256sum -- *) > SHA256SUMS
+          (cd assets && sha256sum -c --strict --quiet ../SHA256SUMS)
+          cat SHA256SUMS
+          ls -l assets
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release
           path: dist/
           if-no-files-found: error
           retention-days: 7
 
   # Права на запись есть только здесь, и здесь не исполняется код из дерева.
+  # Только по тегу: пробная сборка сюда не доходит.
   publish:
-    name: Attest & publish
-    needs: build
+    name: Attest & draft
+    needs: assemble
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -102,21 +166,22 @@ jobs:
     steps:
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          name: deb
+          name: release
           path: dist
 
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
-          subject-path: dist/*.deb
+          subject-path: dist/assets/*
 
-      - name: Выпуск на GitHub
+      # Черновик: публикует человек после подписи сумм и полевой проверки.
+      - name: Черновик выпуска на GitHub
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          flag=--latest
-          case "${GITHUB_REF_NAME#v}" in 0.*) flag=--prerelease ;; esac
-          gh release create "$GITHUB_REF_NAME" dist/*.deb dist/SHA256SUMS \
+          flags=(--draft)
+          case "${GITHUB_REF_NAME#v}" in 0.*) flags+=(--prerelease) ;; esac
+          gh release create "$GITHUB_REF_NAME" dist/assets/* dist/SHA256SUMS \
             --repo "$GITHUB_REPOSITORY" \
             --title "vpn-panel $GITHUB_REF_NAME" \
             --notes-file dist/notes.txt \
-            --verify-tag "$flag"
+            --verify-tag "${flags[@]}"
