@@ -77,7 +77,7 @@ jobs:
             echo "wget -O $deb $url"
             echo '```'
             echo '```bash'
-            echo "sudo apt install ./$deb"
+            echo "sudo apt update && sudo apt install ./$deb"
             echo '```'
             echo
             echo "## Обновление"
