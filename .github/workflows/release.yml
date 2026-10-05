@@ -111,6 +111,7 @@ jobs:
         run: |
           deb="$(ls dist/assets/vpn-panel_*.deb)"
           version="$(dpkg-deb -f "$deb" Version)"
+          mkdir -p kit/assets
           installer/build-media.sh --deb "$deb" --out "$RUNNER_TEMP/media" \
             --kit "$PWD/kit/assets/vpn-panel-media-$version.zip"
 
