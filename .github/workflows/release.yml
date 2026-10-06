@@ -47,6 +47,13 @@ jobs:
           log="$(dpkg-parsechangelog -S Version)"
           [ "$tag" = "$log" ] || { echo "Тег v$tag не совпадает с debian/changelog ($log)."; exit 1; }
 
+      # Время файлов пакета приводится к дате записи версии, только если она
+      # уже прошла: с датой в будущем пакет не пересобрать байт в байт.
+      - name: Дата записи версии не в будущем
+        run: |
+          stamp="$(dpkg-parsechangelog -S Timestamp)"
+          [ "$stamp" -le "$(date +%s)" ] || { echo "Дата верхней записи debian/changelog ещё не наступила."; exit 1; }
+
       # Кэш в выпуске не используется: сборка только из чистого дерева.
       - name: Тесты
         run: go test -race ./...

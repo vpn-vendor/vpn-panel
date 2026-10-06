@@ -9,6 +9,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"time"
 )
 
 func installed(t *testing.T) map[string]bool {
@@ -102,5 +103,19 @@ func TestHumanCommandStillServesTheSystem(t *testing.T) {
 		if strings.Contains(readRepo(t, unit), "ExecStart=/usr/sbin/") {
 			t.Errorf("%s запускается через команду человека: ошибка в ней остановила бы службу", unit)
 		}
+	}
+}
+
+func TestChangelogDateHasAlreadyPassed(t *testing.T) {
+	signed := regexp.MustCompile(`(?m)^ -- .+>  (.+)$`).FindStringSubmatch(readRepo(t, "debian/changelog"))
+	if signed == nil {
+		t.Fatal("в журнале изменений нет строки с датой записи")
+	}
+	when, err := time.Parse(time.RFC1123Z, signed[1])
+	if err != nil {
+		t.Fatalf("дата записи версии не читается: %q", signed[1])
+	}
+	if when.After(time.Now()) {
+		t.Errorf("дата записи версии %s ещё не наступила: ставится момент написания, а не день выпуска", signed[1])
 	}
 }
