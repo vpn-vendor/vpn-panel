@@ -1,0 +1,84 @@
+Package: vpn-panel
+Version: 0.3.0
+Architecture: amd64
+Maintainer: VPN Panel <147600695+vpn-vendor@users.noreply.github.com>
+Installed-Size: 58829
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools, openvpn, plymouth, kbd, console-setup, console-setup-linux
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.3.0_amd64.deb
+Size: 15972916
+MD5sum: 79bf3ce7219ea34de03686c6538301bf
+SHA1: 7c2e9fce96000890e1f21fbd644bebff9f2213ce
+SHA256: bcdcfbbad894fb372a2c4dd5c036a1ff02d3c6f79901fe96d6d2f1cd720ad758
+Section: net
+Priority: optional
+Homepage: https://github.com/vpn-vendor/vpn-panel
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.3.1
+Architecture: amd64
+Maintainer: VPN Panel <147600695+vpn-vendor@users.noreply.github.com>
+Installed-Size: 58866
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping, iputils-ping, wireguard-tools, openvpn, plymouth, kbd, console-setup, console-setup-linux
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.3.1_amd64.deb
+Size: 15994768
+MD5sum: 66f6ac4990b4cf05e766696e46530fe9
+SHA1: 82d6b5d4ba607c6221683c5c8a2b98e5c5e5c033
+SHA256: 60d2e97624e4f03362397b8ca94e9bc010032ada0b9a536aa44cf4f79d1d25e8
+Section: net
+Priority: optional
+Homepage: https://github.com/vpn-vendor/vpn-panel
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+
+Package: vpn-panel
+Version: 0.3.2
+Architecture: amd64
+Maintainer: VPN Panel <147600695+vpn-vendor@users.noreply.github.com>
+Installed-Size: 59042
+Depends: systemd | systemd-standalone-sysusers | systemd-sysusers, iproute2, nftables, kea-dhcp4-server, unbound, dns-root-data, iputils-arping, iputils-ping, wireguard-tools, openvpn, plymouth, kbd, console-setup, console-setup-linux
+Recommends: zenity, wl-clipboard
+Suggests: xdg-utils
+Filename: pool/main/v/vpn-panel/vpn-panel_0.3.2_amd64.deb
+Size: 16041192
+MD5sum: 8021266bf9e4e7349b3a3357c7571ff4
+SHA1: 1e5ff786940a473f089a45d948d8e4ce84cf769f
+SHA256: 7de5a6f4c5e226ed22df66bf967b7e69e0a1e740bd547e30cb22ef1a08b8d2f9
+Section: net
+Priority: optional
+Homepage: https://github.com/vpn-vendor/vpn-panel
+Description: office internet gateway control panel (Ubuntu 26.04)
+ Web control panel for a local office internet gateway: network, DHCP,
+ DNS and VPN connections are managed in the browser, without the
+ command line.
+ .
+ Early test build: not intended for production offices. Installing this
+ package changes no network configuration on the host.
+ .
+ This field is intentionally English-only: the App Center renders Cyrillic
+ in a local deb file as question marks. The Russian description ships as
+ AppStream metadata, where it is displayed correctly.
+

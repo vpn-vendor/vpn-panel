@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-HKxF16ixfQOUQA/nuxgZXVGiQHxe412valKZo2DfQZ8='; script-src 'sha256-KukEfD+eSLhWsyyBEfQPhSRWZbSQW9yTtC2l2xOfGEE='; img-src data:; base-uri 'none'; form-action 'none'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Источник пакетов и обновлений VPN Panel — панели управления офисным VPN-шлюзом на Ubuntu">
+<title>VPN Panel — источник пакетов и обновлений</title>
+<link rel="icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHNoYXBlLXJlbmRlcmluZz0iY3Jpc3BFZGdlcyI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjMmI0YTdhIi8+PHJlY3QgeD0iMSIgeT0iMyIgd2lkdGg9IjIyIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMTExODIzIi8+PHJlY3QgeD0iMyIgeT0iNiIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjQiIHk9IjciIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI1IiB5PSI4IiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNiIgeT0iOSIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjciIHk9IjEwIiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iOCIgeT0iMTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI5IiB5PSIxMiIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjgiIHk9IjEzIiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNyIgeT0iMTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI2IiB5PSIxNSIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjUiIHk9IjE2IiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iMTMiIHk9IjE2IiB3aWR0aD0iOCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNCIgeT0iMTciIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSIxMyIgeT0iMTciIHdpZHRoPSI4IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSIzIiB5PSIxOCIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjEzIiB5PSIxOCIgd2lkdGg9IjgiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjwvc3ZnPgo=">
+<style>
+:root{color-scheme:light;--s1:.25rem;--s2:.5rem;--s3:.75rem;--s4:1rem;--s5:1.5rem;--s6:2rem;--s7:3rem;--r-sm:.375rem;--r-md:.625rem;--r-lg:.875rem;--r-full:62rem;--t-xs:.75rem;--t-sm:.8125rem;--t-md:.875rem;--t-lg:1rem;--t-xl:1.25rem;--t-2xl:1.625rem;--lh-tight:1.25;--lh-body:1.55;--ctl-md:2.125rem;--w-xs:11rem;--w-sm:16rem;--w-md:24rem;--w-xl:52rem;--w-narrow:60rem;--line-accent:3px;--bg:#f2f5f9;--surface:#ffffff;--surface-2:#f7f9fc;--surface-3:#eef2f7;--border:#dfe6ee;--border-soft:#edf1f6;--text:#16202b;--text-muted:#5b6b7c;--accent:#2563eb;--accent-strong:#1d4ed8;--on-accent:#ffffff;--ok:#0f7b46;--warn:#9a5b00;--warn-soft:#fff5e3;--danger:#c02626;--focus:var(--accent);--chrome-bg:#1a1a1a;--chrome-fg:#f3f3f3;--chrome-muted:#a3a3a3;--chrome-field:#2b2b2b;--chrome-field-border:#3a3a3a;--font:system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;--mono:ui-monospace, "Cascadia Mono", "JetBrains Mono", Consolas, monospace;--motion-2:140ms;--ease-out:cubic-bezier(.2, .8, .2, 1);--fast:var(--motion-2);--ease:var(--ease-out);}@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0a0e14;--surface:#111823;--surface-2:#161f2c;--surface-3:#1d2837;--border:#22303f;--border-soft:#1a2531;--text:#e7eef7;--text-muted:#93a6bb;--accent:#5b95ff;--accent-strong:#7cabff;--on-accent:#08111f;--ok:#4cd08a;--warn:#f0b355;--warn-soft:#241b0f;--danger:#ff7b72;--chrome-bg:#070809;--chrome-fg:#eceef1;--chrome-muted:#8c939c;--chrome-field:#16181c;--chrome-field-border:#262a31;}}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; font-family: var(--font); font-size: var(--t-lg); line-height: var(--lh-body); color: var(--text); background: var(--bg); }
+a { color: var(--accent); }
+a:hover { color: var(--accent-strong); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+h1, h2, h3 { line-height: var(--lh-tight); }
+code, pre, .mono { font-family: var(--mono); }
+.wrap { max-width: var(--w-narrow); margin: 0 auto; padding-inline: var(--s4); }
+.top { background: var(--chrome-bg); color: var(--chrome-fg); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: var(--s4); padding-block: var(--s5); }
+.mark { width: var(--s7); height: var(--s7); border-radius: var(--r-md); }
+.brand { flex: 1; min-width: var(--w-xs); }
+.brand h1 { margin: 0; font-size: var(--t-2xl); }
+.brand p { margin: 0; color: var(--chrome-muted); font-size: var(--t-md); }
+.badge { padding: var(--s1) var(--s3); font-size: var(--t-sm); background: var(--chrome-field); border: 1px solid var(--chrome-field-border); border-radius: var(--r-full); }
+main { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s5); padding-block: var(--s6); }
+.card { padding: var(--s5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); }
+.card > h2 { margin: 0 0 var(--s3); font-size: var(--t-xl); }
+.card p { margin: 0 0 var(--s3); max-width: var(--w-xl); }
+.card > :last-child { margin-bottom: 0; }
+.muted { color: var(--text-muted); font-size: var(--t-md); }
+.card .note { max-width: none; padding: var(--s3) var(--s4); background: var(--warn-soft); border-left: var(--line-accent) solid var(--warn); border-radius: var(--r-sm); }
+.cmd { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--s2); margin: 0 0 var(--s3); }
+.cmd pre { flex: 1 1 var(--w-sm); min-width: 0; margin: 0; padding: var(--s3) var(--s4); overflow-x: auto; font-size: var(--t-md); background: var(--surface-3); border-radius: var(--r-sm); }
+.copy { min-height: var(--ctl-md); padding: var(--s2) var(--s4); font: inherit; font-size: var(--t-md); color: var(--on-accent); background: var(--accent); border: 1px solid var(--accent); border-radius: var(--r-sm); cursor: pointer; transition: background var(--fast) var(--ease); }
+.copy:hover { background: var(--accent-strong); }
+.copy[data-state="done"] { background: var(--ok); border-color: var(--ok); }
+.copy[data-state="fail"] { background: var(--danger); border-color: var(--danger); }
+.steps { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s3); margin: 0 0 var(--s3); padding-left: var(--s5); }
+.steps .cmd { margin: var(--s2) 0 0; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--w-md)), 1fr)); gap: var(--s3); margin: 0 0 var(--s4); }
+.tile { padding: var(--s4); background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: var(--r-md); }
+.tile h3 { margin: 0 0 var(--s2); font-size: var(--t-lg); }
+.tile p { margin: 0; color: var(--text-muted); font-size: var(--t-md); }
+.facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--w-xs)), 1fr)); gap: var(--s3); margin: 0 0 var(--s4); }
+.facts dt { color: var(--text-muted); font-size: var(--t-xs); }
+.facts dd { margin: 0; font-family: var(--mono); }
+.files { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.files span { color: var(--text-muted); font-size: var(--t-md); }
+.foot { padding-block: var(--s5); color: var(--text-muted); font-size: var(--t-md); border-top: 1px solid var(--border); }
+.foot p { margin: 0 0 var(--s2); }
+@media (prefers-reduced-motion: reduce) { .copy { transition: none; } }
+</style>
+</head>
+<body>
+<header class="top">
+<div class="wrap">
+<img class="mark" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMjgiIGhlaWdodD0iMTI4IiB2aWV3Qm94PSIwIDAgMjQgMjQiIHNoYXBlLXJlbmRlcmluZz0iY3Jpc3BFZGdlcyI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjMmI0YTdhIi8+PHJlY3QgeD0iMSIgeT0iMyIgd2lkdGg9IjIyIiBoZWlnaHQ9IjIwIiBmaWxsPSIjMTExODIzIi8+PHJlY3QgeD0iMyIgeT0iNiIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjQiIHk9IjciIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI1IiB5PSI4IiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNiIgeT0iOSIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjciIHk9IjEwIiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iOCIgeT0iMTEiIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI5IiB5PSIxMiIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjgiIHk9IjEzIiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNyIgeT0iMTQiIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSI2IiB5PSIxNSIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjUiIHk9IjE2IiB3aWR0aD0iNCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iMTMiIHk9IjE2IiB3aWR0aD0iOCIgaGVpZ2h0PSIxIiBmaWxsPSIjNWI5NWZmIi8+PHJlY3QgeD0iNCIgeT0iMTciIHdpZHRoPSI0IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSIxMyIgeT0iMTciIHdpZHRoPSI4IiBoZWlnaHQ9IjEiIGZpbGw9IiM1Yjk1ZmYiLz48cmVjdCB4PSIzIiB5PSIxOCIgd2lkdGg9IjQiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjxyZWN0IHg9IjEzIiB5PSIxOCIgd2lkdGg9IjgiIGhlaWdodD0iMSIgZmlsbD0iIzViOTVmZiIvPjwvc3ZnPgo=" alt="">
+<div class="brand">
+<h1>VPN Panel</h1>
+<p>Источник пакетов и обновлений панели управления офисным VPN-шлюзом на Ubuntu</p>
+</div>
+<span class="badge">в источнике — версия <span class="mono">0.3.2</span></span>
+</div>
+</header>
+
+<div class="wrap">
+<main>
+
+<section class="card">
+<h2>Установка одной командой</h2>
+<p class="note">Панель ставится на <strong>отдельный компьютер, который станет шлюзом
+офиса</strong>: две сетевые карты — одна к провайдеру (WAN), одна в офис (LAN),
+интернет на время установки. Не ставьте её на рабочий компьютер или ноутбук:
+она управляет сетью машины, на которой стоит.</p>
+<div class="cmd">
+<pre><code>wget -qO- https://vpn-vendor.github.io/vpn-panel/install.sh | sudo bash</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div>
+<p>Сценарий сначала печатает, что именно сделает, затем подключает этот
+источник, ставит ключ проверки подписи и пакет панели. Сеть, файрвол и
+службы он не трогает: ими займётся панель — по вашей команде. На
+неподходящей системе сценарий откажется и объяснит почему.</p>
+<p class="muted">Полная инструкция, требования к компьютеру и другие способы
+установки — в <a href="https://github.com/vpn-vendor/vpn-panel" rel="noopener noreferrer">открытом репозитории</a>.</p>
+</section>
+
+<section class="card">
+<h2>Сначала прочитать, потом запускать</h2>
+<p>Команде с правами администратора не обязательно верить на слово.
+Сценарий короткий — его можно скачать, сверить и прочитать до запуска.</p>
+<ol class="steps">
+<li>Скачать сценарий и его контрольную сумму:
+<div class="cmd">
+<pre><code>wget https://vpn-vendor.github.io/vpn-panel/install.sh \
+     https://vpn-vendor.github.io/vpn-panel/install.sh.sha256</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div></li>
+<li>Сверить: файл скачан целиком и без искажений:
+<div class="cmd">
+<pre><code>sha256sum -c install.sh.sha256</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div></li>
+<li>Прочитать:
+<div class="cmd">
+<pre><code>less install.sh</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div></li>
+<li>Запустить тот самый файл, который прочитали:
+<div class="cmd">
+<pre><code>sudo bash install.sh</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div></li>
+</ol>
+<p class="muted">Честно о границах: сумма лежит по тому же адресу, что и сценарий,
+поэтому она защищает от обрыва загрузки, а не от подмены. От подмены пакетов
+защищает подпись — о ней ниже.</p>
+</section>
+
+<section class="card">
+<h2>На чём держится доверие</h2>
+<div class="tiles">
+<div class="tile">
+<h3>Подпись сведений о пакетах</h3>
+<p>Менеджер пакетов принимает обновление, только если сведения о пакетах
+подписаны ключом проекта и суммы пакетов сошлись. Иначе он отказывается.</p>
+</div>
+<div class="tile">
+<h3>Ключа нет там, где идёт сборка</h3>
+<p>Подписывающий ключ не хранится на площадке кода: в открытом репозитории
+нет ни одного секрета. Украсть оттуда нечего.</p>
+</div>
+<div class="tile">
+<h3>Сборка у всех на виду</h3>
+<p>Пакет собирается из открытого кода по метке версии. У сборки есть
+аттестация происхождения — её может проверить любой.</p>
+</div>
+<div class="tile">
+<h3>Суммы и подписи выпусков</h3>
+<p>У каждого выпуска — файл контрольных сумм, подписанный тем же ключом.
+Всё лежит в разделе <a href="https://github.com/vpn-vendor/vpn-panel/releases" rel="noopener noreferrer">выпусков</a>.</p>
+</div>
+</div>
+<p>Отпечаток ключа проекта. Тот же ключ вложен в пакет панели:</p>
+<div class="cmd">
+<pre><code>3BD3 6407 B10F 6E2D 5A3F A6DA 63BB 288D 1E40 8EA5</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div>
+<p>Сверить отпечаток ключа, который лежит здесь:</p>
+<div class="cmd">
+<pre><code>wget -qO- https://vpn-vendor.github.io/vpn-panel/vpn-panel.asc \
+  | gpg --show-keys --fingerprint</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div>
+<p>Проверить, что скачанный пакет собран открытой сборкой проекта:</p>
+<div class="cmd">
+<pre><code>gh attestation verify vpn-panel_0.3.2_amd64.deb --repo vpn-vendor/vpn-panel</code></pre>
+<button type="button" class="copy" data-copy data-done="Скопировано" data-fail="Не вышло — выделите вручную" aria-live="polite" hidden>Скопировать</button>
+</div>
+</section>
+
+<section class="card">
+<h2>Что лежит по этому адресу</h2>
+<p>Адрес служебный: это хранилище пакетов, а не сайт. Отсюда панель
+ставится, и отсюда же установленные шлюзы берут обновления — штатным
+менеджером пакетов Ubuntu, с проверкой подписи.</p>
+<dl class="facts">
+<div class="tile"><dt>Версия панели</dt><dd>0.3.2</dd></div>
+<div class="tile"><dt>Выпуск Ubuntu, кодовое имя</dt><dd>resolute</dd></div>
+<div class="tile"><dt>Архитектура</dt><dd>amd64</dd></div>
+<div class="tile"><dt>Сведения подписаны</dt><dd>2026-10-08</dd></div>
+</dl>
+<ul class="files">
+<li><a href="install.sh">install.sh</a> <span>— установочный сценарий;
+<a href="install.sh.sha256">его контрольная сумма</a></span></li>
+<li><a href="vpn-panel.asc">vpn-panel.asc</a> <span>— открытый ключ проекта</span></li>
+<li><a href="dists/resolute/InRelease">dists/resolute/InRelease</a> <span>— подписанные сведения о пакетах</span></li>
+<li><code>pool/</code> <span>— сами пакеты; их читает менеджер пакетов</span></li>
+</ul>
+</section>
+
+</main>
+
+<footer class="foot">
+<p>Исходный код, инструкция и история изменений —
+в <a href="https://github.com/vpn-vendor/vpn-panel" rel="noopener noreferrer">открытом репозитории</a>.</p>
+<p>О неполадке — в разделе <a href="https://github.com/vpn-vendor/vpn-panel/issues" rel="noopener noreferrer">задач</a>.
+Об уязвимости — по правилам из
+<a href="https://github.com/vpn-vendor/vpn-panel/security/policy" rel="noopener noreferrer">SECURITY.md</a>.</p>
+<p>Эта страница — один файл без чужих ресурсов: ни шрифтов, ни счётчиков,
+ни сторонних сценариев.</p>
+</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  if (!navigator.clipboard || !navigator.clipboard.writeText) return;
+  // Сколько держится подпись «Скопировано»: время чтения короткой строки.
+  var HOLD_MS = 1600;
+  document.querySelectorAll("[data-copy]").forEach(function (btn) {
+    var code = btn.parentNode.querySelector("code");
+    if (!code) return;
+    var idle = btn.textContent;
+    var timer = 0;
+    function show(state) {
+      btn.dataset.state = state;
+      btn.textContent = btn.getAttribute("data-" + state);
+      clearTimeout(timer);
+      timer = setTimeout(function () {
+        delete btn.dataset.state;
+        btn.textContent = idle;
+      }, HOLD_MS);
+    }
+    btn.hidden = false;
+    btn.addEventListener("click", function () {
+      navigator.clipboard.writeText(code.textContent).then(
+        function () { show("done"); },
+        function () { show("fail"); }
+      );
+    });
+  });
+})();
+</script>
+</body>
+</html>
