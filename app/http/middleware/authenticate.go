@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"github.com/vpn-vendor/vpn-panel-core/app/http/assets"
 	"net"
 	"strings"
 
@@ -13,9 +14,9 @@ const CtxDevice = "auth.device"
 
 var openPrefixes = []string{
 	"/login",
-	"/setup",
 	"/health",
 	"/public/",
+	assets.URL + "/",
 
 	"/whoami",
 	"/lantest",
@@ -43,6 +44,11 @@ func (m *Authenticate) Handle(ctx contractshttp.Context) {
 			ctx.Request().Next()
 			return
 		}
+	}
+
+	if (path == "/setup" || strings.HasPrefix(path, "/setup/")) && !m.service.HasUsers() {
+		ctx.Request().Next()
+		return
 	}
 
 	token := ctx.Request().Cookie(auth.DeviceCookie)

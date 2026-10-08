@@ -131,16 +131,7 @@ func overviewView(f overviewFacts) map[string]any {
 	}
 	lines := make([]ui.StatusLine, 0, len(lights))
 	for i, l := range lights {
-		if f.CollectOff && l.Row != "" {
-
-			l.Level, l.Text, l.Advice = overview.Unknown, l.TextUnknown, l.AdviceUnknown
-		}
-		lines = append(lines, ui.StatusLine{
-			ID: "light-" + strconv.Itoa(i+1), Judged: ui.Judge(ui.Level(l.Level), l.Owner), Text: l.Text, Advice: l.Advice, Row: l.Row,
-			Warn: threshold(l.Warn), Bad: threshold(l.Bad), Alive: l.AliveRow,
-			TextOK: l.TextOK, TextWarn: l.TextWarn, TextBad: l.TextBad, TextUnknown: l.TextUnknown, TextDown: l.TextDown,
-			AdviceOK: l.AdviceOK, AdviceWarn: l.AdviceWarn, AdviceBad: l.AdviceBad, AdviceUnknown: l.AdviceUnknown, AdviceDown: l.AdviceDown,
-		})
+		lines = append(lines, lightLine("light-"+strconv.Itoa(i+1), l, f.CollectOff))
 	}
 
 	val := func(row, unit string) string {
@@ -206,6 +197,19 @@ func overviewView(f overviewFacts) map[string]any {
 		"blocks":      ui.CardGrid{Cards: []ui.LinkCard{channelBlock(f), guardBlock(f), officeBlock(f), updatesBlock(f)}},
 		"server":      serverFacts(f),
 		"reliability": reliabilityFacts(f),
+	}
+}
+
+func lightLine(id string, l overview.Light, collectOff bool) ui.StatusLine {
+	if collectOff && l.Row != "" {
+
+		l.Level, l.Text, l.Advice = overview.Unknown, l.TextUnknown, l.AdviceUnknown
+	}
+	return ui.StatusLine{
+		ID: id, Judged: ui.Judge(ui.Level(l.Level), l.Owner), Text: l.Text, Advice: l.Advice, Row: l.Row,
+		Warn: threshold(l.Warn), Bad: threshold(l.Bad), Alive: l.AliveRow,
+		TextOK: l.TextOK, TextWarn: l.TextWarn, TextBad: l.TextBad, TextUnknown: l.TextUnknown, TextDown: l.TextDown,
+		AdviceOK: l.AdviceOK, AdviceWarn: l.AdviceWarn, AdviceBad: l.AdviceBad, AdviceUnknown: l.AdviceUnknown, AdviceDown: l.AdviceDown,
 	}
 }
 

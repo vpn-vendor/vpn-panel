@@ -65,7 +65,7 @@ func (c *LoginController) Enter(ctx contractshttp.Context) contractshttp.Respons
 		return c.showError(ctx, "Код не подходит или истёк.")
 	}
 	setDeviceCookie(ctx, token)
-	return ctx.Response().Redirect(contractshttp.StatusFound, "/network")
+	return ctx.Response().Redirect(contractshttp.StatusFound, "/")
 }
 
 func (c *LoginController) showError(ctx contractshttp.Context, msg string) contractshttp.Response {

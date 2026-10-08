@@ -430,6 +430,44 @@ func (f Fact) Class() string {
 	return "fact"
 }
 
+type StepperItem struct {
+	Key   string
+	Title string
+	State string
+	URL   string
+}
+
+type Stepper struct {
+	Items   []StepperItem
+	Current int
+	Total   int
+}
+
+func (s StepperItem) Class() string {
+	switch s.State {
+	case "done", "current", "next", "todo":
+		return "step step-" + s.State
+	}
+	return "step"
+}
+
+type ChoiceOption struct {
+	Value   string
+	Label   string
+	Hint    string
+	Facts   []string
+	Checked bool
+
+	Reveals string
+}
+
+type Choice struct {
+	Name    string
+	Options []ChoiceOption
+}
+
+func (c Choice) ID(o ChoiceOption) string { return c.Name + "-" + o.Value }
+
 type Facts struct {
 	Title string
 	URL   string

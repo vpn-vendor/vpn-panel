@@ -9,6 +9,6 @@
 {{ template "components/facts" .reliability }}
 {{ template "components/chart-tip" .tip }}
 {{ template "components/chart-panel" .panel }}
-<script src="/public/js/dashboard.js" defer></script>
+<script src="{{ .static }}/js/dashboard.js" defer></script>
 {{ template "app-bottom" . }}
 {{ end }}

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/vpn-vendor/vpn-panel-core/internal/help"
 	"github.com/vpn-vendor/vpn-panel-core/internal/vpnproto"
 )
 
@@ -63,6 +64,7 @@ var sections = []Section{
 	{Key: "backup", Title: "Резервная копия", Subtitle: "Копия и перенос настроек", URL: "/backup", Icon: "backup", Group: "Защита и доступ", Width: Narrow},
 
 	{Key: "diagnostics", Title: "Диагностика", Subtitle: "Проверки и их результат", URL: "/diagnostics", Icon: "diagnostics", Group: "Проверки", Width: Wide},
+	{Key: "help", Title: "Помощь", Subtitle: "Что делать, если…", URL: "/help", Icon: "help", Group: "Проверки", Width: Narrow},
 }
 
 var entries = []Entry{
@@ -119,6 +121,17 @@ var entries = []Entry{
 	{Title: "Проверить сеть офиса", Hint: "Потери и задержка до каждого устройства", URL: "/diagnostics", Section: "diagnostics",
 		Keywords: []string{"проверка", "потери", "задержка", "устройства", "сеть"}},
 }
+
+func helpEntries() []Entry {
+	out := make([]Entry, 0, len(help.Topics()))
+	for _, t := range help.Topics() {
+		out = append(out, Entry{Title: t.Question, Hint: "Помощь: что проверить и что делать", URL: "/help#" + t.Key,
+			Section: "help", Keywords: t.Keywords})
+	}
+	return out
+}
+
+func Entries() []Entry { return append(append([]Entry(nil), entries...), helpEntries()...) }
 
 func Sections() []Section { return sections }
 
@@ -197,7 +210,7 @@ func Search(query string) []Entry {
 	for _, s := range sections {
 		consider(Entry{Title: s.Title, Hint: s.Subtitle, URL: s.URL, Section: s.Key})
 	}
-	for _, e := range entries {
+	for _, e := range Entries() {
 		consider(e)
 	}
 

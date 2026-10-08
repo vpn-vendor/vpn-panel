@@ -2,6 +2,7 @@ package routes
 
 import (
 	"github.com/vpn-vendor/vpn-panel-core/app/facades"
+	"github.com/vpn-vendor/vpn-panel-core/app/http/assets"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/controllers"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/middleware"
 )
@@ -24,14 +25,17 @@ func Web() {
 	setup := controllers.NewSetupController()
 	facades.Route().Get("/setup", setup.Show)
 	facades.Route().Post("/setup", setup.Store)
-	facades.Route().Get("/setup/speed", setup.SpeedShow)
+	facades.Route().Post("/setup/answer", setup.Answer)
 	facades.Route().Post("/setup/speed", setup.SpeedStore)
+	facades.Route().Get("/setup/{step}", setup.Step)
 	login := controllers.NewLoginController()
 	facades.Route().Get("/login", login.Show)
 	facades.Route().Post("/login", login.Enter)
 
 	dnsController := controllers.NewDnsController()
 	facades.Route().Get("/dns", dnsController.Index)
+
+	facades.Route().Get("/help", controllers.NewHelpController().Index)
 
 	qosController := controllers.NewQosController()
 	facades.Route().Get("/qos", qosController.Index)
@@ -127,5 +131,6 @@ func Web() {
 	metricsController := controllers.NewMetricsController()
 	facades.Route().Get("/metrics/series", metricsController.Series)
 
-	facades.Route().Static("public", "./public")
+	facades.Route().Static(assets.URL[1:]+"/"+assets.Fingerprint(), "./"+assets.Dir)
+	facades.Route().Static(assets.Dir, "./"+assets.Dir)
 }

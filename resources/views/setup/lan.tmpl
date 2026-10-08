@@ -1,0 +1,16 @@
+{{ define "setup/lan" }}
+{{ template "wizard-top" . }}
+<form method="post" action="/setup/answer">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="lan">
+    <input type="hidden" name="action" value="choose">
+    {{ template "components/choice" .choice }}
+    <p class="muted">Остальные карты останутся без роли — их можно назначить
+    позже на странице «Сеть».</p>
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .nextBtn }}
+    </div>
+</form>
+{{ template "wizard-bottom" . }}
+{{ end }}

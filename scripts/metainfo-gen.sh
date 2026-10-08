@@ -15,14 +15,19 @@ grep -q '<!--RELEASES-->' "$TEMPLATE" || {
 cd "$ROOT"
 releases="  <releases>"
 n=0
-while [ "$n" -lt "$KEEP" ]; do
+kept=0
+while [ "$kept" -lt "$KEEP" ]; do
     ver="$(dpkg-parsechangelog -o "$n" -c 1 -S Version 2>/dev/null || true)"
     [ -n "$ver" ] || break
+    # Открытая запись версии — ещё не выпуск.
+    if [ "$(dpkg-parsechangelog -o "$n" -c 1 -S Distribution)" = "UNRELEASED" ]; then
+        n=$((n + 1)); continue
+    fi
     raw="$(dpkg-parsechangelog -o "$n" -c 1 -S Date)"
     day="$(date -u -d "$raw" +%Y-%m-%d)"
     releases="$releases
     <release version=\"$ver\" date=\"$day\"/>"
-    n=$((n + 1))
+    n=$((n + 1)); kept=$((kept + 1))
 done
 releases="$releases
   </releases>"

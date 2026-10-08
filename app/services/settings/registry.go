@@ -122,6 +122,11 @@ var Keys = []Key{
 		Why: "дольше живёт код подключения устройства"},
 	{Name: "setup.code_hash", Section: SectionAuth, Data: State, Risk: Safe},
 	{Name: "setup.code_expires_unix", Section: SectionAuth, Data: State, Risk: Safe},
+
+	{Name: "setup.wan_card", Section: SectionNetwork, Data: State, Risk: Safe},
+	{Name: "setup.lan_card", Section: SectionNetwork, Data: State, Risk: Safe},
+	{Name: "setup.skipped", Section: SectionAuth, Data: State, Risk: Safe},
+	{Name: "setup.finished", Section: SectionAuth, Data: State, Risk: Safe},
 }
 
 var Tables = []Table{

@@ -1,0 +1,20 @@
+{{ define "setup/check" }}
+{{ template "wizard-top" . }}
+<div class="wizard-facts">
+{{ template "components/facts" .facts }}
+</div>
+<p class="muted">Первые сутки держите прежний роутер под рукой: если офис
+останется без связи, переставьте кабель провайдера обратно. Копию настроек
+можно сделать на странице «Резервная копия».</p>
+<form method="post" action="/setup/answer">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="check">
+    <input type="hidden" name="action" value="finish">
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .finishBtn }}
+        <a class="wizard-skip" href="/backup">Сделать копию настроек</a>
+    </div>
+</form>
+{{ template "wizard-bottom" . }}
+{{ end }}

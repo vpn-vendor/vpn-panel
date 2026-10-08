@@ -1,7 +1,12 @@
 package middleware
 
 import (
+	"strconv"
+	"strings"
+
 	contractshttp "github.com/goravel/framework/contracts/http"
+
+	"github.com/vpn-vendor/vpn-panel-core/app/http/assets"
 )
 
 const csp = "default-src 'none'; " +
@@ -27,5 +32,18 @@ func (m *SecurityHeaders) Handle(ctx contractshttp.Context) {
 	resp.Header("X-Content-Type-Options", "nosniff")
 	resp.Header("Referrer-Policy", "no-referrer")
 	resp.Header("X-Frame-Options", "DENY")
+	resp.Header("Cache-Control", CacheControlFor(ctx.Request().Path(), assets.Prefix()))
 	ctx.Request().Next()
+}
+
+const immutableSeconds = 365 * 24 * 60 * 60
+
+func CacheControlFor(path, fingerprinted string) string {
+	switch {
+	case strings.HasPrefix(path, fingerprinted+"/"):
+		return "public, max-age=" + strconv.Itoa(immutableSeconds) + ", immutable"
+	case strings.HasPrefix(path, "/"+assets.Dir+"/"):
+		return "no-cache"
+	}
+	return "no-store"
 }

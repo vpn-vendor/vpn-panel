@@ -46,6 +46,7 @@ jobs:
           tag="${GITHUB_REF_NAME#v}"
           log="$(dpkg-parsechangelog -S Version)"
           [ "$tag" = "$log" ] || { echo "Тег v$tag не совпадает с debian/changelog ($log)."; exit 1; }
+          [ "$(dpkg-parsechangelog -S Distribution)" != "UNRELEASED" ] || { echo "Запись версии в debian/changelog ещё открыта (UNRELEASED)."; exit 1; }
 
       # Время файлов пакета приводится к дате записи версии, только если она
       # уже прошла: с датой в будущем пакет не пересобрать байт в байт.

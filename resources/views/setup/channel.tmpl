@@ -1,0 +1,39 @@
+{{ define "setup/channel" }}
+{{ template "wizard-top" . }}
+{{ if .profileSlug }}
+<p>Подключение <strong>«{{ .profileName }}»</strong> загружено. Включить защищённый
+канал: весь офис будет выходить в интернет через него, а при обрыве канала
+интернет в офисе прекратится — так трафик не уйдёт в обход.</p>
+<form method="post" action="/vpn/apply">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="wizard" value="1">
+    <input type="hidden" name="profile" value="{{ .profileSlug }}">
+    <input type="hidden" name="mode" value="black">
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .enableBtn }}
+    </div>
+</form>
+{{ else }}
+<form method="post" action="/vpn/import" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="wizard" value="1">
+    {{ template "components/field" .nameField }}
+    {{ template "components/file-field" .fileField }}
+    <p class="muted">Принимаются файлы {{ range .upload.Kinds }}{{ .Sep }}{{ .Label }} (<code>{{ .Ext }}</code>){{ end }}
+    со всеми сертификатами внутри. Секретный ключ остаётся на сервере и нигде
+    не показывается.</p>
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .uploadBtn }}
+    </div>
+</form>
+{{ end }}
+<form method="post" action="/setup/answer" class="wizard-actions">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="channel">
+    <input type="hidden" name="action" value="skip">
+    {{ template "components/button" .skipBtn }}
+</form>
+{{ template "wizard-bottom" . }}
+{{ end }}

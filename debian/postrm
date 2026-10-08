@@ -22,7 +22,8 @@ case "$1" in
             /etc/dracut.conf.d /etc/kea/vpn-panel /etc/netplan /etc/nftables.d /etc/openvpn/client \
             /etc/ppp /etc/ppp/peers /etc/sysctl.d /etc/systemd/resolved.conf.d \
             /etc/systemd/system/kea-dhcp4-server.service.d /etc/unbound/unbound.conf.d \
-            /etc/vpn-panel /etc/wireguard /run/vpn-panel /var/lib/vpn-panel ; do
+            /etc/vpn-panel /etc/wireguard /run/vpn-panel /var/lib/vpn-panel \
+            /run/NetworkManager/conf.d /run/systemd/network /run/systemd/network/10-netplan-*.network.d ; do
             rm -f "$DIR"/.*.vpn-panel-tmp 2>/dev/null || true
         done
         # Точка возврата незавершённого импорта: в ней все ключи профилей и
@@ -70,6 +71,13 @@ case "$1" in
         rm -f /etc/wireguard/wg-vpn0.conf /etc/wireguard/vpn-panel-*.conf
         rm -f /etc/NetworkManager/conf.d/99-vpn-panel-wg.conf
         rm -f /etc/NetworkManager/conf.d/99-vpn-panel-connectivity.conf
+        # Автоадрес до ролей: файлы в памяти, но до перезагрузки они бы
+        # действовали и без пакета.
+        rm -f /run/NetworkManager/conf.d/50-vpn-panel-link-local.conf
+        rm -f /run/systemd/network/10-netplan-*.network.d/vpn-panel-link-local.conf
+        rm -f /run/systemd/network/50-vpn-panel-link-local-*.network
+        rmdir /run/systemd/network/10-netplan-*.network.d 2>/dev/null || true
+        networkctl reload 2>/dev/null || true
         rm -f /etc/apt/sources.list.d/vpn-panel.sources
         nmcli general reload conf 2>/dev/null || true
         rm -f /etc/vpn-panel/vpn.json

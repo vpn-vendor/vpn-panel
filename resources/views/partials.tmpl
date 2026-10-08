@@ -6,11 +6,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ .title }} — vpn-panel</title>
-    <link rel="stylesheet" href="/public/css/app.css">
+    <link rel="stylesheet" href="{{ .static }}/css/app.css">
     {{ template "components/brand-favicon" }}
-    <script src="/public/js/app.js"></script>
-    <script src="/public/js/islands.js" defer></script>
-    <script src="/public/js/search.js" defer></script>
+    <script src="{{ .static }}/js/app.js"></script>
+    <script src="{{ .static }}/js/islands.js" defer></script>
+    <script src="{{ .static }}/js/search.js" defer></script>
 </head>
 {{ end }}
 
@@ -22,9 +22,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
     <title>{{ .title }}</title>
-    <link rel="stylesheet" href="/public/css/app.css">
+    <link rel="stylesheet" href="{{ .static }}/css/app.css">
     <link rel="icon" href="data:,">
-    <script src="/public/js/app.js"></script>
+    <script src="{{ .static }}/js/app.js"></script>
 </head>
 {{ end }}
 
@@ -133,7 +133,7 @@
     </button>
     <div class="notices-body" id="notices-body">
         {{ range .notices }}
-        <div class="notice notice-{{ .Level }}">{{ .Text }}</div>
+        <div class="notice notice-{{ .Level }}">{{ .Text }}{{ if .ActionURL }} <a class="btn btn-small notice-action" href="{{ .ActionURL }}">{{ .ActionText }}</a>{{ end }}</div>
         {{ end }}
     </div>
 </div>
@@ -161,6 +161,45 @@
 
 {{ define "auth-bottom" }}
     </div>
+</div>
+</body>
+</html>
+{{ end }}
+
+{{ define "wizard-top" }}
+{{ template "html-head" . }}
+<body class="wizard-body">
+<div class="wizard-wrap">
+    <header class="wizard-head">
+        <a class="wizard-brand" href="/" aria-label="vpn-panel — на главную">
+            {{ template "components/brand-mark" }}
+            <span class="wizard-brand-text"><span class="brand-name">vpn-panel</span><span class="wizard-brand-sub">Первая настройка</span></span>
+        </a>
+        <form method="post" action="/setup/answer" class="wizard-leave">
+            <input type="hidden" name="_csrf" value="{{ .csrf }}">
+            <input type="hidden" name="action" value="finish">
+            <button type="submit" class="btn btn-ghost btn-small">Перейти в панель</button>
+        </form>
+    </header>
+    {{ template "components/stepper" .stepper }}
+    <main class="wizard-main">
+{{ if .error }}<div class="alert alert-error" role="alert">{{ .error }}</div>{{ end }}
+{{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
+{{ if .agentDown }}
+<div class="alert alert-error"><strong>Системная служба недоступна.</strong>
+Сведения о сетевых картах получить не удалось. Если это повторяется —
+перезагрузите сервер или обратитесь в поддержку.</div>
+{{ end }}
+<section class="card wizard-card">
+    <h1 class="wizard-question">{{ .step.Question }}</h1>
+    <p class="wizard-hint">{{ .step.Hint }}</p>
+{{ end }}
+
+{{ define "wizard-bottom" }}
+</section>
+<script src="{{ .static }}/js/wizard.js" defer></script>
+    </main>
+    <footer class="appfoot wizard-foot"><span>vpn-panel{{ if .version }} {{ .version }}{{ end }}</span></footer>
 </div>
 </body>
 </html>

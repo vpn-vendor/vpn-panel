@@ -31,7 +31,7 @@ func renderOverview(t *testing.T, f overviewFacts) string {
 		t.Fatalf("шаблоны обзора не разбираются: %v", err)
 	}
 	data := overviewView(f)
-	data["title"], data["subtitle"], data["active"], data["version"], data["searchQuery"] = "Обзор", "", "home", "", ""
+	data["title"], data["subtitle"], data["active"], data["version"], data["searchQuery"], data["static"] = "Обзор", "", "home", "", "", "/public"
 	var buf bytes.Buffer
 	if err := tpl.ExecuteTemplate(&buf, "overview.tmpl", data); err != nil {
 		t.Fatalf("обзор не отрисовался: %v", err)

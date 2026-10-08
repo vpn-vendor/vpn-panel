@@ -16,6 +16,7 @@ import (
 	"github.com/vpn-vendor/vpn-panel-core/app/models"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/backup"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/restore"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/setup"
 	"github.com/vpn-vendor/vpn-panel-core/internal/backupfile"
 )
 
@@ -420,6 +421,10 @@ func (c *BackupController) Confirm(ctx contractshttp.Context) contractshttp.Resp
 		return c.back(ctx, "/backup", errText(err))
 	}
 	setFlash(ctx, flashCode, msg)
+
+	if !setup.Finished() {
+		return ctx.Response().Redirect(contractshttp.StatusFound, "/setup")
+	}
 	return ctx.Response().Redirect(contractshttp.StatusFound, "/backup")
 }
 

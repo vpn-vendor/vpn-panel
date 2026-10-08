@@ -2,6 +2,7 @@ package controllers
 
 import (
 	contractshttp "github.com/goravel/framework/contracts/http"
+	"github.com/vpn-vendor/vpn-panel-core/app/http/assets"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/navigation"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/securitylog"
 	"strings"
@@ -26,6 +27,8 @@ func configString(key string) string { return facades.Config().GetString(key) }
 func withCsrf(ctx contractshttp.Context, data map[string]any) map[string]any {
 	token, _ := ctx.Value(middleware.CtxCsrf).(string)
 	data["csrf"] = token
+
+	data["static"] = assets.Prefix()
 	return data
 }
 

@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
 )
 
 func openPages(t *testing.T) *template.Template {
@@ -39,7 +41,7 @@ func renderOpen(t *testing.T, name string, data map[string]any) string {
 func TestOpenPagesCarryNoMarksForVisitors(t *testing.T) {
 	cases := map[string]map[string]any{
 		"login.tmpl":   {"title": "Вход", "onServer": false},
-		"setup.tmpl":   {"title": "Установка", "needCode": true},
+		"setup.tmpl":   {"title": "Установка", "needCode": true, "stepper": ui.Stepper{Total: 3, Current: 1, Items: []ui.StepperItem{{Key: "account", Title: "Администратор", State: "current"}}}},
 		"whoami.tmpl":  {"title": "Это я"},
 		"lantest.tmpl": {"title": "Скорость до сервера"},
 	}

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"strconv"
 	"strings"
 	"testing"
@@ -170,6 +171,36 @@ func TestHelpListsEveryTopic(t *testing.T) {
 	if !strings.Contains(out, "[0-8]") || !strings.Contains(out, " 0  Назад") {
 		t.Errorf("нет подсказки допустимых цифр или пути назад:\n%s", out)
 	}
+	if strings.Contains(out, "Дальше") {
+		t.Error("восемь тем помещаются на одну страницу, а меню предлагает листать")
+	}
+}
+
+func TestHelpTurnsPagesWhenTopicsOutgrowTheKeyboard(t *testing.T) {
+	saved := topicsForConsole
+	defer func() { topicsForConsole = saved }()
+	var many []help.Topic
+	for i := 0; i < 20; i++ {
+		many = append(many, help.Topic{Key: fmt.Sprintf("t-%d", i), Question: fmt.Sprintf("Вопрос номер %s", strings.Repeat("и", i+1)),
+			Steps: []string{"Шаг."}})
+	}
+	topicsForConsole = func() []help.Topic { return many }
+	catalog := (&gateway{}).catalog()
+	desk := helpDesk{actions: catalog.Actions, status: func() console.Status { return gatewayStatus(healthy(), numRestart) }}
+	var out bytes.Buffer
+	res := desk.run(console.NewSession(strings.NewReader("9\n9\n4\n"), &out, console.Style{Width: 80}, nil))
+	text := out.String()
+	if res.Quiet {
+		t.Fatal("тема с третьей страницы не показана")
+	}
+	for _, want := range []string{" 9  Дальше (ещё 12)", " 9  Дальше (ещё 4)", "[0-9]", "[0-4]", many[19].Question} {
+		if !strings.Contains(text, want) {
+			t.Errorf("на экранах листания нет «%s»:\n%s", want, text)
+		}
+	}
+	if strings.Count(text, "Дальше") != 2 {
+		t.Errorf("на последней странице не должно быть «Дальше»: %d", strings.Count(text, "Дальше"))
+	}
 }
 
 func TestHelpShowsChecksStepsAndMenuItems(t *testing.T) {
@@ -198,8 +229,8 @@ func TestHelpShowsChecksStepsAndMenuItems(t *testing.T) {
 func TestEveryHelpTopicFitsTheServerScreen(t *testing.T) {
 
 	const rows = 25
-	for _, topic := range help.Topics() {
-		_, out := consult(healthy(), console.Style{Width: 80}, strconv.Itoa(topic.Number)+"\n")
+	for i, topic := range help.Topics() {
+		_, out := consult(healthy(), console.Style{Width: 80}, strconv.Itoa(i+1)+"\n")
 		at := strings.Index(out, "\n"+topic.Question+"\n")
 		if at < 0 {
 			t.Fatalf("тема «%s» не показана:\n%s", topic.Question, out)

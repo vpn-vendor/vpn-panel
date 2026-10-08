@@ -1,0 +1,22 @@
+{{ define "setup/restore" }}
+{{ template "wizard-top" . }}
+<form method="post" action="/backup/import" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="wizard" value="1">
+    {{ template "components/file-field" .fileField }}
+    {{ template "components/field" .passField }}
+    <p class="muted">Панель покажет, что изменится, и ничего не тронет без
+    вашего решения. После того как настройки закреплены, мастер продолжит
+    с нужного места сам.</p>
+    <div class="wizard-actions">
+        {{ template "components/button" .uploadBtn }}
+    </div>
+</form>
+<form method="post" action="/setup/answer" class="wizard-actions">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="restore">
+    <input type="hidden" name="action" value="skip">
+    {{ template "components/button" .skipBtn }}
+</form>
+{{ template "wizard-bottom" . }}
+{{ end }}

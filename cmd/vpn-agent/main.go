@@ -77,6 +77,10 @@ func main() {
 	firewall.restoreOnStart()
 	applier := newNetplanApplier(firewall)
 	applier.recoverAfterCrash()
+
+	linkLocal := newLinkLocalHelper()
+	applier.linkLocal = linkLocal
+	go linkLocal.watch()
 	dns := newDNSApplier()
 	dns.composer = composer
 	dhcp := newDhcpApplier()

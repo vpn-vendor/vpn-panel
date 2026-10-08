@@ -24,6 +24,7 @@ func Migrations() []schema.Migration {
 		&migrations.M20260914000001AddRepeatsToAuthEvents{},
 		&migrations.M20260916000001AddPublicLabelToDevices{},
 		&migrations.M20260916000002AddIdentifyRequestToDevices{},
+		&migrations.M20261008000001BackfillSetupFinished{},
 		&migrations.M20260918000001CreateBootsTable{},
 		&migrations.M20260927000001ForgetProductIfaces{},
 		&migrations.M20260929000001AddTunnelSessionToVpnChecks{},

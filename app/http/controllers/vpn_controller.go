@@ -337,26 +337,26 @@ func (c *VpnController) Import(ctx contractshttp.Context) contractshttp.Response
 	file, err := ctx.Request().File("config")
 	if err != nil {
 		setFlash(ctx, flashError, "Файл подключения не выбран. Нажмите «Выберите файл» и укажите файл, который выдал поставщик.")
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 
 	path := file.File()
 	defer func() { _ = os.Remove(path) }()
 	if size, serr := file.Size(); serr == nil && size > vpnMaxConfigBytes {
 		setFlash(ctx, flashError, "Файл слишком большой для конфигурации подключения — проверьте, что выбран нужный файл.")
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 	data, rerr := os.ReadFile(path) //nolint:gosec
 	if rerr != nil {
 		setFlash(ctx, flashError, "Не удалось прочитать выбранный файл. Попробуйте ещё раз.")
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 
 	res, ierr := c.service.Import(name, string(data))
 	if ierr != nil {
 		c.network.Audit("vpn_import_failed", ip, ierr.Error())
 		setFlash(ctx, flashError, network.ErrText(ierr))
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 	c.network.Audit("vpn_import", ip, "профиль: "+res.Slug)
 
@@ -367,7 +367,7 @@ func (c *VpnController) Import(ctx contractshttp.Context) contractshttp.Response
 	}
 	msg += " Выберите его и нажмите «Применить», чтобы включить."
 	setFlash(ctx, flashCode, msg)
-	return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+	return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 }
 
 func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response {
@@ -380,7 +380,7 @@ func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response 
 			setFlash(ctx, flashError, fmt.Sprintf(
 				"Размер пакетов должен быть числом от %d до %d. Оставьте поле пустым — панель подберёт его сама.",
 				vpndriver.MinMTU, vpndriver.MaxMTU))
-			return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+			return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 		}
 		mtu = n
 	}
@@ -400,7 +400,7 @@ func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response 
 	})
 	if err != nil {
 		setFlash(ctx, flashError, "Настройки защищённого канала не сохранены: "+err.Error()+".")
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 	settings := vpnsvc.Settings{ActiveSlug: want.ActiveSlug, Mode: want.Mode, OnFailure: want.OnFailure,
 		MTU: want.MTU, DNSChoice: want.DNSChoice}
@@ -410,11 +410,11 @@ func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response 
 		var nr *vpnsvc.ErrNotReady
 		if errors.As(err, &nr) {
 			setFlash(ctx, flashCode, "Настройки сохранены. "+nr.Text)
-			return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+			return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 		}
 		c.network.Audit("vpn_apply_failed", ip, err.Error())
 		setFlash(ctx, flashError, "Настройки сохранены, но применить их не удалось: "+network.ErrText(err))
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 	c.network.Audit("vpn_apply", ip, "режим: "+settings.Mode+", при обрыве: "+settings.OnFailure)
 
@@ -426,7 +426,7 @@ func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response 
 	default:
 		setFlash(ctx, flashCode, "Изменений нет — защищённый канал уже работает с этими настройками.")
 	}
-	return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+	return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 }
 
 func (c *VpnController) Remove(ctx contractshttp.Context) contractshttp.Response {

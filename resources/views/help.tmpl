@@ -1,0 +1,31 @@
+{{ define "help.tmpl" }}
+{{ template "app-top" . }}
+
+<div class="card">
+    <h2>Что делать, если…</h2>
+    <p class="muted">Те же темы есть в меню на консоли сервера — на случай,
+    когда панель не открывается: команда <code>sudo vpn-panel</code>, пункт «Помощь».</p>
+    <ul class="help-index">
+        {{ range .topics }}<li><a href="#{{ .Key }}">{{ .Question }}</a></li>{{ end }}
+    </ul>
+</div>
+
+{{ range .topics }}
+<section class="card help-topic" id="{{ .Key }}">
+    <h2>{{ .Question }}</h2>
+    {{ if .Checks.Lines }}
+    <h3>Проверено сейчас</h3>
+    {{ template "components/status-grid" .Checks }}
+    {{ end }}
+    <h3>Что делать</h3>
+    <ol class="help-steps">
+        {{ range .Steps }}<li>{{ . }}</li>{{ end }}
+    </ol>
+    {{ if .Means }}
+    <p class="muted">Здесь поможет: {{ range $i, $m := .Means }}{{ if $i }}, {{ end }}{{ if $m.URL }}<a href="{{ $m.URL }}">{{ $m.Text }}</a>{{ else }}{{ $m.Text }} — {{ $m.Note }}{{ end }}{{ end }}.</p>
+    {{ end }}
+</section>
+{{ end }}
+
+{{ template "app-bottom" . }}
+{{ end }}

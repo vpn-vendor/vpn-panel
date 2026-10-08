@@ -145,7 +145,7 @@ func TestEverySectionDeclaresItsWidth(t *testing.T) {
 
 func TestHelpTopicsPointAtRealSections(t *testing.T) {
 	known := func(key string) bool { _, ok := SectionByKey(key); return ok }
-	if err := help.Validate(help.Topics(), func(string) bool { return true }, known); err != nil {
+	if err := help.Validate(help.Topics(), known); err != nil {
 		t.Fatal(err)
 	}
 	for _, topic := range help.Topics() {
@@ -156,5 +156,24 @@ func TestHelpTopicsPointAtRealSections(t *testing.T) {
 		if !strings.Contains(strings.Join(topic.Steps, " "), section.Title) {
 			t.Errorf("тема «%s» ведёт в раздел «%s», но совет его не называет", topic.Question, section.Title)
 		}
+	}
+}
+
+func TestHelpTopicsAreSearchable(t *testing.T) {
+	cases := map[string]string{"забыл пароль диска": "disk-password", "нет интернета": "internet",
+		"украли телефон": "lost-device", "отключили свет": "power", "вернуть роутер": "old-router"}
+	for q, key := range cases {
+		found := false
+		for _, e := range Search(q) {
+			if e.URL == "/help#"+key && e.Section == "help" {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("по «%s» тема %s не найдена: %+v", q, key, Search(q))
+		}
+	}
+	if s, ok := SectionByKey("help"); !ok || s.Width != Narrow {
+		t.Error("раздел помощи без записи в реестре или не узкий лист")
 	}
 }

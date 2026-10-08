@@ -8,7 +8,7 @@ Rules-Requires-Root: no
 
 Package: vpn-panel
 Architecture: amd64
-Depends: ${misc:Depends}, iproute2, nftables, kea-dhcp4-server, unbound, iputils-arping,
+Depends: ${misc:Depends}, iproute2, nftables, kea-dhcp4-server, unbound, dns-root-data, iputils-arping,
          iputils-ping, wireguard-tools, openvpn, plymouth, kbd, console-setup,
          console-setup-linux
 Recommends: zenity, wl-clipboard

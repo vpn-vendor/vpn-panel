@@ -7,6 +7,7 @@ import (
 	contractshttp "github.com/goravel/framework/contracts/http"
 
 	"github.com/vpn-vendor/vpn-panel-core/app/services/network"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/setup"
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netplangen"
 )
@@ -126,7 +127,7 @@ func (c *NetworkController) Apply(ctx contractshttp.Context) contractshttp.Respo
 	st, err := c.service.Status()
 	if err != nil {
 		setFlash(ctx, flashError, "Системная служба недоступна — применить нельзя.")
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/network")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/network"))
 	}
 
 	var secrets network.ApplySecrets
@@ -183,18 +184,20 @@ func (c *NetworkController) Apply(ctx contractshttp.Context) contractshttp.Respo
 			text = "Назначьте хотя бы один интерфейс (интернет или локальная сеть)."
 		}
 		setFlash(ctx, flashError, text)
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/network")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/network"))
 	}
 	if err != nil {
 		setFlash(ctx, flashError, network.ErrText(err))
-		return ctx.Response().Redirect(contractshttp.StatusFound, "/network")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/network"))
 	}
+
+	setup.ClearDrafts()
 	if outcome.AwaitingConfirm {
-		setFlash(ctx, flashReturn, "/network")
+		setFlash(ctx, flashReturn, landing(ctx, "/network"))
 		return ctx.Response().Redirect(contractshttp.StatusFound, "/network/confirming")
 	}
 	setFlash(ctx, flashCode, outcome.Message)
-	return ctx.Response().Redirect(contractshttp.StatusFound, "/network")
+	return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/network"))
 }
 
 func (c *NetworkController) Confirming(ctx contractshttp.Context) contractshttp.Response {
@@ -226,6 +229,8 @@ func returnPath(ctx contractshttp.Context) string {
 	switch takeFlash(ctx, flashReturn) {
 	case "/security":
 		return "/security"
+	case "/setup":
+		return "/setup"
 	default:
 		return "/network"
 	}

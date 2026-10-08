@@ -118,6 +118,8 @@ chown -R "$OWNER" /repo
 echo "== комплект"
 mkdir -p "$KITDIR/vpn-panel"
 install -m 0755 "$HERE/early.sh" "$HERE/late.sh" "$HERE/firstboot-key.sh" "$HERE/disk-cipher.sh" "$KITDIR/vpn-panel/"
+# Установка на уже стоящую Ubuntu без интернета: короткое имя — его набирают руками.
+install -m 0755 "$HERE/install-offline.sh" "$KITDIR/vpn-panel/install.sh"
 cp -a "$REPO" "$KITDIR/vpn-panel/repo"
 printf 'ubuntu=%s\nversion=%s\nbuilt=%s\n' "$UBUNTU" "$VERSION" "$(date -u +%F)" > "$KITDIR/vpn-panel/media.info"
 cp "$PROFILE" "$KITDIR/user-data"

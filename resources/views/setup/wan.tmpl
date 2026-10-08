@@ -1,0 +1,20 @@
+{{ define "setup/wan" }}
+{{ template "wizard-top" . }}
+{{ if .cards }}
+<form method="post" action="/setup/answer">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="wan">
+    <input type="hidden" name="action" value="choose">
+    {{ template "components/choice" .choice }}
+    {{ if .suggested }}<p class="muted">Панель предлагает карту «{{ .suggested }}»: {{ .why }}.</p>{{ end }}
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .nextBtn }}
+    </div>
+</form>
+{{ else }}
+<div class="alert alert-warn">У сервера не видно ни одной сетевой карты. Проверьте, что
+карты установлены, и обновите страницу.</div>
+{{ end }}
+{{ template "wizard-bottom" . }}
+{{ end }}

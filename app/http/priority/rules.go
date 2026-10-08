@@ -23,7 +23,9 @@ var Rules = []admission.Rule{
 	{Prefix: "/", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/health", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/public", Class: admission.Ordinary},
+	{Method: "GET", Prefix: "/static", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/dns", Class: admission.Ordinary},
+	{Method: "GET", Prefix: "/help", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/qos", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/dhcp", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/devices", Class: admission.Ordinary},
@@ -46,7 +48,6 @@ var Rules = []admission.Rule{
 	{Method: "POST", Prefix: "/backup/import", Class: admission.Ordinary},
 	{Method: "POST", Prefix: "/backup/import/cards", Class: admission.Ordinary},
 	{Method: "POST", Prefix: "/backup/import/discard", Class: admission.Ordinary},
-	{Method: "GET", Prefix: "/setup/speed", Class: admission.Ordinary},
 	{Method: "POST", Prefix: "/setup/speed", Class: admission.Ordinary},
 
 	{Prefix: "/login", Class: admission.Critical},

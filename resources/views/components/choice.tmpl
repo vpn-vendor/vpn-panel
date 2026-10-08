@@ -1,0 +1,16 @@
+{{ define "components/choice" }}
+<div class="choice" role="radiogroup">
+    {{ $c := . }}
+    {{ range .Options }}
+    <label class="choice-item" for="{{ $c.ID . }}">
+        <input class="choice-input" type="radio" id="{{ $c.ID . }}" name="{{ $c.Name }}" value="{{ .Value }}"
+               {{ if .Checked }}checked{{ end }}{{ if .Reveals }} data-reveals="{{ .Reveals }}"{{ end }}>
+        <span class="choice-body">
+            <span class="choice-label">{{ .Label }}</span>
+            {{ if .Hint }}<span class="choice-hint">{{ .Hint }}</span>{{ end }}
+            {{ if .Facts }}<span class="choice-facts">{{ range .Facts }}<span class="tag">{{ . }}</span>{{ end }}</span>{{ end }}
+        </span>
+    </label>
+    {{ end }}
+</div>
+{{ end }}

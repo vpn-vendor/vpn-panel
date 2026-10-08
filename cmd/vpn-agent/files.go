@@ -4,6 +4,7 @@ import (
 	"log"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/durable"
 )
@@ -44,6 +45,9 @@ var managedFiles = []managedFile{
 	{Path: ovpnLivePath()},
 	{Path: nmDropInFile},
 	{Path: nmConnFile},
+	{Path: linkLocalNMFile},
+	{Path: linkLocalNetworkdDir + "/10-netplan-*.network.d/" + linkLocalDropInName},
+	{Path: linkLocalNetworkdDir + "/" + linkLocalOwnPrefix + "*.network"},
 	{Path: updatesConfPath},
 	{Path: tempKeyPath, Keep: "ключ первой загрузки: снимается шагом первой загрузки, до него без ключа диск не откроется"},
 	{Path: tempKeyConf, Keep: "настройка первой загрузки: снимается вместе с ключом"},
@@ -53,9 +57,16 @@ func managedDirs() []string {
 	seen := map[string]bool{}
 	var dirs []string
 	for _, f := range managedFiles {
-		if d := filepath.Dir(f.Path); !seen[d] {
-			seen[d] = true
-			dirs = append(dirs, d)
+		d := filepath.Dir(f.Path)
+		found := []string{d}
+		if strings.Contains(d, "*") {
+			found, _ = filepath.Glob(d)
+		}
+		for _, d := range found {
+			if !seen[d] {
+				seen[d] = true
+				dirs = append(dirs, d)
+			}
 		}
 	}
 	sort.Strings(dirs)

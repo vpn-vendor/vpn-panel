@@ -41,6 +41,10 @@ func TestAtomsCarryNoInlineAnything(t *testing.T) {
 		"components/toggle": ui.Toggle{ID: "c", Name: "c", Label: "Включить", Hint: "зачем"},
 		"components/button": ui.Button{Label: "Применить"},
 		"components/metric": ui.Metric{Label: "Нагрузка", Value: "0,4"},
+		"components/stepper": ui.Stepper{Total: 2, Current: 2, Items: []ui.StepperItem{
+			{Key: "a", Title: "Первый", State: "done", URL: "/setup/a"}, {Key: "b", Title: "Второй", State: "current"}}},
+		"components/choice": ui.Choice{Name: "card", Options: []ui.ChoiceOption{
+			{Value: "x", Label: "Икс", Checked: true, Facts: []string{"кабель воткнут"}}, {Value: "y", Label: "Игрек", Reveals: "y"}}},
 	}
 	for name, data := range cases {
 		out := render(t, name, data)
@@ -169,5 +173,21 @@ func TestFileFieldIsBound(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Fatalf("нет %q:\n%s", want, out)
 		}
+	}
+}
+
+func TestChoiceAndStepperContracts(t *testing.T) {
+	out := render(t, "components/choice", ui.Choice{Name: "card", Options: []ui.ChoiceOption{
+		{Value: "x", Label: "Икс", Checked: true, Facts: []string{"кабель воткнут"}}, {Value: "y", Label: "Игрек"}}})
+	if strings.Count(out, " checked") != 1 || !strings.Contains(out, `for="card-x"`) || !strings.Contains(out, `id="card-x"`) {
+		t.Fatalf("выбор варианта нарушил договор:\n%s", out)
+	}
+	if !strings.Contains(out, "кабель воткнут") {
+		t.Fatal("факты варианта потеряны")
+	}
+	out = render(t, "components/stepper", ui.Stepper{Total: 2, Current: 2, Items: []ui.StepperItem{
+		{Key: "a", Title: "Первый", State: "done", URL: "/setup/a"}, {Key: "b", Title: "Второй", State: "current"}}})
+	if !strings.Contains(out, `href="/setup/a"`) || !strings.Contains(out, `aria-current="step"`) || !strings.Contains(out, "из 2") {
+		t.Fatalf("полоса шагов нарушила договор:\n%s", out)
 	}
 }

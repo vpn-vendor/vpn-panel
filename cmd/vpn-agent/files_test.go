@@ -15,30 +15,33 @@ import (
 )
 
 var written = map[string]string{
-	"vpnStateFile":       vpnStateFile,
-	"watchdogMemoryFile": watchdogMemoryFile,
-	"lockdownFile":       lockdownFile,
-	"nftFile":            nftFile,
-	"sysctlFile":         sysctlFile,
-	"qosStateFile":       qosStateFile,
-	"checkpointFile":     checkpointFile,
-	"supportKeyFile":     supportKeyFile,
-	"diskChangeRequest":  diskChangeRequest,
-	"diskChangeLast":     diskChangeLast,
-	"netplanFile":        netplanFile,
-	"netplanBackup":      netplanBackup,
-	"keaConfigFile":      keaConfigFile,
-	"keaDropInFile":      keaDropInFile,
-	"unboundFile":        unboundFile,
-	"resolvedDropIn":     resolvedDropIn,
-	"pppoePeerPath":      pppoePeerPath,
-	"nmConnFile":         nmConnFile,
-	"nmDropInFile":       nmDropInFile,
-	"updatesConfPath":    updatesConfPath,
-	"tempKeyPath":        tempKeyPath,
-	"tempKeyConf":        tempKeyConf,
-	"livePath()":         livePath(),
-	"ovpnLivePath()":     ovpnLivePath(),
+	"vpnStateFile":         vpnStateFile,
+	"watchdogMemoryFile":   watchdogMemoryFile,
+	"lockdownFile":         lockdownFile,
+	"nftFile":              nftFile,
+	"sysctlFile":           sysctlFile,
+	"qosStateFile":         qosStateFile,
+	"checkpointFile":       checkpointFile,
+	"supportKeyFile":       supportKeyFile,
+	"diskChangeRequest":    diskChangeRequest,
+	"diskChangeLast":       diskChangeLast,
+	"netplanFile":          netplanFile,
+	"netplanBackup":        netplanBackup,
+	"keaConfigFile":        keaConfigFile,
+	"keaDropInFile":        keaDropInFile,
+	"unboundFile":          unboundFile,
+	"resolvedDropIn":       resolvedDropIn,
+	"pppoePeerPath":        pppoePeerPath,
+	"nmConnFile":           nmConnFile,
+	"nmDropInFile":         nmDropInFile,
+	"linkLocalNMFile":      linkLocalNMFile,
+	"linklocal.go: dropIn": linkLocalNetworkdDir + "/10-netplan-ens4.network.d/" + linkLocalDropInName,
+	"linklocal.go: path":   linkLocalNetworkdDir + "/" + linkLocalOwnPrefix + "ens4.network",
+	"updatesConfPath":      updatesConfPath,
+	"tempKeyPath":          tempKeyPath,
+	"tempKeyConf":          tempKeyConf,
+	"livePath()":           livePath(),
+	"ovpnLivePath()":       ovpnLivePath(),
 
 	"compose.go: c.path":                   netFactsFile,
 	"support.go: p":                        supportDir + "/" + supportPrefix + "20261003-120000.txt",
@@ -121,7 +124,8 @@ func TestRegistryIsWellFormed(t *testing.T) {
 			t.Errorf("%s в реестре дважды", f.Path)
 		}
 		seen[f.Path] = true
-		if !filepath.IsAbs(f.Path) || strings.Contains(filepath.Dir(f.Path), "*") {
+
+		if !filepath.IsAbs(f.Path) || (strings.Contains(filepath.Dir(f.Path), "*") && !strings.HasPrefix(f.Path, "/run/")) {
 			t.Errorf("%s: нужен полный путь, «*» — только в имени файла", f.Path)
 		}
 		if durable.IsTemp(filepath.Base(f.Path)) {

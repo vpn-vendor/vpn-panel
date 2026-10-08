@@ -38,7 +38,8 @@ func unattended(title, notice string) Entry {
 }
 
 var catalog = map[string]Entry{
-	"setup_completed":      critical("Установка завершена"),
+	"setup_completed":      critical("Учётная запись администратора создана"),
+	"setup_finished":       critical("Мастер первой настройки закрыт"),
 	"setup_denied":         ordinary("Отказ мастеру установки"),
 	"setup_code_issued":    critical("Выдан установочный код"),
 	"code_issued":          critical("Выдан код подключения"),

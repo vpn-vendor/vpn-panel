@@ -9,53 +9,57 @@ import (
 func anything(string) bool { return true }
 
 func TestCatalogIsValid(t *testing.T) {
-	if err := Validate(Topics(), anything, anything); err != nil {
+	if err := Validate(Topics(), anything); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestNumbersAndQuestionsAreAContract(t *testing.T) {
-	want := map[int]string{
-		1: "Не могу войти в панель", 2: "Панель не открывается в браузере", 3: "В офисе нет интернета",
-		4: "Интернет есть, а звонки плохие", 5: "Забыл пароль диска", 6: "Потеряно устройство входа",
-		7: "После отключения света", 8: "Хочу вернуть прежний роутер",
+func TestQuestionsAreAContract(t *testing.T) {
+	want := []string{
+		"Не могу войти в панель", "Панель не открывается в браузере", "В офисе нет интернета",
+		"Интернет есть, а звонки плохие", "Забыл пароль диска", "Потеряно устройство входа",
+		"После отключения света", "Хочу вернуть прежний роутер",
 	}
+	got := []string{}
 	for _, topic := range Topics() {
-		if want[topic.Number] != topic.Question {
-			t.Errorf("тема %d называется «%s»", topic.Number, topic.Question)
-		}
-		delete(want, topic.Number)
+		got = append(got, topic.Question)
 	}
-	if len(want) != 0 {
-		t.Errorf("в каталоге нет тем: %v", want)
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("темы: %v", got)
 	}
 }
 
 func TestValidateRefusesBrokenCatalogs(t *testing.T) {
 	good := func() Topic {
-		return Topic{Number: 1, Key: "login", Question: "Вопрос", Steps: []string{"Шаг."}}
+		return Topic{Key: "login", Question: "Вопрос", Steps: []string{"Шаг."}}
 	}
 	nothing := func(string) bool { return false }
 	cases := map[string][]Topic{
-		"цифра вне одной клавиши":   {func() Topic { x := good(); x.Number = 10; return x }()},
-		"цифра ноль занята выходом": {func() Topic { x := good(); x.Number = 0; return x }()},
-		"цифра дважды":              {good(), func() Topic { x := good(); x.Key = "other"; return x }()},
-		"не по порядку":             {func() Topic { x := good(); x.Number = 2; return x }(), func() Topic { x := good(); x.Key = "other"; return x }()},
-		"имя кириллицей":            {func() Topic { x := good(); x.Key = "вход"; return x }()},
-		"имя дважды":                {good(), func() Topic { x := good(); x.Number = 2; return x }()},
-		"нет вопроса":               {func() Topic { x := good(); x.Question = ""; return x }()},
-		"нет совета":                {func() Topic { x := good(); x.Steps = nil; return x }()},
-		"неизвестная проверка":      {func() Topic { x := good(); x.Checks = []Check{"weather"}; return x }()},
-		"неизвестное действие":      {func() Topic { x := good(); x.Actions = []string{"reboot"}; return x }()},
-		"неизвестный раздел":        {func() Topic { x := good(); x.Section = "nowhere"; return x }()},
+		"имя кириллицей":        {func() Topic { x := good(); x.Key = "вход"; return x }()},
+		"имя дважды":            {good(), good()},
+		"нет вопроса":           {func() Topic { x := good(); x.Question = ""; return x }()},
+		"нет совета":            {func() Topic { x := good(); x.Steps = nil; return x }()},
+		"неизвестная проверка":  {func() Topic { x := good(); x.Checks = []Check{"weather"}; return x }()},
+		"неизвестное намерение": {func() Topic { x := good(); x.Intents = []Intent{"reboot"}; return x }()},
+		"неизвестный раздел":    {func() Topic { x := good(); x.Section = "nowhere"; return x }()},
 	}
 	for name, list := range cases {
-		if Validate(list, nothing, nothing) == nil {
+		if Validate(list, nothing) == nil {
 			t.Errorf("принят негодный каталог: %s", name)
 		}
 	}
-	if err := Validate([]Topic{good()}, nothing, nothing); err != nil {
+	if err := Validate([]Topic{good()}, nothing); err != nil {
 		t.Errorf("отвергнут годный каталог: %v", err)
+	}
+
+	many := make([]Topic, 0, 30)
+	for i := 0; i < 30; i++ {
+		x := good()
+		x.Key = "topic-" + string(rune('a'+i%26)) + string(rune('a'+i/26))
+		many = append(many, x)
+	}
+	if err := Validate(many, nothing); err != nil {
+		t.Errorf("тридцать тем отвергнуты: %v", err)
 	}
 }
 
@@ -85,10 +89,10 @@ func TestStepsCarryNoNumbersAndNoRawText(t *testing.T) {
 func TestTopicsAreCopies(t *testing.T) {
 	list := Topics()
 	list[0].Question = "испорчено"
-	if got, ok := ByNumber(1); !ok || got.Question == "испорчено" {
+	if got, ok := ByKey("login"); !ok || got.Question == "испорчено" {
 		t.Error("каталог можно испортить снаружи")
 	}
-	if _, ok := ByNumber(0); ok {
-		t.Error("нашлась тема с цифрой выхода")
+	if _, ok := ByKey("nowhere"); ok {
+		t.Error("нашлась тема с чужим именем")
 	}
 }

@@ -80,8 +80,8 @@ func TestCoreObeysItsOwnContract(t *testing.T) {
 		}
 	}
 	tpl := readTree(t, "resources", "views", "partials.tmpl")
-	core := strings.Index(tpl, `<script src="/public/js/islands.js" defer></script>`)
-	search := strings.Index(tpl, `<script src="/public/js/search.js" defer></script>`)
+	core := strings.Index(tpl, `<script src="{{ .static }}/js/islands.js" defer></script>`)
+	search := strings.Index(tpl, `<script src="{{ .static }}/js/search.js" defer></script>`)
 	if core < 0 || search < 0 || core > search {
 		t.Error("ядро островов обязано подключаться с defer и раньше остальных отложенных сценариев оболочки")
 	}

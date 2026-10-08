@@ -1,0 +1,53 @@
+{{ define "setup/provider" }}
+{{ template "wizard-top" . }}
+<form method="post" action="/network/apply" class="wan-config" data-wan-iface="{{ .wanName }}" data-wizard-provider>
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="wizard" value="1">
+    <input type="hidden" name="role_{{ .wanName }}" value="wan">
+    <input type="hidden" name="role_{{ .lanName }}" value="lan">
+    {{ template "components/choice" .choice }}
+
+    <div class="reveal" data-reveal="static">
+        <p class="muted">Впишите то, что дал провайдер. Маску можно указать прямо в
+        адресе (например <code>203.0.113.45/24</code>).</p>
+        <div class="field-grid">
+            {{ template "components/field" .ipField }}
+            {{ template "components/field" .maskField }}
+            {{ template "components/field" .gatewayField }}
+            {{ template "components/field" .dnsField }}
+        </div>
+        <p class="alert alert-warn js-gw-warn" hidden></p>
+    </div>
+    <div class="reveal" data-reveal="pppoe">
+        <p class="muted">Имя пользователя и пароль — из договора с провайдером.
+        Пароль хранится только на сервере и на странице не показывается.</p>
+        <div class="field-grid">
+            {{ template "components/field" .pppoeUserField }}
+            {{ template "components/field" .pppoePassField }}
+        </div>
+    </div>
+
+    <details class="wizard-note">
+        <summary>Тег VLAN и адрес шлюза в офисе</summary>
+        <p class="muted">Тег нужен, только если провайдер его требует. Адрес в
+        офисе панель подобрала так, чтобы он не пересекался с сетью провайдера;
+        менять его не нужно.</p>
+        <div class="field-grid">
+            {{ template "components/field" .vlanField }}
+            {{ template "components/field" .lanField }}
+        </div>
+    </details>
+
+    {{ if .lockout }}
+    <div class="alert alert-warn">{{ .lockout }}</div>
+    {{ end }}
+    <p class="muted">Изменение безопасно: если связь с панелью прервётся, через
+    {{ .timeout }} с всё вернётся как было. Сотрудники офиса на минуту
+    останутся без сети.</p>
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .applyBtn }}
+    </div>
+</form>
+{{ template "wizard-bottom" . }}
+{{ end }}

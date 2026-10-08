@@ -67,6 +67,8 @@ type netplanApplier struct {
 	pendingFacts *nftgen.FirewallPlan
 
 	onPathChanged func()
+
+	linkLocal *linkLocalHelper
 }
 
 func newNetplanApplier(firewall *firewallApplier) *netplanApplier {
@@ -236,6 +238,9 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 		return map[string]any{"changed": fwChanged, "state": "applied", "hash": hash}, nil
 	}
 
+	if a.linkLocal != nil {
+		a.linkLocal.remove()
+	}
 	if err := a.writeWithBackup(yaml); err != nil {
 		return nil, detailErr(errWriteConfig, err.Error(), true)
 	}

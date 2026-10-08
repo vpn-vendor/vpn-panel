@@ -1,0 +1,13 @@
+{{ define "components/stepper" }}
+<nav class="stepper" aria-label="Шаги настройки">
+    <p class="stepper-count">Шаг <strong>{{ .Current }}</strong> из {{ .Total }}</p>
+    <ol class="steps">
+        {{ range .Items }}
+        <li class="{{ .Class }}"{{ if eq .State "current" }} aria-current="step"{{ end }}>
+            <span class="step-mark" aria-hidden="true">{{ if eq .State "done" }}{{ template "components/icon" "check" }}{{ end }}</span>
+            {{ if .URL }}<a class="step-title" href="{{ .URL }}">{{ .Title }}</a>{{ else }}<span class="step-title">{{ .Title }}</span>{{ end }}
+        </li>
+        {{ end }}
+    </ol>
+</nav>
+{{ end }}

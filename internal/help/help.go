@@ -15,21 +15,31 @@ const (
 
 var knownChecks = map[Check]bool{CheckInternet: true, CheckChannel: true, CheckPanel: true}
 
+type Intent string
+
+const (
+	IntentCode    Intent = "code"
+	IntentRestart Intent = "restart"
+	IntentSupport Intent = "support"
+	IntentBackup  Intent = "backup"
+	IntentSignOut Intent = "signout"
+)
+
+var knownIntents = map[Intent]bool{IntentCode: true, IntentRestart: true, IntentSupport: true, IntentBackup: true, IntentSignOut: true}
+
 type Topic struct {
-	Number   int
 	Key      string
 	Question string
 	Checks   []Check
 
-	Steps   []string
-	Actions []string
-	Section string
+	Steps    []string
+	Intents  []Intent
+	Section  string
+	Keywords []string
 }
 
-const maxNumber = 9
-
 var topics = []Topic{
-	{Number: 1, Key: "login", Question: "Не могу войти в панель",
+	{Key: "login", Question: "Не могу войти в панель",
 		Checks: []Check{CheckPanel},
 		Steps: []string{
 			"Вход в панель — по коду подключения. Код одноразовый и действует недолго: получите новый и введите его сразу.",
@@ -37,8 +47,9 @@ var topics = []Topic{
 			"На сервере с рабочим столом код не нужен: откройте в списке программ значок «Вход в панель — с этого сервера».",
 			"Предупреждение браузера о сертификате при первом входе с устройства — ожидаемо. Появилось внезапно на знакомом устройстве — не входите.",
 		},
-		Actions: []string{"code"}, Section: "devices"},
-	{Number: 2, Key: "browser", Question: "Панель не открывается в браузере",
+		Intents: []Intent{IntentCode}, Section: "devices",
+		Keywords: []string{"вход", "код", "не пускает", "доступ"}},
+	{Key: "browser", Question: "Панель не открывается в браузере",
 		Checks: []Check{CheckPanel},
 		Steps: []string{
 			"Проверьте адрес: его печатает сервер вместе с кодом входа.",
@@ -46,61 +57,68 @@ var topics = []Topic{
 			"Панель остановлена или не отвечает — перезапустите её. Интернет в офисе и звонки при этом не прервутся.",
 			"Не помогло — соберите сведения для поддержки.",
 		},
-		Actions: []string{"code", "restart", "support"}},
-	{Number: 3, Key: "internet", Question: "В офисе нет интернета",
+		Intents:  []Intent{IntentCode, IntentRestart, IntentSupport},
+		Keywords: []string{"браузер", "адрес", "не открывается", "не отвечает"}},
+	{Key: "internet", Question: "В офисе нет интернета",
 		Checks: []Check{CheckInternet, CheckChannel},
 		Steps: []string{
 			"Нет подключения к провайдеру — проверьте кабель провайдера и его оборудование, затем звоните провайдеру.",
 			"Не работает защищённый канал — шлюз закрыл офис от интернета намеренно, чтобы ничего не ушло мимо канала. Что делать, сказано в подробном состоянии шлюза и на странице «Обзор».",
 			"Связь нужна прямо сейчас — переставьте кабель провайдера и кабель сети офиса в прежний роутер.",
 		},
-		Actions: []string{"status", "support"}, Section: "home"},
-	{Number: 4, Key: "calls", Question: "Интернет есть, а звонки плохие",
+		Intents: []Intent{IntentSupport}, Section: "home",
+		Keywords: []string{"интернет", "связь", "нет сети", "не работает"}},
+	{Key: "calls", Question: "Интернет есть, а звонки плохие",
 		Checks: []Check{CheckInternet, CheckChannel},
 		Steps: []string{
 			"Чаще всего дело в компьютере сотрудника или в сети офиса, а не в шлюзе. Страница «Диагностика» показывает, что не так с каждым компьютером, и даёт совет.",
 			"На странице QoS укажите настоящую скорость тарифа: тогда звонки идут вперёд закачек. Сомневаетесь — укажите чуть меньше: завышенная скорость выключает эту защиту.",
 			"Плохо у всех сразу — посмотрите «Обзор»: обрывы защищённого канала видны там.",
 		},
-		Actions: []string{"status"}, Section: "diagnostics"},
-	{Number: 5, Key: "disk-password", Question: "Забыл пароль диска",
+		Section:  "diagnostics",
+		Keywords: []string{"звонки", "телефония", "voip", "качество", "обрывы"}},
+	{Key: "disk-password", Question: "Забыл пароль диска",
 		Steps: []string{
 			"Сначала проверьте ввод: пароль набирается в английской раскладке, клавиша Caps Lock выключена.",
 			"Восстановить пароль диска нельзя: его не знает ни панель, ни поддержка.",
 			"Пока шлюз включён и работает — не выключайте его и сделайте копию настроек на странице «Резервная копия». Копию храните вне шлюза.",
 			"Дальше — установка шлюза с носителя заново и загрузка настроек из копии. Новый пароль диска задаётся при первом включении.",
 		},
-		Actions: []string{"backup"}, Section: "backup"},
-	{Number: 6, Key: "lost-device", Question: "Потеряно устройство входа",
+		Intents: []Intent{IntentBackup}, Section: "backup",
+		Keywords: []string{"диск", "пароль", "забыл", "шифрование"}},
+	{Key: "lost-device", Question: "Потеряно устройство входа",
 		Steps: []string{
 			"Есть другое подключённое устройство — откройте на нём страницу «Устройства» и отзовите доступ у потерянного.",
 			"Другого устройства нет — выйдите на всех устройствах с сервера и войдите заново по новому коду.",
 			"Интернет в офисе, звонки и защищённый канал при этом не прерываются.",
 		},
-		Actions: []string{"signout", "code"}, Section: "devices"},
-	{Number: 7, Key: "power", Question: "После отключения света",
+		Intents: []Intent{IntentSignOut, IntentCode}, Section: "devices",
+		Keywords: []string{"потерял", "украли", "телефон", "ноутбук", "отозвать"}},
+	{Key: "power", Question: "После отключения света",
 		Checks: []Check{CheckInternet, CheckChannel, CheckPanel},
 		Steps: []string{
 			"Шлюз с зашифрованным диском после включения ждёт пароль диска — на экране и клавиатуре самого сервера. Пока пароль не введён, интернета в офисе нет.",
 			"После пароля шлюз сам возвращается в сеть с прежними настройками. Изменение, которое не успели подтвердить до отключения, отменяется само.",
 			"Что-то не заработало — причина и совет есть в подробном состоянии шлюза и на странице «Обзор».",
 		},
-		Actions: []string{"status"}, Section: "home"},
-	{Number: 8, Key: "old-router", Question: "Хочу вернуть прежний роутер",
+		Section:  "home",
+		Keywords: []string{"свет", "отключили", "электричество", "питание", "включение", "перезагрузка"}},
+	{Key: "old-router", Question: "Хочу вернуть прежний роутер",
 		Steps: []string{
 			"Сделайте копию настроек на странице «Резервная копия» — она пригодится, если вернётесь к шлюзу.",
 			"Переставьте кабель провайдера и кабель сети офиса обратно в прежний роутер: офис заработает как раньше.",
 			"Компьютер, который не вышел в интернет сам, перезагрузите.",
 			"Шлюз можно выключить: настройки на нём сохранятся.",
 		},
-		Actions: []string{"backup"}, Section: "backup"},
+		Intents: []Intent{IntentBackup}, Section: "backup",
+		Keywords: []string{"роутер", "вернуть", "откат", "отключить шлюз"}},
 }
 
 func Topics() []Topic { return append([]Topic(nil), topics...) }
 
-func ByNumber(n int) (Topic, bool) {
+func ByKey(key string) (Topic, bool) {
 	for _, t := range topics {
-		if t.Number == n {
+		if t.Key == key {
 			return t, true
 		}
 	}
@@ -109,23 +127,16 @@ func ByNumber(n int) (Topic, bool) {
 
 var keyName = regexp.MustCompile(`^[a-z][a-z-]*$`)
 
-func Validate(list []Topic, action, section func(string) bool) error {
-	numbers, keys := map[int]bool{}, map[string]bool{}
-	previous := 0
+func Validate(list []Topic, section func(string) bool) error {
+	keys := map[string]bool{}
 	for _, t := range list {
 		switch {
-		case t.Number < 1 || t.Number > maxNumber:
-			return fmt.Errorf("тема «%s»: цифра %d вне 1–%d", t.Question, t.Number, maxNumber)
-		case numbers[t.Number]:
-			return fmt.Errorf("цифра %d занята дважды", t.Number)
-		case previous > t.Number:
-			return fmt.Errorf("тема «%s» стоит не по порядку цифр", t.Question)
 		case !keyName.MatchString(t.Key):
 			return fmt.Errorf("тема «%s»: имя «%s» не латиницей", t.Question, t.Key)
 		case keys[t.Key]:
 			return fmt.Errorf("имя «%s» занято дважды", t.Key)
 		case t.Question == "":
-			return fmt.Errorf("тема %d без вопроса", t.Number)
+			return fmt.Errorf("тема «%s» без вопроса", t.Key)
 		case len(t.Steps) == 0:
 			return fmt.Errorf("тема «%s» ничего не советует", t.Question)
 		case t.Section != "" && !section(t.Section):
@@ -136,13 +147,12 @@ func Validate(list []Topic, action, section func(string) bool) error {
 				return fmt.Errorf("тема «%s»: проверки «%s» нет", t.Question, c)
 			}
 		}
-		for _, a := range t.Actions {
-			if !action(a) {
-				return fmt.Errorf("тема «%s»: действия «%s» нет", t.Question, a)
+		for _, i := range t.Intents {
+			if !knownIntents[i] {
+				return fmt.Errorf("тема «%s»: намерения «%s» нет", t.Question, i)
 			}
 		}
-		numbers[t.Number], keys[t.Key] = true, true
-		previous = t.Number
+		keys[t.Key] = true
 	}
 	return nil
 }

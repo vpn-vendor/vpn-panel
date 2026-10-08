@@ -1,0 +1,25 @@
+{{ define "setup/speed" }}
+{{ template "wizard-top" . }}
+{{ template "speedtest-card" . }}
+<form method="post" action="/setup/speed">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <div class="field-grid">
+        {{ template "components/field" .downField }}
+        {{ template "components/field" .upField }}
+    </div>
+    <p class="muted">В договоре обычно одна цифра — это скачивание; отдача
+    почти всегда ниже. Замер выше покажет обе настоящие скорости.</p>
+    <div class="wizard-actions">
+        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+        {{ template "components/button" .nextBtn }}
+    </div>
+</form>
+<form method="post" action="/setup/answer" class="wizard-actions">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="speed">
+    <input type="hidden" name="action" value="skip">
+    {{ template "components/button" .skipBtn }}
+</form>
+<script src="{{ .static }}/js/qos.js" defer></script>
+{{ template "wizard-bottom" . }}
+{{ end }}

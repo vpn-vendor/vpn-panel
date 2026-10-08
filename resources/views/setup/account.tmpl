@@ -1,0 +1,9 @@
+{{ define "setup/account" }}
+{{ template "wizard-top" . }}
+<p>Учётная запись уже создана: шлюзом управляет «{{ .adminName }}». Доверенные
+устройства и коды входа — на странице «Устройства».</p>
+<div class="wizard-actions">
+    <a class="btn" href="/setup">Дальше</a>
+</div>
+{{ template "wizard-bottom" . }}
+{{ end }}

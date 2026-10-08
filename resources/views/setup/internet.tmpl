@@ -1,0 +1,15 @@
+{{ define "setup/internet" }}
+{{ template "wizard-top" . }}
+{{ template "components/facts" .facts }}
+<div class="wizard-actions">
+    {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
+    <a class="btn" href="/setup/internet">Проверить ещё раз</a>
+    <form method="post" action="/setup/answer" class="wizard-skip">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="step" value="internet">
+        <input type="hidden" name="action" value="skip">
+        {{ template "components/button" .skipBtn }}
+    </form>
+</div>
+{{ template "wizard-bottom" . }}
+{{ end }}

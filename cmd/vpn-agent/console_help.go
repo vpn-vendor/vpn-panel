@@ -12,25 +12,50 @@ type helpDesk struct {
 	status  func() console.Status
 }
 
+var intentCommand = map[help.Intent]string{
+	help.IntentCode: "code", help.IntentRestart: "restart", help.IntentSupport: "support",
+	help.IntentBackup: "backup", help.IntentSignOut: "signout",
+}
+
+const (
+	helpPageSize = 8
+	helpMore     = 9
+)
+
+var topicsForConsole = help.Topics
+
 func (d helpDesk) run(s *console.Session) console.Result {
 
 	if s.Style.Plain {
 		return console.Result{Lines: []string{"Help is written in Russian.", "Open it on the server screen or over SSH."}}
 	}
-	allowed := []int{console.Exit}
-	var list []string
-	for _, t := range help.Topics() {
-		allowed = append(allowed, t.Number)
-		list = append(list, fmt.Sprintf(" %d  %s", t.Number, t.Question))
+	topics := topicsForConsole()
+	for from := 0; ; {
+		page := topics[from:min(from+helpPageSize, len(topics))]
+		more := from+helpPageSize < len(topics)
+		allowed := []int{console.Exit}
+		var list []string
+		for i, t := range page {
+			allowed = append(allowed, i+1)
+			list = append(list, fmt.Sprintf(" %d  %s", i+1, t.Question))
+		}
+		if more {
+			allowed = append(allowed, helpMore)
+			list = append(list, fmt.Sprintf(" %d  Дальше (ещё %d)", helpMore, len(topics)-from-helpPageSize))
+		}
+		s.Print(append(list, fmt.Sprintf(" %d  Назад", console.Exit), "")...)
+		n, ok := s.Choose(allowed)
+		switch {
+		case !ok || n == console.Exit:
+			return console.Result{Quiet: true}
+		case n == helpMore && more:
+			from += helpPageSize
+			s.Print("")
+			continue
+		}
+		d.show(s, page[n-1])
+		return console.Result{}
 	}
-	s.Print(append(list, fmt.Sprintf(" %d  Назад", console.Exit), "")...)
-	n, ok := s.Choose(allowed)
-	if !ok || n == console.Exit {
-		return console.Result{Quiet: true}
-	}
-	topic, _ := help.ByNumber(n)
-	d.show(s, topic)
-	return console.Result{}
 }
 
 func (d helpDesk) show(s *console.Session, t help.Topic) {
@@ -44,9 +69,9 @@ func (d helpDesk) show(s *console.Session, t help.Topic) {
 	s.Print("Что делать:")
 	s.Steps(t.Steps)
 	var items []string
-	for _, name := range t.Actions {
+	for _, intent := range t.Intents {
 		for _, a := range d.actions {
-			if a.Command == name {
+			if a.Command == intentCommand[intent] {
 				items = append(items, fmt.Sprintf("  %d  %s", a.Number, a.Title))
 			}
 		}
@@ -76,6 +101,15 @@ func validConsole(c console.Catalog) error {
 	if err := c.Validate(); err != nil {
 		return err
 	}
-	action := func(name string) bool { _, ok := c.ByCommand(name); return ok }
-	return help.Validate(help.Topics(), action, func(string) bool { return true })
+	if err := help.Validate(help.Topics(), func(string) bool { return true }); err != nil {
+		return err
+	}
+	for _, t := range help.Topics() {
+		for _, intent := range t.Intents {
+			if _, ok := c.ByCommand(intentCommand[intent]); !ok {
+				return fmt.Errorf("тема «%s»: намерению «%s» не назначен пункт меню", t.Question, intent)
+			}
+		}
+	}
+	return nil
 }
