@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"log"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -30,7 +33,7 @@ func New(handler http.Handler, requestTimeout time.Duration, maxHeaderBytes int)
 }
 
 func newServer(handler http.Handler, header, read, write, idle time.Duration, maxHeaderBytes int) *http.Server {
-	return &http.Server{
+	srv := &http.Server{
 		Handler:           handler,
 		ReadHeaderTimeout: header,
 		ReadTimeout:       read,
@@ -38,6 +41,19 @@ func newServer(handler http.Handler, header, read, write, idle time.Duration, ma
 		IdleTimeout:       idle,
 		MaxHeaderBytes:    maxHeaderBytes,
 	}
+
+	srv.ErrorLog = log.New(handshakeNoise{out: log.Writer()}, "", 0)
+	return srv
+}
+
+type handshakeNoise struct{ out io.Writer }
+
+func (h handshakeNoise) Write(p []byte) (int, error) {
+	if s := string(p); strings.Contains(s, "TLS handshake error") &&
+		(strings.Contains(s, "EOF") || strings.Contains(s, "connection reset by peer")) {
+		return len(p), nil
+	}
+	return h.out.Write(p)
 }
 
 type StartFunc func() (*http.Server, func(*http.Server) error, error)

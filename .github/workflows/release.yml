@@ -12,6 +12,10 @@ on:
 permissions:
   contents: read
 
+# Версию сборочного тулчейна задаёт go.mod, а не образ.
+env:
+  GOTOOLCHAIN: auto
+
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false

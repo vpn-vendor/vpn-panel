@@ -12,7 +12,7 @@ mkdir -p "$ROOT/dist"
 docker run --rm \
   -v "$ROOT":/src:ro \
   -v "$ROOT/dist":/dist \
-  -v "$CACHE_VOLUME":/gc -e GOMODCACHE=/gc/mod -e GOCACHE=/gc/build \
+  -v "$CACHE_VOLUME":/gc -e GOMODCACHE=/gc/mod -e GOCACHE=/gc/build -e GOTOOLCHAIN=auto \
   "$IMAGE" bash -c '
     set -e
     export DEBIAN_FRONTEND=noninteractive

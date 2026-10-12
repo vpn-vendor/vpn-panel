@@ -78,8 +78,10 @@ type path struct {
 	win  pathprobe.Window
 	seq  uint16
 	last []bool
-	seen int
-	stop chan struct{}
+
+	forbidden []bool
+	seen      int
+	stop      chan struct{}
 }
 
 type Service struct {
@@ -291,6 +293,7 @@ func (s *Service) loop(p *path) {
 		}
 		if p.last == nil {
 			p.last = make([]bool, len(p.snap.Targets))
+			p.forbidden = make([]bool, len(p.snap.Targets))
 		}
 		idx := int(p.seq) % len(p.snap.Targets)
 		t := p.snap.Targets[idx]
@@ -303,8 +306,15 @@ func (s *Service) loop(p *path) {
 			d, err := s.d.Ping(ip, p.seq, pathprobe.Timeout)
 			if errors.Is(err, pathprobe.ErrForbidden) {
 
-				log.Printf("мониторинг пути: проба %s к %s запрещена правилом выхода", p.snap.Kind, t)
+				if !p.forbidden[idx] {
+					log.Printf("мониторинг пути: проба %s к %s запрещена правилом выхода", p.snap.Kind, t)
+					p.forbidden[idx] = true
+				}
 				continue
+			}
+			if p.forbidden[idx] {
+				log.Printf("мониторинг пути: проба %s к %s снова разрешена", p.snap.Kind, t)
+				p.forbidden[idx] = false
 			}
 			p.last[idx] = err == nil
 			if err == nil {

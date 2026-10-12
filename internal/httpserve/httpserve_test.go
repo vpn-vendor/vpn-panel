@@ -1,11 +1,13 @@
 package httpserve
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
@@ -153,5 +155,21 @@ func TestRunnerReportsStartError(t *testing.T) {
 	}
 	if err := r.Run(); err == nil {
 		t.Fatal("ошибка подготовки обязана вернуться")
+	}
+}
+
+func TestHandshakeNoiseFiltersAbortedTLS(t *testing.T) {
+	var buf bytes.Buffer
+	w := handshakeNoise{out: &buf}
+
+	_, _ = w.Write([]byte("http: TLS handshake error from 192.168.11.5:443: EOF\n"))
+	_, _ = w.Write([]byte("http: TLS handshake error from 10.0.0.1:55000: read tcp: connection reset by peer\n"))
+	if buf.Len() != 0 {
+		t.Fatalf("оборванное рукопожатие не должно попадать в журнал: %q", buf.String())
+	}
+
+	_, _ = w.Write([]byte("http: TLS handshake error from 10.0.0.2:44000: tls: bad certificate\n"))
+	if !strings.Contains(buf.String(), "bad certificate") {
+		t.Fatalf("настоящая ошибка TLS обязана пройти в журнал: %q", buf.String())
 	}
 }

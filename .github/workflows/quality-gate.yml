@@ -16,6 +16,10 @@ on:
       - 'LICENSE'
       - '.editorconfig'
 
+# Версию сборочного тулчейна задаёт go.mod, а не образ.
+env:
+  GOTOOLCHAIN: auto
+
 concurrency:
   group: quality-${{ github.ref }}
   cancel-in-progress: true
