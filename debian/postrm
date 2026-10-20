@@ -18,7 +18,7 @@ case "$1" in
         systemctl unmask ufw 2>/dev/null || true
         # Недописанные файлы прерванной записи (обрыв питания): в них могли
         # остаться ключи и пароли. Раньше удаления каталогов.
-        for DIR in /etc/NetworkManager/conf.d /etc/apt/apt.conf.d /etc/cryptsetup-keys.d \
+        for DIR in /etc/NetworkManager/conf.d /etc/apt/apt.conf.d /etc/apt/sources.list.d /etc/cryptsetup-keys.d \
             /etc/dracut.conf.d /etc/kea/vpn-panel /etc/netplan /etc/nftables.d /etc/openvpn/client \
             /etc/ppp /etc/ppp/peers /etc/sysctl.d /etc/systemd/resolved.conf.d \
             /etc/systemd/system/kea-dhcp4-server.service.d /etc/unbound/unbound.conf.d \
@@ -36,6 +36,9 @@ case "$1" in
         rm -f /etc/ppp/peers/vpn_panel_wan.vpn-panel.prev
         rm -f /etc/ppp/chap-secrets.vpn-panel.prev /etc/ppp/pap-secrets.vpn-panel.prev
         rm -f /etc/apt/apt.conf.d/52vpn-panel-auto
+        rm -f /etc/apt/apt.conf.d/53vpn-panel-policy
+        rm -f /etc/vpn-panel/policy.json
+        rm -f /etc/vpn-panel/updates.json
         # Отметка запроса смены пароля диска и итог последней смены.
         rm -f /etc/vpn-panel/disk-change.request /etc/vpn-panel/disk-change.last
         rm -f /etc/systemd/system/kea-dhcp4-server.service.d/vpn-panel.conf
@@ -85,6 +88,7 @@ case "$1" in
         rm -f /etc/vpn-panel/net-facts.json
         rm -f /etc/vpn-panel/lockdown.nft
         nft delete table inet vpn_panel 2>/dev/null || true
+        nft delete table inet vpn_panel_dhcp 2>/dev/null || true
         rm -f /etc/nftables.d/vpn-panel.nft /etc/sysctl.d/99-vpn-panel.conf
         if [ -f /etc/vpn-panel/qos.json ]; then
             QOS_WAN=$(sed -n 's/.*"wan":"\([a-zA-Z0-9_.-]*\)".*/\1/p' /etc/vpn-panel/qos.json)
@@ -102,6 +106,8 @@ case "$1" in
         # дефисами чистим тоже (сборки до исправления шага 3a).
         for PEER in vpn_panel_wan vpn-panel-wan; do
             [ -f "/etc/ppp/peers/$PEER" ] || continue
+            # Свой шаблон и родной экземпляр сборок до него.
+            systemctl disable --now "vpn-panel-ppp@$PEER.service" >/dev/null 2>&1 || true
             systemctl disable --now "ppp@$PEER.service" >/dev/null 2>&1 || true
             PPPOE_USER=$(sed -n 's/^user "\(.*\)"$/\1/p' "/etc/ppp/peers/$PEER")
             if [ -n "$PPPOE_USER" ]; then
@@ -116,6 +122,8 @@ case "$1" in
         done
         rm -f /etc/ppp/peers/vpn_panel_wan
         rm -rf /var/lib/vpn-panel /var/log/vpn-panel
+        # Паспорт хоста: пересчитываемые данные службы.
+        rm -rf /var/cache/vpn-panel
         rm -f /etc/vpn-panel/panel.env
         rmdir /etc/vpn-panel 2>/dev/null || true
         ;;

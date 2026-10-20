@@ -89,14 +89,15 @@ func (s *Service) Apply(plan qosgen.Plan) (*Result, error) {
 }
 
 type Status struct {
-	Enabled  bool   `json:"enabled"`
-	Active   bool   `json:"active"`
-	WAN      string `json:"wan"`
-	DownKbit int    `json:"down_kbit"`
-	UpKbit   int    `json:"up_kbit"`
-	Cores    int    `json:"cores"`
-	Load1    string `json:"load1"`
-	LinkMbit int    `json:"link_mbit"`
+	Enabled    bool   `json:"enabled"`
+	Active     bool   `json:"active"`
+	Suppressed bool   `json:"suppressed_by_policy"`
+	WAN        string `json:"wan"`
+	DownKbit   int    `json:"down_kbit"`
+	UpKbit     int    `json:"up_kbit"`
+	Cores      int    `json:"cores"`
+	Load1      string `json:"load1"`
+	LinkMbit   int    `json:"link_mbit"`
 }
 
 func (s *Service) Status() (*Status, error) {

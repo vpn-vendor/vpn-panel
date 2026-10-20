@@ -1,0 +1,15 @@
+# Агент пароля диска: по-русски на каждой консоли ядра, когда заставка не
+# рисует. Сбой агента возвращает штатный консольный агент systemd.
+[Unit]
+Description=VPN Panel disk password on console
+DefaultDependencies=no
+After=plymouth-start.service systemd-vconsole-setup.service
+Conflicts=emergency.service shutdown.target initrd-switch-root.target
+Before=emergency.service shutdown.target initrd-switch-root.target
+OnFailure=systemd-ask-password-console.service
+
+[Service]
+ExecStart=/usr/libexec/vpn-panel/vpn-agent disk-unlock
+StandardInput=null
+StandardOutput=journal
+StandardError=journal

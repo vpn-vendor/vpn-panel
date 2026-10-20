@@ -1,11 +1,13 @@
 {{ define "setup/provider" }}
 {{ template "wizard-top" . }}
-<form method="post" action="/network/apply" class="wan-config" data-wan-iface="{{ .wanName }}" data-wizard-provider>
+{{ with .contractInline }}<div class="wz-art-inline">{{ template "components/contract" . }}</div>{{ end }}
+<form method="post" action="/network/apply" id="step-form" class="wan-config" data-wan-iface="{{ .wanName }}" data-wizard-provider>
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="wizard" value="1">
     <input type="hidden" name="role_{{ .wanName }}" value="wan">
     <input type="hidden" name="role_{{ .lanName }}" value="lan">
     {{ template "components/choice" .choice }}
+    {{ range .methodNotes }}<div class="{{ .Class }} wz-mnote wz-mnote-{{ .Key }}"><span class="wz-note-ic" aria-hidden="true">{{ .Mark }}</span><span><strong>{{ .Title }}</strong>{{ .Text }}</span></div>{{ end }}
 
     <div class="reveal" data-reveal="static">
         <p class="muted">Впишите то, что дал провайдер. Маску можно указать прямо в
@@ -19,13 +21,55 @@
         <p class="alert alert-warn js-gw-warn" hidden></p>
     </div>
     <div class="reveal" data-reveal="pppoe">
+        {{ if .pppoeBlocked }}<div class="alert alert-error" role="alert">{{ .pppoeBlocked }}</div>{{ end }}
         <p class="muted">Имя пользователя и пароль — из договора с провайдером.
         Пароль хранится только на сервере и на странице не показывается.</p>
         <div class="field-grid">
             {{ template "components/field" .pppoeUserField }}
             {{ template "components/field" .pppoePassField }}
         </div>
+        {{ if .legacyPassword }}
+        <input type="hidden" name="pppoepass_source_{{ .wanName }}" value="legacy">
+        <p class="muted">Пароль возьмём у старого шлюза. Впишите его здесь, только если он сменился.</p>
+        {{ end }}
     </div>
+
+    {{ if .wanMAC }}
+    <div class="wz-mac">
+        {{ if .cloneMAC }}
+        <div class="wz-mac-text">
+            <strong>Провайдер видит адрес старого роутера</strong>
+            Шлюз представляется провайдеру адресом старого роутера. Родной адрес карты —
+            <span class="wz-mac-inline">{{ .wanMAC }}</span>.
+        </div>
+        <div class="wz-mac-side">
+            <span id="wan-mac" class="wz-mac-value">{{ .cloneMAC }}</span>
+            <input type="hidden" name="clonemac_set_{{ .wanName }}" value="1">
+            <input type="hidden" name="clonemac_{{ .wanName }}" value="{{ .cloneMAC }}">
+            <button type="submit" class="btn btn-secondary btn-small" name="clonemac_reset_{{ .wanName }}" value="1">Вернуть родной адрес</button>
+        </div>
+        {{ else }}
+        <div class="wz-mac-text">
+            <strong>Провайдер привязывает доступ по MAC-адресу?</strong>
+            Так бывает часто: интернет пускают только на старый роутер. Продиктуйте
+            провайдеру адрес карты шлюза — или впишите адрес старого роутера, и шлюз
+            представится им.
+        </div>
+        <div class="wz-mac-side">
+            <span id="wan-mac" class="wz-mac-value">{{ .wanMAC }}</span>
+            <button type="button" class="btn btn-secondary btn-small" data-copy="wan-mac" hidden>{{ template "components/icon" "copy" }}<span data-copy-label>Скопировать</span></button>
+        </div>
+        <details class="wz-mac-clone">
+            <summary class="btn btn-secondary btn-small">Адрес старого роутера</summary>
+            <input type="hidden" name="clonemac_set_{{ .wanName }}" value="1">
+            {{ template "components/field" .cloneField }}
+            <p class="muted">Перед применением отключите старый роутер от кабеля провайдера: два
+            устройства с одним адресом мешают друг другу. Вернуть родной адрес можно здесь же
+            одной кнопкой.</p>
+        </details>
+        {{ end }}
+    </div>
+    {{ end }}
 
     <details class="wizard-note">
         <summary>Тег VLAN и адрес шлюза в офисе</summary>
@@ -41,13 +85,20 @@
     {{ if .lockout }}
     <div class="alert alert-warn">{{ .lockout }}</div>
     {{ end }}
-    <p class="muted">Изменение безопасно: если связь с панелью прервётся, через
-    {{ .timeout }} с всё вернётся как было. Сотрудники офиса на минуту
+    {{ range .surroundNotes }}
+    <div class="alert alert-warn">{{ . }}</div>
+    {{ end }}
+    {{ if .refusal }}
+    <div class="alert alert-error" role="alert">{{ .refusal }}</div>
+    {{ end }}
+    <p class="muted">Изменение безопасно: если провайдер не выдаст адрес за
+    {{ .timeout }} с, шлюз сам вернёт всё как было. Сотрудники офиса на минуту
     останутся без сети.</p>
-    <div class="wizard-actions">
-        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
-        {{ template "components/button" .applyBtn }}
-    </div>
 </form>
+{{ if .refusal }}
+<form method="post" action="/setup/provider/recheck" id="recheck-form">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+</form>
+{{ end }}
 {{ template "wizard-bottom" . }}
 {{ end }}

@@ -4,99 +4,52 @@
 {{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
 {{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
 
-{{ if .pools }}
-<div class="card">
-    <h2>Свободные адреса</h2>
-    <table>
-        <thead><tr><th>Сегмент</th><th>Занято</th><th>Заполненность</th></tr></thead>
-        <tbody>
-            {{ range .pools }}
-            <tr>
-                <td><code>{{ .CIDR }}</code> <span class="muted">({{ .Name }})</span></td>
-                <td>{{ .Used }} из {{ .Size }}</td>
-                <td>
-                    <div class="pool-bar{{ if ge .Percent 80 }} pool-warn{{ end }}"><span class="pool-fill-{{ .Step }}"></span></div>
-                </td>
-            </tr>
-            {{ end }}
-        </tbody>
-    </table>
-    <p class="muted">Адрес выдаётся устройству на {{ .leaseTime }} суток — он сохраняется
-    после выключения на ночь и на выходные.</p>
-</div>
-{{ end }}
+{{ if .pools }}{{ template "components/item-grid" .poolCards }}{{ end }}
 
-<div class="card">
-    <h2>Закреплённые адреса</h2>
-    <p class="muted">Закрепление нужно устройствам, чей адрес не должен меняться:
-    локальной АТС, принтерам, камерам, настольным телефонам.</p>
-    {{ if .reservations }}
+<div class="cols cols-main">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Устройства в локальной сети {{ if .rows }}<span class="tag">{{ len .rows }}</span>{{ end }}</h2>
+            <p class="muted card-sub">Кто какой адрес получил. Закрепить адрес — одна кнопка в строке:
+            устройство будет получать его всегда. Адрес выдаётся на {{ .leaseTime }} суток.</p>
+        </div>
+    </div>
+    {{ if .rows }}
+    <div class="list-tools" hidden>
+        <label class="visually-hidden" for="dhcp-search">Найти устройство</label>
+        <input type="search" id="dhcp-search" data-search-for="dhcp-rows" placeholder="Имя, адрес или аппаратный адрес" autocomplete="off">
+        {{ template "components/timeline-filters" .rowFilters }}
+    </div>
     <table>
-        <thead><tr><th>Устройство</th><th>Адрес</th><th>Аппаратный адрес</th><th>Состояние</th><th></th></tr></thead>
-        <tbody>
-            {{ range .reservations }}
-            <tr>
-                <td>{{ .Label }}</td>
+        <thead><tr><th>Устройство</th><th>Адрес</th><th>Аппаратный адрес</th><th>Действует до</th><th>Состояние</th><th><span class="visually-hidden">Закрепление</span></th></tr></thead>
+        <tbody id="dhcp-rows">
+            {{ range .rows }}
+            <tr data-kind="{{ .Kind }}">
+                <td>{{ if .Label }}<strong>{{ .Label }}</strong>{{ else }}<span class="muted">имя не сообщило</span>{{ end }}</td>
                 <td><code>{{ .IP }}</code></td>
                 <td><code>{{ .MAC }}</code></td>
+                <td>{{ if .HasLease }}{{ .Until }}{{ else }}<span class="muted">—</span>{{ end }}</td>
                 <td>
-                    {{ if .Stale }}<span class="state-down">не подходит настройкам сети</span>
-                    {{ else if .Waiting }}<span class="muted">ожидает применения</span>
-                    {{ else }}<span class="state-up">действует</span>{{ end }}
+                    {{ if .Stale }}<span class="tag tag-error">не подходит настройкам сети</span>
+                    {{ else if .Waiting }}<span class="tag tag-warn">ожидает применения</span>
+                    {{ else if .Pinned }}<span class="tag tag-main">адрес закреплён</span>
+                    {{ else }}<span class="tag tag-ok">действует</span>{{ end }}
                 </td>
                 <td>
-                    <form method="post" action="/dhcp/unreserve">
+                    {{ if .Pinned }}
+                    <form method="post" action="/dhcp/unreserve" class="inline-form">
                         <input type="hidden" name="_csrf" value="{{ $.csrf }}">
-                        <input type="hidden" name="id" value="{{ .ID }}">
-                        <button type="submit" class="btn btn-danger">Снять</button>
+                        <input type="hidden" name="id" value="{{ .ResID }}">
+                        <button type="submit" class="btn btn-ghost btn-small pin pin-on" title="Снять закрепление">{{ template "components/icon" "pin" }}<span class="visually-hidden">Снять закрепление</span></button>
                     </form>
-                </td>
-            </tr>
-            {{ end }}
-        </tbody>
-    </table>
-    {{ else }}
-    <p class="muted">Закреплённых адресов пока нет.</p>
-    {{ end }}
-
-    {{ if .suggestIP }}
-    <h2>Закрепить адрес вручную</h2>
-    <form method="post" action="/dhcp/reserve">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <label>Название устройства
-            <input name="label" placeholder="Принтер бухгалтерии" maxlength="50" required>
-        </label>
-        <label>Аппаратный адрес устройства (MAC)
-            <input name="mac" placeholder="a4:bb:6d:1f:22:90" required>
-        </label>
-        <label>Адрес, который закрепить
-            <input name="ip" value="{{ .suggestIP }}" required>
-        </label>
-        <button type="submit" class="btn">Закрепить адрес</button>
-    </form>
-    {{ end }}
-</div>
-
-<div class="card">
-    <h2>Устройства в локальной сети</h2>
-    {{ if .leases }}
-    <table>
-        <thead><tr><th>Адрес</th><th>Устройство</th><th>Аппаратный адрес</th><th>Адрес действует до</th><th></th></tr></thead>
-        <tbody>
-            {{ range .leases }}
-            <tr>
-                <td><code>{{ .Address }}</code></td>
-                <td>{{ if .Hostname }}{{ .Hostname }}{{ else }}<span class="muted">имя не сообщило</span>{{ end }}</td>
-                <td><code>{{ .MAC }}</code></td>
-                <td>{{ .Until }}</td>
-                <td>
-                    {{ if .Pinned }}<span class="tag tag-main">адрес закреплён</span>
                     {{ else }}
-                    <form method="post" action="/dhcp/reserve">
+                    <form method="post" action="/dhcp/reserve" class="inline-form">
                         <input type="hidden" name="_csrf" value="{{ $.csrf }}">
                         <input type="hidden" name="mac" value="{{ .MAC }}">
-                        <input type="hidden" name="label" value="{{ if .Hostname }}{{ .Hostname }}{{ else }}Устройство{{ end }}">
-                        <button type="submit" class="btn btn-small">Закрепить адрес</button>
+                        <input type="hidden" name="label" value="{{ if .Label }}{{ .Label }}{{ else }}Устройство{{ end }}">
+                        <button type="submit" class="btn btn-secondary btn-small pin" title="Закрепить адрес">{{ template "components/icon" "pin" }}<span class="visually-hidden">Закрепить адрес</span></button>
                     </form>
                     {{ end }}
                 </td>
@@ -104,10 +57,71 @@
             {{ end }}
         </tbody>
     </table>
-    {{ else }}
+    {{ else if .pools }}
     <p class="muted">Пока ни одно устройство не получило адрес. Проверьте, что кабель
     локальной сети подключён, а на устройствах включено автоматическое получение адреса.</p>
     {{ end }}
+</section>
+</div>
+<div class="col">
+{{ if .suggestIP }}
+<section class="card" id="dhcp-reserve">
+    <div class="card-head">
+        <div>
+            <h2>Закрепить адрес вручную</h2>
+            <p class="muted card-sub">Для устройства, которого ещё нет в сети: принтер привезут завтра,
+            а адрес нужен уже сегодня. Свободный адрес сегмента подставлен.</p>
+        </div>
+    </div>
+    <form method="post" action="/dhcp/reserve">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <label>Устройство
+            <input name="label" placeholder="Принтер бухгалтерии" maxlength="50" required>
+        </label>
+        <label>Аппаратный адрес (MAC)
+            <input name="mac" placeholder="a4:bb:6d:1f:22:90" required>
+        </label>
+        <label>Адрес, который закрепить
+            <input name="ip" value="{{ .suggestIP }}" required>
+        </label>
+        <div class="btn-row"><button type="submit" class="btn">Закрепить адрес</button></div>
+    </form>
+</section>
+{{ end }}
+
+{{ if .pools }}
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Как это работает</h2>
+        </div>
+    </div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Зачем закреплять адрес</div>
+            <p class="setting-text">Устройствам, чей адрес не должен меняться: локальной АТС, принтерам,
+            камерам, настольным телефонам. Остальные получают адрес сами и держат его {{ .leaseTime }} суток.</p>
+        </div>
+    </div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Когда закрепление вступает в силу</div>
+            <p class="setting-text">Сразу после нажатия служба выдачи адресов перечитывает настройки.
+            Устройство получит адрес при следующем обновлении аренды или после переподключения к сети —
+            до этого строка помечена «ожидает применения».</p>
+        </div>
+    </div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Если адреса кончаются</div>
+            <p class="setting-text">Жёлтая метка у сегмента значит, что свободных адресов меньше пятой части.
+            Новые устройства могут не получить адрес: уберите лишние устройства из сети или расширьте
+            сегмент на странице «Сеть».</p>
+        </div>
+    </div>
+</section>
+{{ end }}
+</div>
 </div>
 
 {{ template "app-bottom" . }}

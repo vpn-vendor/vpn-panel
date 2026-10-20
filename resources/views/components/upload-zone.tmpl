@@ -1,0 +1,16 @@
+{{ define "components/upload-zone" }}
+<form method="post" action="{{ .Action }}" enctype="multipart/form-data" class="upload-zone" data-upload>
+    <input type="hidden" name="_csrf" value="{{ .CSRF }}">
+    <div class="upload-drop">
+        <span class="upload-icon" aria-hidden="true">{{ template "components/icon" "upload" }}</span>
+        <span class="upload-title" id="{{ .ID }}-title">{{ .Title }}</span>
+        <span class="upload-text" data-upload-name>{{ .Text }}</span>
+        {{ if .Kinds }}<span class="upload-kinds">{{ range .Kinds }}<span class="upload-kind"><span class="{{ .Mark.Class }}" aria-hidden="true">{{ .Mark.Mono }}</span>{{ .Mark.Label }} <code>{{ .Ext }}</code></span>{{ end }}</span>{{ end }}
+        <input class="upload-input" type="file" id="{{ .ID }}" name="{{ .FileName }}"{{ if .Accept }} accept="{{ .Accept }}"{{ end }} required aria-labelledby="{{ .ID }}-title">
+    </div>
+    <div class="upload-form" data-upload-form>
+        {{ template "components/field" .NameField }}
+        <div class="btn-row btn-row-end">{{ template "components/button" .Button }}</div>
+    </div>
+</form>
+{{ end }}

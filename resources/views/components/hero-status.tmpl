@@ -1,0 +1,25 @@
+{{ define "components/hero-status" }}
+<div class="{{ .Class }}">
+    <div class="hero-head">
+        {{ with .Ring }}
+        <div class="hero-ring" role="img" aria-label="В порядке {{ .Done }} из {{ .Total }}">
+            <svg viewBox="0 0 36 36" aria-hidden="true" focusable="false">
+                <circle class="hero-ring-track" stroke-width="3.2" cx="18" cy="18" r="15.9" pathLength="100"/>
+                <circle class="hero-ring-fill" stroke-width="3.2" cx="18" cy="18" r="15.9" pathLength="100" stroke-dasharray="{{ .Percent }} 100" transform="rotate(-90 18 18)"/>
+            </svg>
+            <span class="hero-ring-text">{{ .Done }}/{{ .Total }}</span>
+        </div>
+        {{ else }}{{ if .Icon }}
+        <span class="hero-badge" aria-hidden="true">{{ template "components/icon" .Icon }}</span>
+        {{ else }}
+        <span class="hero-dot" aria-hidden="true"></span>
+        {{ end }}{{ end }}
+        <div class="hero-words">
+            <div class="hero-title">{{ .Title }}</div>
+            {{ if .Text }}<p class="hero-text">{{ .Text }}</p>{{ end }}
+            {{ if .Tags }}<div class="hero-tags">{{ range .Tags }}<span class="{{ .Class }}">{{ .Text }}</span>{{ end }}</div>{{ end }}
+        </div>
+    </div>
+    {{ template "components/metric-grid" . }}
+</div>
+{{ end }}

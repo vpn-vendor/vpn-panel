@@ -10,7 +10,9 @@ import (
 	"github.com/vpn-vendor/vpn-panel-core/app/models"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/auth"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/network"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/system"
 	"github.com/vpn-vendor/vpn-panel-core/internal/bindset"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 )
 
 type AuthCode struct{}
@@ -82,6 +84,12 @@ func printPanelAddresses() {
 		suffix = ":" + port
 	}
 	set := bindset.Compute(false, network.New().AppliedLANs(), bindset.LocalInterfaces())
+
+	if around, err := system.New().Surroundings(); err == nil {
+		if f, ok := around.Fact("surroundings.tls_port"); ok && f.Answer == hostcaps.Yes {
+			fmt.Println("Внимание: " + f.Found)
+		}
+	}
 	printed := 0
 	for _, a := range set.Addrs {
 		if a.IP == bindset.Loopback {

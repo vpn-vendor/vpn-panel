@@ -22,6 +22,7 @@ type Manager struct {
 	pending      []string
 	pendingUntil time.Time
 	last         bindset.Set
+	bindErr      map[*multilisten.Listener]string
 }
 
 var (
@@ -74,21 +75,40 @@ func (m *Manager) desired() bindset.Set {
 func (m *Manager) Refresh() {
 	set := m.desired()
 	ips := set.IPs()
+
+	m.mu.Lock()
 	for _, l := range []*multilisten.Listener{m.https, m.redirect} {
 		if l == nil {
 			continue
 		}
-		if err := l.Rebind(ips); err != nil {
-			m.logf("listener: bind pending (%s): %v", set.Mode, err)
-		}
+		m.noteBind(l, l.Rebind(ips), set.Mode)
 	}
-	m.mu.Lock()
 	changed := !sameSet(m.last, set)
 	m.last = set
 	m.mu.Unlock()
 	if changed {
 		m.logf("listener: mode=%s addresses=%s", set.Mode, strings.Join(ips, ","))
 	}
+}
+
+func (m *Manager) noteBind(l *multilisten.Listener, err error, mode bindset.Mode) {
+	text := ""
+	if err != nil {
+		text = err.Error()
+	}
+	if text == m.bindErr[l] {
+		return
+	}
+	if text == "" {
+		delete(m.bindErr, l)
+		m.logf("listener: all addresses bound again (port %d)", l.Port())
+		return
+	}
+	if m.bindErr == nil {
+		m.bindErr = map[*multilisten.Listener]string{}
+	}
+	m.bindErr[l] = text
+	m.logf("listener: bind pending (%s): %v", mode, err)
 }
 
 func (m *Manager) SetPending(lanCIDRs []string, ttl time.Duration) {
@@ -111,6 +131,10 @@ type View struct {
 	Addrs   []bindset.Addr
 	Bound   []string
 	Pending bool
+
+	RedirectBound []string
+	InUse         map[string]time.Time
+	RedirectInUse map[string]time.Time
 }
 
 func (m *Manager) Snapshot() View {
@@ -119,6 +143,11 @@ func (m *Manager) Snapshot() View {
 	v := View{Mode: m.last.Mode, Addrs: m.last.Addrs, Pending: m.pending != nil}
 	if m.https != nil {
 		v.Bound = m.https.Bound()
+		v.InUse = m.https.InUse()
+	}
+	if m.redirect != nil {
+		v.RedirectBound = m.redirect.Bound()
+		v.RedirectInUse = m.redirect.InUse()
 	}
 	return v
 }

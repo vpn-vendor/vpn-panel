@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/devmode"
 	"github.com/vpn-vendor/vpn-panel-core/internal/diskcrypt"
@@ -35,6 +36,7 @@ func runDiskSetup() int {
 		return 1
 	}
 	human := newBootHuman()
+	defer human.Close()
 	if restore, err := usKeymap(); err != nil {
 		log.Printf("disk-setup: %v", err)
 	} else {
@@ -278,30 +280,91 @@ type bootHuman struct {
 	ask, plymouth string
 	graphic       bool
 
-	timeout int
+	timeout  int
+	consoles textConsoles
+	restore  func()
+	intro    string
+	note     diskcrypt.Message
 }
 
 func newBootHuman() *bootHuman {
-	h := &bootHuman{}
+	h := &bootHuman{restore: func() {}}
 	h.ask, _ = findBinary([]string{"/usr/bin/systemd-ask-password", "/bin/systemd-ask-password"})
 	h.plymouth, _ = findBinary([]string{"/usr/bin/plymouth", "/bin/plymouth"})
-	h.graphic = h.plymouth != "" && exec.Command(h.plymouth, "--ping").Run() == nil //nolint:gosec
+
+	switch splashMode() {
+	case splashDraws:
+		h.graphic = true
+		return h
+	case splashText:
+
+		quitSplash()
+	}
+	h.consoles, h.restore = openTextConsoles()
+	log.Printf("disk-setup: текстовый режим, консоли: %s", h.consoles.names())
 	return h
 }
 
-func (h *bootHuman) text(code string) string {
-	if h.graphic {
-		return code
+func (h *bootHuman) Close() { h.restore() }
+
+const plymouthPIDFile = "/run/plymouth/pid"
+
+func plymouthDraws(pidFile string) bool {
+	raw, err := os.ReadFile(pidFile) //nolint:gosec
+	if err != nil {
+		return false
 	}
-	return diskcrypt.Text(code)
+	pid := strings.TrimSpace(string(raw))
+	if _, err := strconv.Atoi(pid); err != nil {
+		return false
+	}
+	return fdsDraw(filepath.Join("/proc", pid, "fd"))
+}
+
+func fdsDraw(fdDir string) bool {
+	entries, err := os.ReadDir(fdDir)
+	if err != nil {
+		return false
+	}
+	for _, e := range entries {
+		target, err := os.Readlink(filepath.Join(fdDir, e.Name()))
+		if err != nil {
+			continue
+		}
+		if strings.HasPrefix(target, "/dev/dri/") || strings.HasPrefix(target, "/dev/fb") {
+			return true
+		}
+	}
+	return false
 }
 
 func (h *bootHuman) Ask(p diskcrypt.Prompt) ([]byte, error) {
+	if !h.graphic {
+
+		var lines []textLine
+		if h.intro != "" {
+			lines = append(lines, textLine{h.intro, stylePlain})
+		}
+		if h.note != "" {
+			style := stylePlain
+			if consoleErrors[h.note] {
+				style = styleError
+			}
+			lines = append(lines, textLine{diskcrypt.Text(string(h.note)), style})
+		}
+		h.note = ""
+		h.consoles.draw(lines, diskcrypt.Text(string(p)))
+		var deadline time.Time
+		if h.timeout > 0 {
+			deadline = time.Now().Add(time.Duration(h.timeout) * time.Second)
+		}
+		return h.consoles.ask(deadline, nil)
+	}
 	if h.ask == "" {
 		return nil, errors.New("нет systemd-ask-password")
 	}
 
-	out, err := exec.Command(h.ask, "--timeout="+strconv.Itoa(h.timeout), "--id="+askID, h.text(string(p))).Output() //nolint:gosec
+	out, err := exec.Command(h.ask, "--timeout="+strconv.Itoa(h.timeout), "--id="+askID, string(p)).Output() //nolint:gosec
 	if err != nil {
 		return nil, err
 	}
@@ -312,15 +375,30 @@ func (h *bootHuman) Tell(m diskcrypt.Message) error {
 	if h.graphic {
 		return exec.Command(h.plymouth, "display-message", "--text="+string(m)).Run() //nolint:gosec
 	}
-	console, err := os.OpenFile("/dev/console", os.O_WRONLY, 0)
-	if err != nil {
-		return err
+	switch {
+	case m == diskcrypt.MsgIntro:
+		h.intro = diskcrypt.Text(string(m))
+	case consoleFinal[m] || m == diskcrypt.MsgDone || m == diskcrypt.MsgFailed:
+		h.consoles.draw([]textLine{{diskcrypt.Text(string(m)), stylePlain}}, "")
+		time.Sleep(consoleReadFinal)
+	default:
+		h.note = m
 	}
-	_, werr := fmt.Fprintf(console, "\n%s\n", h.text(string(m)))
-	if cerr := console.Close(); werr == nil {
-		werr = cerr
+	return nil
+}
+
+func consoleDevices(active string) []string {
+	var out []string
+	for _, name := range strings.Fields(active) {
+		if strings.ContainsAny(name, "/.") {
+			continue
+		}
+		out = append(out, "/dev/"+name)
 	}
-	return werr
+	if len(out) == 0 {
+		return []string{"/dev/console"}
+	}
+	return out
 }
 
 func usKeymap() (restore func(), err error) {

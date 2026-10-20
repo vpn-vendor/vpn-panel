@@ -1,11 +1,16 @@
 package network
 
 import (
+	"errors"
 	"log"
+	"sync"
+	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/app/services/dhcp"
 	dnssvc "github.com/vpn-vendor/vpn-panel-core/app/services/dns"
 	qossvc "github.com/vpn-vendor/vpn-panel-core/app/services/qos"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/settings"
+	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
 	"github.com/vpn-vendor/vpn-panel-core/internal/keagen"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netplangen"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netstatus"
@@ -30,6 +35,10 @@ type Outcome struct {
 }
 
 func (o *Orchestrator) ApplyPlan(ip string, plan netplangen.Plan, st *netstatus.Status, sec ApplySecrets) (*Outcome, error) {
+	return o.applyPlan(ip, plan, st, sec, false)
+}
+
+func (o *Orchestrator) applyPlan(ip string, plan netplangen.Plan, st *netstatus.Status, sec ApplySecrets, window bool) (*Outcome, error) {
 	guard := o.net.GuardNeeded(ip, plan, st)
 	if guard {
 		if text := o.net.LockoutRisk(ip, plan, st); text != "" {
@@ -37,9 +46,17 @@ func (o *Orchestrator) ApplyPlan(ip string, plan netplangen.Plan, st *netstatus.
 			return nil, &LockoutError{Text: text}
 		}
 	}
-	res, err := o.net.Apply(plan, guard, o.net.FirewallIfReady(), sec)
+	res, err := o.net.Apply(plan, guard || window, o.net.FirewallIfReady(), sec)
 	if err != nil {
-		o.net.Audit("network_apply_failed", ip, err.Error())
+
+		switch {
+		case IsForeignDHCP(err):
+			o.net.Audit("network_waits_foreign", ip, ErrText(err))
+		case isLegacyBusy(err):
+			o.net.Audit("network_waits_legacy", ip, ErrText(err))
+		default:
+			o.net.Audit("network_apply_failed", ip, err.Error())
+		}
 		return nil, err
 	}
 	switch {
@@ -55,6 +72,14 @@ func (o *Orchestrator) ApplyPlan(ip string, plan netplangen.Plan, st *netstatus.
 }
 
 func (o *Orchestrator) Change(ip string, st *netstatus.Status, sec ApplySecrets, edit func() error) (*Outcome, error) {
+	return o.change(ip, st, sec, edit, false)
+}
+
+func (o *Orchestrator) ChangeInWindow(ip string, st *netstatus.Status, sec ApplySecrets, edit func() error) (*Outcome, error) {
+	return o.change(ip, st, sec, edit, true)
+}
+
+func (o *Orchestrator) change(ip string, st *netstatus.Status, sec ApplySecrets, edit func() error, window bool) (*Outcome, error) {
 	changeMu.Lock()
 	defer changeMu.Unlock()
 	if err := o.net.BeginChange(); err != nil {
@@ -64,7 +89,7 @@ func (o *Orchestrator) Change(ip string, st *netstatus.Status, sec ApplySecrets,
 		o.settle()
 		return nil, err
 	}
-	out, err := o.ApplyPlan(ip, o.net.BuildPlan(), st, sec)
+	out, err := o.applyPlan(ip, o.net.BuildPlan(), st, sec, window)
 	if err != nil {
 		o.settle()
 		return nil, err
@@ -124,9 +149,13 @@ func (o *Orchestrator) ApplyServices(ip string) string {
 
 	msg += o.applyDNS(ip)
 
-	state, derr := o.ApplyDHCP(ip)
+	state, warning, derr := o.ApplyDHCP(ip)
 	if derr != nil {
-		return msg + " Автоматическая раздача адресов не включилась: " + ErrText(derr)
+
+		return msg + " Автоматическая раздача адресов не включилась: " + ErrText(derr) + o.applyQos(ip)
+	}
+	if warning != "" {
+		return msg + " Раздача адресов настроена. " + warning + o.applyQos(ip)
 	}
 	switch state {
 	case "":
@@ -143,18 +172,92 @@ func (o *Orchestrator) ApplyServices(ip string) string {
 
 func (o *Orchestrator) DHCPPlan() keagen.Plan { return o.dhcp.BuildPlan(o.dns.Ready()) }
 
-func (o *Orchestrator) ApplyDHCP(ip string) (string, error) {
+func (o *Orchestrator) ApplyDHCP(ip string) (state, warning string, err error) {
 	plan := o.DHCPPlan()
 	if len(plan.LANs) == 0 {
-		return "", nil
+
+		clearDHCPWait()
+		return "", "", nil
 	}
-	_, state, err := o.dhcp.Apply(plan)
-	if err != nil {
-		o.net.Audit("dhcp_apply_failed", ip, err.Error())
-		return "", err
+	_, state, warning, err = o.dhcp.Apply(plan)
+	switch {
+	case err != nil && IsForeignDHCP(err):
+
+		if settings.Get(SettingWaitsForeignDHCP) == "" {
+			o.net.Audit("dhcp_waits_foreign", ip, ErrText(err))
+			_ = settings.Set(SettingWaitsForeignDHCP, "1")
+		}
+		return "", "", err
+	case err != nil:
+
+		clearDHCPWait()
+		o.net.Audit("dhcp_apply_failed", ip, ErrText(err))
+		return "", "", err
 	}
-	o.net.Audit("dhcp_apply", ip, "состояние: "+state)
-	return state, nil
+	clearDHCPWait()
+	details := "состояние: " + state
+	if warning != "" {
+		details += "; " + warning
+	}
+	o.net.Audit("dhcp_apply", ip, details)
+	return state, warning, nil
+}
+
+func clearDHCPWait() {
+	if settings.Get(SettingWaitsForeignDHCP) != "" {
+		_ = settings.Set(SettingWaitsForeignDHCP, "")
+	}
+}
+
+const SettingWaitsForeignDHCP = "dhcp.waits_foreign"
+
+const codeDHCPForeign = 1205
+
+const codeLegacyBusy = 2403
+
+func isLegacyBusy(err error) bool {
+	var e *agentrpc.ErrorObject
+	return errors.As(err, &e) && e.Code == codeLegacyBusy
+}
+
+func IsForeignDHCP(err error) bool {
+	var e *agentrpc.ErrorObject
+	return errors.As(err, &e) && e.Code == codeDHCPForeign
+}
+
+func (o *Orchestrator) RetryWaitingDHCP() {
+	if settings.Get(SettingWaitsForeignDHCP) == "" {
+		return
+	}
+	dhcpRetryMu.Lock()
+	if time.Since(dhcpRetryAt) < dhcpRetryEvery {
+		dhcpRetryMu.Unlock()
+		return
+	}
+	dhcpRetryAt = time.Now()
+	dhcpRetryMu.Unlock()
+	_ = o.ReapplyDHCP()
+}
+
+const dhcpRetryEvery = time.Minute
+
+var (
+	dhcpRetryMu sync.Mutex
+	dhcpRetryAt time.Time
+)
+
+var ErrChangeInProgress = errors.New("изменение сети ещё не закреплено")
+
+func (o *Orchestrator) ReapplyDHCP() error {
+	if !changeMu.TryLock() {
+		return ErrChangeInProgress
+	}
+	defer changeMu.Unlock()
+	if _, pending := loadPending(); pending {
+		return ErrChangeInProgress
+	}
+	_, _, err := o.ApplyDHCP("")
+	return err
 }
 
 func (o *Orchestrator) applyQos(ip string) string {

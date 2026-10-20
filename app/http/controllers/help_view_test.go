@@ -41,6 +41,11 @@ func TestHelpPageShowsEveryTopic(t *testing.T) {
 				t.Errorf("тема «%s»: шага нет на странице: %s", topic.Question, step)
 			}
 		}
+
+		if !strings.Contains(out, `href="#`+topic.Key+`" data-pick-for="`+topic.Key+`"`) ||
+			!strings.Contains(out, `id="`+topic.Key+`" data-pick-panel>`) {
+			t.Errorf("тема «%s»: вопрос не связан с темой или тема спрятана сервером", topic.Question)
+		}
 		if len(topic.Checks) > 0 && !strings.Contains(out, `id="check-`+topic.Key+`-`) {
 			t.Errorf("тема «%s» просит проверки, а на странице их нет", topic.Question)
 		}

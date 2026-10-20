@@ -112,3 +112,36 @@ func Quorum(results []bool, k int) bool {
 	}
 	return k > 0 && n >= k
 }
+
+const JitterGain = 1.0 / 16
+
+type Jitter struct {
+	prev  []time.Duration
+	ms    float64
+	known bool
+}
+
+func (j *Jitter) Add(idx, n int, rtt time.Duration) {
+	if len(j.prev) != n {
+		j.prev = make([]time.Duration, n)
+	}
+	if idx < 0 || idx >= n {
+		return
+	}
+	prev := j.prev[idx]
+	j.prev[idx] = rtt
+	if rtt <= 0 || prev <= 0 {
+		return
+	}
+	d := float64(rtt-prev) / float64(time.Millisecond)
+	if d < 0 {
+		d = -d
+	}
+	if !j.known {
+		j.ms, j.known = d, true
+		return
+	}
+	j.ms += (d - j.ms) * JitterGain
+}
+
+func (j *Jitter) Ms() (float64, bool) { return j.ms, j.known }

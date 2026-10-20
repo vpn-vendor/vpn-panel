@@ -99,22 +99,23 @@ func ipAfter(a, b net.IP) bool {
 	return false
 }
 
-func (s *Service) Apply(plan keagen.Plan) (bool, string, error) {
+func (s *Service) Apply(plan keagen.Plan) (changed bool, state, warning string, err error) {
 	resp, err := s.client().Call("dhcp.apply", map[string]any{"plan": plan})
 	if err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
 	if resp.Error != nil {
-		return false, "", resp.Error
+		return false, "", "", resp.Error
 	}
 	var r struct {
 		Changed bool   `json:"changed"`
 		State   string `json:"state"`
+		Warning string `json:"warning"`
 	}
 	if err := json.Unmarshal(resp.Result, &r); err != nil {
-		return false, "", err
+		return false, "", "", err
 	}
-	return r.Changed, r.State, nil
+	return r.Changed, r.State, r.Warning, nil
 }
 
 type Lease struct {

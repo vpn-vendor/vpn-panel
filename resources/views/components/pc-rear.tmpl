@@ -1,0 +1,72 @@
+{{ define "components/pc-rear" }}
+<svg class="pr" viewBox="0 0 540 600" role="img" aria-label="Задняя стенка системного блока: блок питания, вентилятор, порты материнской платы и сетевые платы в слотах" focusable="false">
+    <defs><linearGradient id="{{ $.Prefix }}-case" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-case-hi"/><stop offset="1" class="g-case-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-side-lo"/><stop offset="1" class="g-side-hi"/></linearGradient><linearGradient id="{{ $.Prefix }}-roof" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-roof-lo"/><stop offset="1" class="g-roof-hi"/></linearGradient><linearGradient id="{{ $.Prefix }}-psu" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-psu-hi"/><stop offset="1" class="g-psu-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-silver" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-silver-hi"/><stop offset="1" class="g-silver-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-bracket" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-bracket-hi"/><stop offset=".5" class="g-bracket-mid"/><stop offset="1" class="g-bracket-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-nic" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-nic-hi"/><stop offset="1" class="g-nic-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-rocker" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-rocker-hi"/><stop offset=".55" class="g-rocker-mid"/><stop offset="1" class="g-rocker-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-bezel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g-bezel-hi"/><stop offset="1" class="g-bezel-lo"/></linearGradient><linearGradient id="{{ $.Prefix }}-pin" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-pin-hi"/><stop offset="1" class="g-pin-lo"/></linearGradient><radialGradient id="{{ $.Prefix }}-hub" cx=".5" cy=".5" r=".5"><stop offset="0" class="g-hub-hi"/><stop offset="1" class="g-hub-lo"/></radialGradient><radialGradient id="{{ $.Prefix }}-shadow" cx=".5" cy=".5" r=".5"><stop offset="0" class="g-shadow-in"/><stop offset="1" class="g-shadow-out"/></radialGradient></defs>
+    <ellipse cx="270" cy="566" rx="200" ry="22" fill="url(#{{ $.Prefix }}-shadow)"/>
+    <polygon points="150,22 128,38 128,556 150,540" fill="url(#{{ $.Prefix }}-side)"/>
+    <polygon points="150,22 128,38 378,38 400,22" fill="url(#{{ $.Prefix }}-roof)"/>
+    <rect x="150" y="22" width="250" height="518" rx="4" fill="url(#{{ $.Prefix }}-case)"/>
+    <path class="pr-edge-hi" d="M151 539 V23 H399"/>
+    <path class="pr-edge-lo" d="M399 23 V539 H151"/>
+    <circle class="pr-screw" cx="398" cy="60" r="5"/><path class="pr-screw-slot" d="M394 60h8"/><circle class="pr-shine" cx="397" cy="59" r="1.7"/> <circle class="pr-screw" cx="398" cy="500" r="5"/><path class="pr-screw-slot" d="M394 500h8"/><circle class="pr-shine" cx="397" cy="499" r="1.7"/>
+    <rect x="162" y="34" width="226" height="98" rx="4" fill="url(#{{ $.Prefix }}-psu)"/>
+    <path class="pr-edge-soft" d="M163 131 V35 H387"/>
+    <circle cx="214" cy="83" r="40" fill="url(#{{ $.Prefix }}-hub)"/>
+    <g class="pr-blades"><path d="M214 83 L246.3 89.6"/><path d="M214 83 L229.0 112.4"/><path d="M214 83 L200.4 113.1"/><path d="M214 83 L182.0 91.1"/><path d="M214 83 L187.7 63.1"/><path d="M214 83 L213.2 50.0"/><path d="M214 83 L239.3 61.8"/></g>
+    <g class="pr-grille"><circle cx="214" cy="83" r="38"/><circle cx="214" cy="83" r="29"/><circle cx="214" cy="83" r="20"/><circle cx="214" cy="83" r="11"/><path d="M176 83h76M214 45v76"/></g>
+    <circle class="pr-hubcap" cx="214" cy="83" r="5"/>
+    <circle class="pr-screw" cx="170" cy="42" r="3"/><path class="pr-screw-slot" d="M168 42h4"/><circle class="pr-shine" cx="169" cy="41" r="1.0"/> <circle class="pr-screw" cx="170" cy="124" r="3"/><path class="pr-screw-slot" d="M168 124h4"/><circle class="pr-shine" cx="169" cy="123" r="1.0"/> <circle class="pr-screw" cx="380" cy="42" r="3"/><path class="pr-screw-slot" d="M378 42h4"/><circle class="pr-shine" cx="379" cy="41" r="1.0"/> <circle class="pr-screw" cx="380" cy="124" r="3"/><path class="pr-screw-slot" d="M378 124h4"/><circle class="pr-shine" cx="379" cy="123" r="1.0"/>
+    <rect x="266" y="56" width="52" height="44" rx="7" fill="url(#{{ $.Prefix }}-bezel)"/>
+    <path class="pr-hole" d="M273 64 h38 v20 l-6 9 h-26 l-6 -9 z"/>
+    <rect x="280" y="71" width="5" height="12" rx="1" fill="url(#{{ $.Prefix }}-pin)"/><rect x="290" y="67" width="5" height="12" rx="1" fill="url(#{{ $.Prefix }}-pin)"/><rect x="300" y="71" width="5" height="12" rx="1" fill="url(#{{ $.Prefix }}-pin)"/>
+    <rect class="pr-switch-frame" x="326" y="58" width="30" height="40" rx="4"/>
+    <polygon points="330,62 352,62 352,84 330,78" fill="url(#{{ $.Prefix }}-rocker)"/>
+    <polygon class="pr-rocker-side" points="330,78 352,84 352,94 330,94"/>
+    <path class="pr-rocker-i" d="M341 66 v8"/><circle class="pr-rocker-o" cx="341" cy="88" r="2.6"/>
+    <text class="pr-note" x="292" y="118" font-size="10">питание</text>
+    <rect class="pr-shield" x="162" y="146" width="112" height="232" rx="4"/>
+    <rect x="165" y="149" width="106" height="226" rx="3" fill="url(#{{ $.Prefix }}-silver)"/>
+    <rect class="pr-frame" x="176" y="160" width="30" height="13" rx="2"/><rect class="pr-hole" x="178" y="162" width="26" height="9" rx="1"/><rect class="pr-hole-2" x="180" y="165" width="22" height="3"/><rect class="pr-frame" x="216" y="160" width="30" height="13" rx="2"/><rect class="pr-hole" x="218" y="162" width="26" height="9" rx="1"/><rect class="pr-hole-2" x="220" y="165" width="22" height="3"/><rect class="pr-frame" x="176" y="180" width="30" height="13" rx="2"/><rect class="pr-hole" x="178" y="182" width="26" height="9" rx="1"/><rect class="pr-usb3" x="180" y="185" width="22" height="3"/><rect class="pr-frame" x="216" y="180" width="30" height="13" rx="2"/><rect class="pr-hole" x="218" y="182" width="26" height="9" rx="1"/><rect class="pr-usb3" x="220" y="185" width="22" height="3"/><rect class="pr-frame" x="230" y="262" width="30" height="13" rx="2"/><rect class="pr-hole" x="232" y="264" width="26" height="9" rx="1"/><rect class="pr-usb3" x="234" y="267" width="22" height="3"/><rect class="pr-frame" x="230" y="282" width="30" height="13" rx="2"/><rect class="pr-hole" x="232" y="284" width="26" height="9" rx="1"/><rect class="pr-usb3" x="234" y="287" width="22" height="3"/>
+    <path class="pr-frame" d="M176 204 h44 l-4 13 h-36 z"/><path class="pr-hole" d="M179 206 h38 l-3 9 h-32 z"/><text class="pr-mark" x="198" y="228" font-size="8">HDMI</text>
+    <path class="pr-frame" d="M226 204 h28 v13 h-24 l-4 -4 z"/><path class="pr-hole" d="M228 206 h24 v9 h-20 l-4 -3 z"/><text class="pr-mark" x="240" y="228" font-size="8">DP</text>
+    <circle class="pr-audio-g" cx="194" cy="350" r="8.5"/><circle class="pr-bezel-dark" cx="194" cy="350" r="5"/><circle class="pr-hole" cx="194" cy="350" r="3"/><circle class="pr-shine pr-shine-soft" cx="191" cy="347" r="1.6"/><circle class="pr-audio-p" cx="216" cy="350" r="8.5"/><circle class="pr-bezel-dark" cx="216" cy="350" r="5"/><circle class="pr-hole" cx="216" cy="350" r="3"/><circle class="pr-shine pr-shine-soft" cx="213" cy="347" r="1.6"/><circle class="pr-audio-b" cx="238" cy="350" r="8.5"/><circle class="pr-bezel-dark" cx="238" cy="350" r="5"/><circle class="pr-hole" cx="238" cy="350" r="3"/><circle class="pr-shine pr-shine-soft" cx="235" cy="347" r="1.6"/>
+    <text class="pr-mark" x="216" y="370" font-size="7.5">звук</text>
+    <rect class="pr-fanbox" x="284" y="150" width="104" height="104" rx="6"/>
+    <circle cx="336" cy="202" r="46" fill="url(#{{ $.Prefix }}-hub)"/>
+    <g class="pr-blades pr-blades-big"><path d="M336 202 L372.3 213.2"/><path d="M336 202 L349.9 237.4"/><path d="M336 202 L317.0 234.9"/><path d="M336 202 L298.4 207.6"/><path d="M336 202 L308.2 176.1"/><path d="M336 202 L338.9 164.1"/><path d="M336 202 L367.4 180.6"/></g>
+    <g class="pr-grille"><circle cx="336" cy="202" r="44"/><circle cx="336" cy="202" r="32"/><circle cx="336" cy="202" r="20"/><circle cx="336" cy="202" r="8"/></g>
+    <circle class="pr-screw" cx="292" cy="158" r="3"/><path class="pr-screw-slot" d="M290 158h4"/><circle class="pr-shine" cx="291" cy="157" r="1.0"/> <circle class="pr-screw" cx="380" cy="158" r="3"/><path class="pr-screw-slot" d="M378 158h4"/><circle class="pr-shine" cx="379" cy="157" r="1.0"/> <circle class="pr-screw" cx="292" cy="246" r="3"/><path class="pr-screw-slot" d="M290 246h4"/><circle class="pr-shine" cx="291" cy="245" r="1.0"/> <circle class="pr-screw" cx="380" cy="246" r="3"/><path class="pr-screw-slot" d="M378 246h4"/><circle class="pr-shine" cx="379" cy="245" r="1.0"/>
+    <rect class="pr-hole-2" x="290" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="302" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="314" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="326" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="338" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="350" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="362" y="270" width="6" height="96" rx="2"/><rect class="pr-hole-2" x="374" y="270" width="6" height="96" rx="2"/>
+    {{ range .Plain }}<rect x="164" y="{{ . }}" width="222" height="14" rx="2" fill="url(#{{ $.Prefix }}-bracket)"/><rect class="pr-bezel-dark" x="186" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="202" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="218" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="234" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="250" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="266" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><rect class="pr-bezel-dark" x="282" y="{{ . }}" width="9" height="6" rx="1" transform="translate(0 4)"/><circle class="pr-screw" cx="378" cy="{{ . }}" r="4.5" transform="translate(0 7)"/>{{ end }}
+    <rect class="pr-foot" x="160" y="540" width="40" height="10" rx="3"/><rect class="pr-foot" x="350" y="540" width="40" height="10" rx="3"/>
+    {{ range .Ports }}{{ $port := . }}
+    {{ if not .Board }}<rect x="164" y="{{ .BracketY }}" width="222" height="36" rx="2" fill="url(#{{ $.Prefix }}-nic)"/><rect class="pr-pcb" x="164" y="{{ .PcbY }}" width="170" height="4"/><path class="pr-edge-shine" d="M164 {{ .BracketY }}.5h222"/><text class="pr-nic-text" x="174" y="{{ .LabelY }}" font-size="9">сетевая плата</text><circle class="pr-screw" cx="378" cy="{{ .CY }}" r="4.5"/>{{ end }}
+    <rect class="pr-frame" x="{{ .FrameX }}" y="{{ .FrameY }}" width="{{ .FrameW }}" height="{{ .FrameH }}" rx="4"/>
+    <rect class="pr-hole" x="{{ .X }}" y="{{ .Y }}" width="{{ .W }}" height="{{ .H }}" rx="3"/>
+    <path class="pr-hole-2" d="{{ .Mouth }}"/>
+    {{ range .Contacts }}<rect class="pr-gold" x="{{ . }}" y="{{ $port.Y5 }}" width="{{ $port.ContactW }}" height="6"/>{{ end }}
+    <rect class="pr-led{{ if .Link }} pr-led-link{{ end }}" x="{{ .X2 }}" y="{{ .Ym2 }}" width="{{ .LedW }}" height="5" rx="1"/>
+    <rect class="pr-led pr-led-act" x="{{ .LedRX }}" y="{{ .Ym2 }}" width="{{ .LedW }}" height="5" rx="1"/>
+    {{ if .Board }}<text class="pr-mark" x="{{ .MidX }}" y="{{ .BelowY }}" font-size="7.5">LAN</text>{{ end }}
+    {{ if .Provider }}<rect class="pr-ring pr-hot" x="{{ .RingX }}" y="{{ .RingY }}" width="{{ .RingW }}" height="{{ .RingH }}" rx="9"/>{{ end }}
+    {{ if .Name }}
+    <path class="pr-call" d="M{{ .LineX }} {{ .CY }} H 414"/>
+    <rect class="pr-box" x="414" y="{{ .BoxY }}" width="122" height="52" rx="10"/>
+    <text class="pr-box-title" x="475" y="{{ .BoxY }}" dy="20" font-size="12">{{ if .Board }}На плате{{ else }}В слоте{{ end }} · {{ .Name }}</text>
+    <text class="{{ .SpeedClass }}" x="475" y="{{ .BoxY }}" dy="40" font-size="12">{{ if .Speed }}{{ .Speed }}{{ else if .Link }}кабель есть{{ else }}без кабеля{{ end }}</text>
+    {{ end }}
+    {{ end }}
+    {{ with .Missing }}
+    <rect class="pr-want pr-hot" x="158" y="{{ .RingY }}" width="234" height="40" rx="7"/>
+    <path class="pr-call" d="M392 {{ .MidY }} H 414"/>
+    <rect class="pr-box pr-box-want" x="414" y="{{ .BoxY }}" width="122" height="52" rx="10"/>
+    <text class="pr-box-title" x="475" y="{{ .BoxY }}" dy="20" font-size="12">Свободный слот</text>
+    <text class="pr-want-text" x="475" y="{{ .BoxY }}" dy="40" font-size="12">для второй карты</text>
+    {{ end }}
+    {{ if .Cable }}
+    <path class="pr-cable" d="{{ .Cable }}"/>
+    <rect class="pr-plug" x="{{ .PlugX }}" y="{{ .PlugY }}" width="22" height="18" rx="3"/>
+    <text class="pr-cable-text" x="14" y="{{ .CableLabel }}" font-size="12">кабель<tspan x="14" dy="15">провайдера</tspan></text>
+    {{ end }}
+</svg>
+{{ with .Guess }}<p class="pr-guess">{{ . }}</p>{{ end }}
+{{ end }}

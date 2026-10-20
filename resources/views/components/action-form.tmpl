@@ -1,0 +1,7 @@
+{{ define "components/action-form" }}
+<form method="post" action="{{ .Action }}" class="inline-form"{{ if .Question }} data-island="confirm-action" data-question="{{ .Question }}"{{ end }}>
+    <input type="hidden" name="_csrf" value="{{ .CSRF }}">
+    {{ range $k, $v := .Hidden }}<input type="hidden" name="{{ $k }}" value="{{ $v }}">{{ end }}
+    {{ template "components/button" .Button }}
+</form>
+{{ end }}

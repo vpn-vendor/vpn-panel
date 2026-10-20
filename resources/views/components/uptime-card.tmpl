@@ -1,0 +1,24 @@
+{{ define "components/uptime-card" }}
+<section class="card uptime" aria-labelledby="uptime-title">
+    <header class="score-head">
+        <h3 class="chart-title" id="uptime-title">Доступность канала</h3>
+        <div class="uptime-chips" role="radiogroup" aria-label="Окно доступности">
+            {{ range .Windows }}<label class="chip uptime-chip"><input type="radio" name="uptime-window" value="{{ .Key }}" class="uptime-radio"{{ if .Checked }} checked{{ end }}>{{ .Label }}</label>{{ end }}
+        </div>
+    </header>
+    {{ range .Windows }}
+    <div class="uptime-window" data-uptime="{{ .Key }}">
+        <div class="score-big">{{ if .Pct }}<span class="score-value num">{{ .Pct }}</span><span class="score-of">{{ .For }}</span>{{ else }}<span class="score-of">Канал {{ .For }} не наблюдался: сбор был выключен или панель поставлена только что.</span>{{ end }}</div>
+        <div class="uptime-strip" aria-hidden="true">{{ range .Cells }}<span class="up-{{ . }}"></span>{{ end }}</div>
+        <div class="score-axis num"><span>{{ .From }}</span><span>сейчас</span></div>
+        <ul class="uptime-legend">
+            <li class="up-key-up">канал работал</li>
+            <li class="up-key-down">{{ .Down }}</li>
+            <li class="up-key-off">{{ .Off }}</li>
+        </ul>
+        {{ if .Partial }}<p class="chart-note">{{ .Partial }}</p>{{ end }}
+    </div>
+    {{ end }}
+    <p class="chart-note">{{ .Note }}</p>
+</section>
+{{ end }}

@@ -8,7 +8,7 @@ import (
 func TestTunnelAddressOnlyFromTunnel(t *testing.T) {
 	p := blackPlan()
 	p.Tunnel.Address = "10.66.66.4"
-	guard := chainBody(t, string(p.Generate()), "tunnel_guard")
+	guard := chainBody(t, string(p.Generate(Caps{})), "tunnel_guard")
 	for _, want := range []string{
 		"type filter hook prerouting priority raw; policy accept;",
 		`iifname != "wg-vpn0" ip daddr 10.66.66.4 fib saddr type != local counter drop comment "` + TunnelGuardComment + `"`,
@@ -22,7 +22,7 @@ func TestTunnelAddressOnlyFromTunnel(t *testing.T) {
 	white := blackPlan()
 	white.Tunnel = nil
 	for name, q := range map[string]FirewallPlan{"адрес неизвестен": unknown, "прямой режим": white} {
-		if strings.Contains(string(q.Generate()), "chain tunnel_guard") {
+		if strings.Contains(string(q.Generate(Caps{})), "chain tunnel_guard") {
 			t.Errorf("%s: цепочка защиты адреса канала без адреса", name)
 		}
 	}

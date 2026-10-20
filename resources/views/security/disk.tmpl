@@ -1,61 +1,71 @@
 {{ define "security/disk" }}
-{{ if .diskKnown }}
-<div class="card">
-    <h2>Шифрование диска</h2>
-    {{ if not .diskEncrypted }}
-    <div class="alert alert-warn">
-        <strong>Диск сервера не зашифрован.</strong>
-        Если сервер или его диск украдут, настройки офиса, пароль провайдера и
-        ключи защищённого канала можно будет прочитать. Зашифровать уже
-        работающую систему нельзя: шлюз переустанавливается с носителя панели,
-        и тогда диск шифруется при установке.
+{{ if .encKnown }}
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Диск</h2>
+            <p class="muted card-sub">{{ if not .diskEncrypted }}Диск не зашифрован: украденный сервер можно прочитать.{{ else if .diskPending }}Диск зашифрован, пароль ещё не задан.{{ else }}Диск зашифрован. При включении шлюз спрашивает пароль.{{ end }}</p>
+        </div>
+        {{ if not .diskEncrypted }}<span class="tag tag-error">не зашифрован</span>
+        {{ else if .diskPending }}<span class="tag tag-warn">пароль не задан</span>
+        {{ else }}<span class="tag tag-ok">зашифрован</span>{{ end }}
     </div>
-    {{ else if .diskPending }}
-    <p><strong>Пароль диска ещё не задан.</strong> Его задают при следующем
-    включении сервера, на его экране — до этого диск открывается без пароля.</p>
-    {{ else }}
-    <p><strong>Диск зашифрован.</strong> При каждом включении сервер спрашивает
-    пароль на своём экране, и пока его не ввели, сеть офиса не поднимается.
-    Пароль нельзя восстановить: храните его не рядом с сервером.</p>
-    <p>Шифр: {{ .diskCipher }}. {{ if .diskTrim }}Освобождённое место
-    возвращается диску — это бережёт SSD.{{ end }}</p>
-    {{ if .diskKeymapDrift }}
-    <div class="alert alert-warn">
-        <strong>Экран пароля перестал работать на английской раскладке.</strong>
-        Пароль диска вводится теми клавишами, какими его задавали, в
-        английской раскладке. Сейчас при включении может действовать другая
-        раскладка, и пароль не подойдёт. Не перезагружайте сервер: обновите
-        панель — обновление вернёт английскую раскладку экрану пароля.
+    <div class="setting">
+        <div>
+            <div class="setting-title">Пароль диска</div>
+            {{ if not .diskEncrypted }}
+            <p class="setting-text"><strong>Диск сервера не зашифрован.</strong>
+            Если сервер или его диск украдут, настройки офиса, пароль провайдера и
+            ключи защищённого канала можно будет прочитать. Зашифровать уже
+            работающую систему нельзя: шлюз переустанавливается с носителя панели,
+            и тогда диск шифруется при установке.</p>
+            {{ else if .diskPending }}
+            <p class="setting-text"><strong>Пароль диска ещё не задан.</strong> Его задают при следующем
+            включении сервера, на его экране — до этого диск открывается без пароля.</p>
+            {{ else }}
+            <p class="setting-text">При каждом включении сервер спрашивает пароль на своём экране, и пока его
+            не ввели, сеть офиса не поднимается. Пароль нельзя восстановить: храните его не
+            рядом с сервером. Шифр: {{ .diskCipher }}.{{ if .diskTrim }} Освобождённое место
+            возвращается диску — это бережёт SSD.{{ end }}</p>
+            {{ if .diskKeymapDrift }}
+            <p class="setting-text"><strong>Экран пароля перестал работать на английской раскладке.</strong>
+            Пароль диска вводится теми клавишами, какими его задавали. Сейчас при
+            включении может действовать другая раскладка, и пароль не подойдёт. Не
+            перезагружайте сервер: обновите панель — обновление вернёт английскую раскладку.</p>
+            {{ end }}
+            {{ if .diskManySlots }}
+            <p class="setting-text">На диске записано больше одного пароля — так бывает, если
+            смену пароля прервало выключение. Следующая смена оставит один.</p>
+            {{ end }}
+            {{ if .diskLast }}<p class="setting-text">{{ if .diskLastWarn }}<strong>{{ .diskLast }}</strong>{{ else }}{{ .diskLast }}{{ end }}</p>{{ end }}
+            {{ if .diskChangeRequested }}
+            <p class="setting-text"><strong>Смена пароля запрошена.</strong> При следующем включении сервер
+            спросит на своём экране текущий пароль и новый. Панель пароль не видит.</p>
+            {{ else }}
+            <p class="setting-text">Пароль меняется на экране самого сервера, а не здесь: там же, где его
+            потом вводят, с той же раскладкой клавиатуры. Если свет выключат посреди смены,
+            останется прежний пароль.</p>
+            {{ end }}
+            <p class="setting-text">Резервная копия настроек — единственный путь после
+            забытого пароля: переустановка и восстановление из файла на странице
+            <a href="/backup">«Резервная копия»</a>. Сделайте копию заранее и храните её вне шлюза.</p>
+            {{ end }}
+        </div>
+        {{ if .diskEncrypted }}{{ if not .diskPending }}
+        <div class="setting-ctl">
+            <form method="post" action="/security/disk-change">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                {{ if .diskChangeRequested }}
+                <input type="hidden" name="requested" value="0">
+                <button type="submit" class="btn btn-secondary">Отменить смену пароля</button>
+                {{ else }}
+                <input type="hidden" name="requested" value="1">
+                <button type="submit" class="btn btn-secondary">Сменить пароль</button>
+                {{ end }}
+            </form>
+        </div>
+        {{ end }}{{ end }}
     </div>
-    {{ end }}
-    {{ if .diskManySlots }}
-    <p class="muted">На диске записано больше одного пароля — так бывает, если
-    смену пароля прервало выключение. Следующая смена оставит один.</p>
-    {{ end }}
-    {{ if .diskLast }}<p class="{{ if .diskLastWarn }}alert alert-warn{{ else }}muted{{ end }}">{{ .diskLast }}</p>{{ end }}
-
-    {{ if .diskChangeRequested }}
-    <p><strong>Смена пароля запрошена.</strong> При следующем включении сервер
-    спросит на своём экране текущий пароль и новый. Панель пароль не видит.</p>
-    <form method="post" action="/security/disk-change">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <input type="hidden" name="requested" value="0">
-        <button type="submit" class="btn btn-secondary">Отменить смену пароля</button>
-    </form>
-    {{ else }}
-    <p>Пароль меняется на экране самого сервера, а не здесь: там же, где его
-    потом вводят, с той же раскладкой клавиатуры.</p>
-    <form method="post" action="/security/disk-change">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <input type="hidden" name="requested" value="1">
-        <button type="submit" class="btn btn-secondary">Сменить пароль при следующем включении</button>
-    </form>
-    {{ end }}
-    <p class="muted">Резервная копия настроек — единственный путь после
-    забытого пароля: переустановка и восстановление настроек из файла на
-    странице <a href="/backup">«Резервная копия»</a>. Сделайте копию заранее и
-    храните её вне шлюза.</p>
-    {{ end }}
-</div>
+</section>
 {{ end }}
 {{ end }}

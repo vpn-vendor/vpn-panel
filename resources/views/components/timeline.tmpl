@@ -1,0 +1,22 @@
+{{ define "components/timeline" }}
+{{ if .Days }}
+<div class="timeline"{{ if .ID }} id="{{ .ID }}"{{ end }}>
+    {{ range .Days }}
+    <div class="tl-day">{{ .Title }}</div>
+    {{ range .Events }}
+    <div class="{{ .Class }}"{{ if .Kind }} data-kind="{{ .Kind }}"{{ end }}>
+        <time class="tl-time">{{ .Time }}</time>
+        <div class="tl-body">
+            <div class="tl-title">{{ .Title }}</div>
+            {{ if .Text }}<div class="tl-text">{{ .Text }}</div>{{ end }}
+            {{ if .Extra }}<div class="tl-extra">{{ .Extra }}</div>{{ end }}
+        </div>
+        {{ if .Tag.Text }}<span class="{{ .Tag.Class }} tl-kind">{{ .Tag.Text }}</span>{{ end }}
+    </div>
+    {{ end }}
+    {{ end }}
+</div>
+{{ else }}
+<p class="muted">{{ .Empty }}</p>
+{{ end }}
+{{ end }}

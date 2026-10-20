@@ -1,0 +1,14 @@
+{{ define "components/unsaved-bar" }}
+
+<div class="unsaved" data-unsaved-bar role="status" aria-live="polite" hidden>
+    <div class="unsaved-text">
+        <strong data-unsaved-title>Изменения ещё не действуют</strong>
+        <span class="unsaved-sub" data-unsaved-sub></span>
+        <span class="unsaved-note" data-unsaved-note hidden></span>
+    </div>
+    <div class="unsaved-actions">
+        <button type="button" class="btn btn-secondary" data-unsaved-reset>Отмена</button>
+        <button type="button" class="btn" data-unsaved-apply>Применить</button>
+    </div>
+</div>
+{{ end }}

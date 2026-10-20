@@ -4,82 +4,83 @@
 {{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
 {{ if .done }}<div class="alert alert-code">{{ .done }}</div>{{ end }}
 
-{{ if .freshCode }}
-<div class="alert alert-code">
-    <strong>Код подключения (действует {{ .codeTTL }} минут, одноразовый):</strong>
-    <div class="code-big">{{ .freshCode }}</div>
-    Введите его на новом устройстве на странице входа. Никому не сообщайте код.
-</div>
-{{ end }}
+<div class="cols cols-side">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Код входа{{ if .freshCode }} <span class="tag tag-main">действует {{ .codeTTL }} минут</span>{{ end }}</h2>
+            <p class="muted card-sub">Откройте панель на новом устройстве и введите код. Код одноразовый,
+            живёт {{ .codeTTL }} минут. Выдаёт его устройство, которое уже в панели.</p>
+        </div>
+    </div>
+    {{ if .freshCode }}
+    <div class="code-box" aria-live="polite">
+        <div class="code-big" id="fresh-code">{{ .freshCode }}</div>
+    </div>
+    <div class="btn-row">
+        <span class="muted">Никому не сообщайте код.</span>
+        <button type="button" class="btn btn-secondary btn-small" data-copy="fresh-code" hidden>{{ template "components/icon" "copy" }}<span data-copy-label>Скопировать код</span></button>
+    </div>
+    {{ else }}
+    <div class="code-box">
+        <p class="muted">Кода сейчас нет. Нажмите «Подключить новое устройство» — код появится здесь.</p>
+    </div>
+    {{ end }}
+    {{ if .inQuarantine }}<p class="muted">Это устройство добавлено недавно: первые часы оно не может приглашать другие и отзывать доступ.</p>{{ end }}
+</section>
 
-<div class="card">
-    <form method="post" action="/devices/code">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <button type="submit" class="btn" {{ if .inQuarantine }}disabled{{ end }}>Подключить новое устройство</button>
-        {{ if .inQuarantine }}<span class="muted">Это устройство добавлено недавно: первые часы оно не может приглашать другие и отзывать доступ.</span>{{ end }}
-    </form>
-    <p class="muted"><strong>Потеряли доступ ко всем устройствам?</strong>
-    Сядьте за сам сервер, откройте список программ, наберите
-    <strong>вход в панель</strong> и нажмите значок
-    «Вход в панель — с этого сервера»: система спросит пароль администратора
-    этого компьютера и откроет панель без кода. Тот же путь из окна
-    терминала — команда <code>vpn-panel-code</code>.</p>
-
-    <h2>Устройства</h2>
-    <p class="muted">Сейчас в панель могут войти {{ .aliveCount }} — только они перечислены ниже.{{ if .deadCount }}
-    Ещё {{ .deadCount }} вышли, были отозваны или давно не входили: пустить их уже нельзя, запись о них
-    хранится {{ .trustDays }} дней для журнала и потом удаляется сама.{{ end }}</p>
-    <table>
-        <thead>
-            <tr><th>Название</th><th>Последний вход</th><th>Адрес</th><th>Добавлено</th><th>Статус</th><th></th></tr>
-        </thead>
-        <tbody>
-            {{ range .devices }}
-            <tr{{ if .Revoked }} class="revoked"{{ end }}>
-                <td>{{ .Label }}{{ if .Current }} <span class="tag">это устройство</span>{{ end }}{{ if .Main }} <span class="tag tag-main">главное</span>{{ end }}</td>
-                <td>{{ .LastUsed }}</td>
-                <td><code>{{ .LastIP }}</code></td>
-                <td>{{ .Created }}</td>
-                <td>{{ if .Revoked }}доступ отозван{{ else if .Quarantine }}добавлено недавно{{ else }}активно{{ end }}</td>
-                <td>
-                    {{ if .Current }}
-                    <form method="post" action="/logout">
-                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
-                        <button type="submit" class="btn btn-danger">Выйти</button>
-                    </form>
-                    {{ else }}
-                    <form method="post" action="/devices/revoke">
-                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
-                        <input type="hidden" name="device_id" value="{{ .ID }}">
-                        <button type="submit" class="btn btn-danger">Отозвать</button>
-                    </form>
-                    {{ end }}
-                </td>
-            </tr>
-            {{ end }}
-        </tbody>
-    </table>
-    <form method="post" action="/devices/signout-others" data-island="confirm-signout"
-          data-question="Выйти на всех остальных устройствах? Войти с них снова можно будет только новым кодом подключения.">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <button type="submit" class="btn btn-danger" {{ if not .canSignOut }}disabled{{ end }}>Выйти на всех остальных устройствах</button>
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Доверенные устройства <span class="tag">{{ .aliveCount }}</span></h2>
+            <p class="muted card-sub">Главное устройство добавлено с самого сервера. Только оно может выйти на всех остальных.{{ if .deadCount }}
+            Ещё {{ .deadCount }} вышли, были отозваны или давно не входили: пустить их уже нельзя, запись о них
+            хранится {{ .trustDays }} дней для журнала и потом удаляется сама.{{ end }}</p>
+        </div>
+    </div>
+    {{ with .deviceCards }}{{ template "components/item-grid" . }}{{ end }}
+    <details class="fold">
+        <summary>{{ template "components/icon" "chevron" }}Потеряли доступ ко всем устройствам?</summary>
+        <div class="fold-body">
+            <p class="muted">Сядьте за сам сервер, откройте список программ, наберите
+            <strong>вход в панель</strong> и нажмите значок
+            «Вход в панель — с этого сервера»: система спросит пароль администратора
+            этого компьютера и откроет панель без кода. Тот же путь из окна
+            терминала — команда <code>vpn-panel-code</code>.</p>
+            <p class="muted">Полный сброс всех устройств, включая это, — только с консоли
+            сервера: <code>vpn-panel-reset</code>.</p>
+        </div>
+    </details>
+    <div class="btn-row">
+        <form method="post" action="/devices/signout-others" class="inline-form" data-island="confirm-signout"
+              data-question="Выйти на всех остальных устройствах? Войти с них снова можно будет только новым кодом подключения.">
+            <input type="hidden" name="_csrf" value="{{ .csrf }}">
+            <button type="submit" class="btn btn-danger-outline" {{ if not .canSignOut }}disabled{{ end }}>Выйти на всех остальных устройствах</button>
+        </form>
         {{ if not .canSignOut }}<span class="muted">Доступно только главному устройству — подключённому с самого сервера.</span>{{ end }}
-    </form>
+    </div>
     <p class="muted">Доверие устройства истекает после {{ .slidingHours }} ч
-    неактивности и безусловно через {{ .absoluteDays }} дней. Полный сброс
-    всех устройств, включая это, — только с консоли сервера: <code>vpn-panel-reset</code>.</p>
+    неактивности и безусловно через {{ .absoluteDays }} дней.</p>
+</section>
 </div>
 
-<div class="card">
-    <h2>Журнал безопасности</h2>
-    <table>
-        <thead><tr><th>Когда</th><th>Событие</th><th>Адрес</th><th>Детали</th></tr></thead>
-        <tbody>
-            {{ range .events }}
-            <tr><td>{{ .When }}</td><td>{{ .Event }}</td><td><code>{{ .IP }}</code></td><td class="muted">{{ .Details }}{{ if .Repeats }}<br><strong>{{ .Repeats }}</strong>{{ end }}</td></tr>
-            {{ end }}
-        </tbody>
-    </table>
+<div class="col">
+<section class="card">
+    <div class="card-head card-head-wrap">
+        <h2>Журнал безопасности</h2>
+        {{ with .timeline }}{{ template "components/timeline-filters" . }}{{ end }}
+    </div>
+    <p class="muted card-sub">Кто и когда входил в панель и что менял. Хранится {{ .journalDays }} дней;
+    повторы с одного адреса сведены в одну запись со счётчиком.</p>
+    {{ with .timeline }}{{ template "components/timeline" . }}{{ end }}
+    {{ if not .journalFull }}
+    <div class="btn-row btn-row-center">
+        <a class="btn btn-secondary" href="/devices?events={{ .journalMore }}#journal">Показать ещё</a>
+    </div>
+    {{ end }}
+</section>
+</div>
 </div>
 
 <script src="{{ .static }}/js/security.js" defer></script>

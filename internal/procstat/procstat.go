@@ -52,8 +52,13 @@ func ParseLoad1(raw []byte) (float64, error) {
 	return strconv.ParseFloat(f[0], 64)
 }
 
-func ParseMemUsedPercent(raw []byte) (float64, error) {
-	var total, avail uint64
+type MemInfo struct {
+	Total, Avail, Cache, SwapTotal, SwapFree uint64
+}
+
+func ParseMemInfo(raw []byte) (MemInfo, error) {
+	var m MemInfo
+	var buffers, cached, reclaim, shmem uint64
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	for sc.Scan() {
 		f := strings.Fields(sc.Text())
@@ -66,15 +71,89 @@ func ParseMemUsedPercent(raw []byte) (float64, error) {
 		}
 		switch f[0] {
 		case "MemTotal:":
-			total = v
+			m.Total = v
 		case "MemAvailable:":
-			avail = v
+			m.Avail = v
+		case "Buffers:":
+			buffers = v
+		case "Cached:":
+			cached = v
+		case "SReclaimable:":
+			reclaim = v
+		case "Shmem:":
+			shmem = v
+		case "SwapTotal:":
+			m.SwapTotal = v
+		case "SwapFree:":
+			m.SwapFree = v
 		}
 	}
-	if total == 0 || avail > total {
-		return 0, errors.New("в /proc/meminfo нет MemTotal или MemAvailable")
+	if m.Total == 0 || m.Avail > m.Total {
+		return MemInfo{}, errors.New("в /proc/meminfo нет MemTotal или MemAvailable")
 	}
-	return 100 * float64(total-avail) / float64(total), nil
+	if c := buffers + cached + reclaim; c > shmem {
+		m.Cache = c - shmem
+	}
+
+	m.Cache = min(m.Cache, m.Avail)
+	if m.SwapFree > m.SwapTotal {
+		m.SwapFree = m.SwapTotal
+	}
+	return m, nil
+}
+
+func (m MemInfo) UsedPercent() float64 { return 100 * float64(m.Total-m.Avail) / float64(m.Total) }
+
+func (m MemInfo) CachePercent() float64 { return 100 * float64(m.Cache) / float64(m.Total) }
+
+func (m MemInfo) SwapPercent() (float64, bool) {
+	if m.SwapTotal == 0 {
+		return 0, false
+	}
+	return 100 * float64(m.SwapTotal-m.SwapFree) / float64(m.SwapTotal), true
+}
+
+func ParseMemUsedPercent(raw []byte) (float64, error) {
+	m, err := ParseMemInfo(raw)
+	if err != nil {
+		return 0, err
+	}
+	return m.UsedPercent(), nil
+}
+
+func ParseDiskTicks(raw []byte, names []string) map[string]uint64 {
+	want := make(map[string]bool, len(names))
+	for _, n := range names {
+		want[n] = true
+	}
+	out := map[string]uint64{}
+	sc := bufio.NewScanner(bytes.NewReader(raw))
+	for sc.Scan() {
+		f := strings.Fields(sc.Text())
+		if len(f) < 13 || !want[f[2]] {
+			continue
+		}
+		if v, err := strconv.ParseUint(f[12], 10, 64); err == nil {
+			out[f[2]] = v
+		}
+	}
+	return out
+}
+
+func DiskBusyPercent(prev, cur map[string]uint64, elapsedMs float64) (float64, bool) {
+	if elapsedMs <= 0 {
+		return 0, false
+	}
+	best, ok := 0.0, false
+	for name, c := range cur {
+		p, seen := prev[name]
+		if !seen || c < p {
+			continue
+		}
+		ok = true
+		best = max(best, min(100, 100*float64(c-p)/elapsedMs))
+	}
+	return best, ok
 }
 
 func ParsePressureSome(raw []byte) (float64, error) {
@@ -127,6 +206,22 @@ func ReadMemUsedPercent() (float64, error) {
 		return 0, err
 	}
 	return ParseMemUsedPercent(raw)
+}
+
+func ReadMemInfo() (MemInfo, error) {
+	raw, err := os.ReadFile("/proc/meminfo")
+	if err != nil {
+		return MemInfo{}, err
+	}
+	return ParseMemInfo(raw)
+}
+
+func ReadDiskTicks(names []string) (map[string]uint64, error) {
+	raw, err := os.ReadFile("/proc/diskstats")
+	if err != nil {
+		return nil, err
+	}
+	return ParseDiskTicks(raw, names), nil
 }
 
 func ReadPressureSome(resource string) (float64, error) {

@@ -4,6 +4,7 @@ import (
 	contractshttp "github.com/goravel/framework/contracts/http"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/assets"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/navigation"
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/securitylog"
 	"strings"
 	"time"
@@ -29,6 +30,8 @@ func withCsrf(ctx contractshttp.Context, data map[string]any) map[string]any {
 	data["csrf"] = token
 
 	data["static"] = assets.Prefix()
+
+	data["roleMain"], data["roleJunior"] = ui.MainAdmin, ui.JuniorAdmin
 	return data
 }
 
@@ -42,6 +45,8 @@ func page(ctx contractshttp.Context, title, active string, data map[string]any) 
 	data["nav"] = navigation.Groups()
 
 	data["pageWidth"] = string(navigation.WidthFor(active))
+
+	data["pageGroup"] = sectionGroup(active)
 
 	if active != "" {
 		if n := diag.New().OpenIdentifyCount(); n > 0 {
@@ -112,6 +117,13 @@ func page(ctx contractshttp.Context, title, active string, data map[string]any) 
 		}
 	}
 	return data
+}
+
+func sectionGroup(active string) string {
+	if sec, ok := navigation.SectionByKey(active); ok {
+		return sec.Group
+	}
+	return ""
 }
 
 func sectionSubtitle(active string) string {

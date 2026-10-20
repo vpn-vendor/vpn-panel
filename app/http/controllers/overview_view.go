@@ -7,19 +7,21 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vpn-vendor/vpn-panel-core/app/facades"
 	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
+	"github.com/vpn-vendor/vpn-panel-core/app/models"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/diag"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/metrics"
-	"github.com/vpn-vendor/vpn-panel-core/app/services/overload"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/overview"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/pathmon"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/qos"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/reliability"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/retention"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/updates"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/vpn"
 	"github.com/vpn-vendor/vpn-panel-core/internal/diagnose"
 	"github.com/vpn-vendor/vpn-panel-core/internal/diskstat"
-	"github.com/vpn-vendor/vpn-panel-core/internal/pathprobe"
+	"github.com/vpn-vendor/vpn-panel-core/internal/procstat"
 	"github.com/vpn-vendor/vpn-panel-core/internal/sysinfo"
 )
 
@@ -54,6 +56,15 @@ type overviewFacts struct {
 	SpaceOK bool
 
 	Reliability reliability.Snapshot
+
+	Temp      procstat.Temp
+	TempOK    bool
+	Mem       procstat.MemInfo
+	MemOK     bool
+	Uptime    map[string]reliability.Uptime
+	Events    []models.AuthEvent
+	SpeedDown int
+	SpeedUp   int
 }
 
 func gatherOverview() overviewFacts {
@@ -93,6 +104,17 @@ func gatherOverview() overviewFacts {
 	}
 	f.Ports = sysinfo.Ports(portNames())
 	f.Reliability = reliability.Read(tunnelLiveUp(f))
+	f.Temp, f.TempOK = procstat.ReadCPUTemp()
+	if m, err := procstat.ReadMemInfo(); err == nil {
+		f.Mem, f.MemOK = m, true
+	}
+	kind := overview.RowsFor(f.Protected).Path
+	f.Uptime = map[string]reliability.Uptime{}
+	for _, w := range uptimeWindows {
+		f.Uptime[w.key] = reliability.ReadUptime(kind, w.span, uptimeCells)
+	}
+	f.Events = recentEvents(feedCap, 0)
+	f.SpeedDown, f.SpeedUp = qos.New().MeasuredMbit()
 
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -120,86 +142,6 @@ func gatherOverview() overviewFacts {
 	return f
 }
 
-func overviewView(f overviewFacts) map[string]any {
-	rows := overview.RowsFor(f.Protected)
-	delay, known := f.Latest(rows.VoiceDelay)
-
-	lights := []overview.Light{
-		overview.Internet(f.Protected, f.Paths),
-		overview.Voice(f.Protected, f.Norm, f.HasNorm, delay, known),
-		overview.Load(f.Protect, lanCPUMaxBusy, overload.PressureHot),
-	}
-	lines := make([]ui.StatusLine, 0, len(lights))
-	for i, l := range lights {
-		lines = append(lines, lightLine("light-"+strconv.Itoa(i+1), l, f.CollectOff))
-	}
-
-	val := func(row, unit string) string {
-		if v, ok := f.Latest(row); ok && !f.CollectOff {
-			return formatUnit(v, unit)
-		}
-		return ""
-	}
-	trafficSub := "Весь трафик офиса идёт напрямую через WAN"
-	if f.Protected {
-		trafficSub = "Весь трафик офиса идёт через VPN"
-	}
-	voice := ui.ChartCard{
-		ID: "chart-voice", Title: "Звонки", Kind: "band", Unit: "ms",
-		Sub:  "Сколько разговор ждёт в очереди для звонков; линия — среднее, полоса — от наименьшего до наибольшего",
-		Rows: []ui.ChartRow{{Name: rows.VoiceDelay, Label: "задержка", Value: val(rows.VoiceDelay, "ms"), Series: 1}},
-	}
-	if f.HasNorm {
-		voice.Norm = threshold(f.Norm.TargetMs)
-		voice.Note = "Зелёная зона — норма, которую держит сама очередь: до " + formatUnit(f.Norm.TargetMs, "ms") + "."
-	} else {
-		voice.Note = "Очередь для звонков не включена: приоритет разговоров настраивается в разделе QoS."
-	}
-	bands := []ui.ChartCard{
-		{ID: "chart-traffic", Title: "Интернет офиса", Sub: trafficSub, Kind: "band", Unit: "bits",
-			Note: "Если полоса упирается в скорость тарифа, офису тесно; звонки при этом спасает очередь QoS — она пропускает их первыми.",
-			Rows: []ui.ChartRow{
-				{Name: rows.Rx, Label: "входящий", Value: val(rows.Rx, "bits"), Series: 1},
-				{Name: rows.Tx, Label: "исходящий", Value: val(rows.Tx, "bits"), Series: 2}}},
-		voice,
-	}
-	spark := func(id, title, row, label, unit, note string, scale *ui.Scale) ui.ChartCard {
-		return ui.ChartCard{ID: id, Title: title, Kind: "spark", Unit: unit, Note: note, Scale: scale,
-			Rows: []ui.ChartRow{{Name: row, Label: label, Value: val(row, unit), Series: 1}}}
-	}
-
-	load := overview.Load(f.Protect, lanCPUMaxBusy, overload.PressureHot)
-	sparks := []ui.ChartCard{
-		spark("chart-cpu", "Процессор", metrics.RowCPUBusy, "занят", "percent",
-			"На нём считается шифрование канала. Постоянно высокая загрузка — повод для сервера мощнее",
-			ui.NewScale(load.Warn, load.Bad, load.Owner)),
-		spark("chart-mem", "Память", metrics.RowMemUsed, "занято", "percent",
-			"Память всей системы; панель берёт из неё немного. Держится у верхнего края — какая-то программа растёт", nil),
-		spark("chart-pressure", "Ожидание процессора", metrics.RowPressureCPU, "задачи ждут", "percent",
-			"Доля времени, когда задачи ждали процессор. Растёт раньше загрузки — первый признак, что процессора не хватает",
-			ui.NewScale(overload.PressureHot, 0, overview.OwnerFuses)),
-		{ID: "chart-lan", Title: "Локальная сеть", Kind: "spark", Unit: "bits",
-			Note: "Сколько проходит через порт офиса. Упирается в скорость порта — узкое место в кабеле или коммутаторе",
-			Rows: []ui.ChartRow{
-				{Name: metrics.RowLANRx, Label: "от устройств", Value: val(metrics.RowLANRx, "bits"), Series: 1},
-				{Name: metrics.RowLANTx, Label: "к устройствам", Value: val(metrics.RowLANTx, "bits"), Series: 2}}},
-		spark("chart-voice-drops", "Потерянные пакеты звонков", rows.VoiceDrops, "сбросов", "rate",
-			"Пакеты разговоров, выброшенные очередью: каждый — слышимый обрыв. Появились — смотрите загрузку канала", nil),
-	}
-
-	return map[string]any{
-		"lights":      ui.StatusGrid{Lines: lines},
-		"chips":       ui.WindowChips{},
-		"bands":       ui.ChartGrid{Cards: bands, Wide: true},
-		"sparks":      ui.ChartGrid{Cards: sparks},
-		"tip":         ui.ChartTip{},
-		"panel":       ui.ChartPanel{},
-		"blocks":      ui.CardGrid{Cards: []ui.LinkCard{channelBlock(f), guardBlock(f), officeBlock(f), updatesBlock(f)}},
-		"server":      serverFacts(f),
-		"reliability": reliabilityFacts(f),
-	}
-}
-
 func lightLine(id string, l overview.Light, collectOff bool) ui.StatusLine {
 	if collectOff && l.Row != "" {
 
@@ -211,106 +153,6 @@ func lightLine(id string, l overview.Light, collectOff bool) ui.StatusLine {
 		TextOK: l.TextOK, TextWarn: l.TextWarn, TextBad: l.TextBad, TextUnknown: l.TextUnknown, TextDown: l.TextDown,
 		AdviceOK: l.AdviceOK, AdviceWarn: l.AdviceWarn, AdviceBad: l.AdviceBad, AdviceUnknown: l.AdviceUnknown, AdviceDown: l.AdviceDown,
 	}
-}
-
-func channelBlock(f overviewFacts) ui.LinkCard {
-	b := ui.LinkCard{Title: "VPN", URL: "/vpn"}
-	rtt := func(kind pathmon.Kind) (string, bool) {
-		for _, p := range f.Paths {
-			if p.Kind == kind && p.State == pathprobe.Up && p.RTT > 0 {
-				return formatUnit(float64(p.RTT)/float64(time.Millisecond), "ms"), true
-			}
-		}
-		return "", false
-	}
-	if !f.Protected {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Режим", Value: "прямой доступ", Note: "VPN выключен: офис выходит в интернет напрямую"})
-		if v, ok := rtt(pathmon.Direct); ok {
-			b.Metrics = append(b.Metrics, ui.Metric{Label: "Задержка до провайдера", Value: v,
-				Note: "Время ответа провайдера; большая — голос идёт с запаздыванием"})
-		}
-		return b
-	}
-	if f.Channel == nil {
-		b.Note = "Состояние VPN сейчас получить не удалось. Обновите страницу; если повторяется — откройте раздел VPN."
-		return b
-	}
-	state := ui.Metric{Label: "Состояние", Value: "не поднят", Judged: ui.Judge(ui.Bad, ownerChannel),
-		Note: "Офис без защищённого канала — звонки и интернет стоят. Причина и что делать — в разделе VPN"}
-	if f.Channel.Online {
-		state = ui.Metric{Label: "Состояние", Value: "поднят", Judged: ui.Judge(ui.OK, ownerChannel),
-			Note: "Канал поднят; с какого времени без обрыва — появится после первой пробы"}
-		for _, p := range f.Paths {
-			if p.Kind == pathmon.Tunnel && p.State == pathprobe.Up && !p.Since.IsZero() {
-				state.Note = "без обрыва " + humanSeconds(int64(time.Since(p.Since).Seconds()))
-			}
-		}
-	}
-	b.Metrics = append(b.Metrics, state)
-	if f.Channel.Endpoint != "" {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Сервер VPN", Value: f.Channel.Endpoint,
-			Note: "Куда подключён канал — адрес из файла подключения"})
-	}
-	if f.Channel.MTU > 0 {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Размер пакета (MTU)", Value: strconv.Itoa(f.Channel.MTU),
-			Note: "Слишком большой рвёт сайты и звонки; подбирается автоматически в разделе VPN"})
-	}
-	if v, ok := rtt(pathmon.Tunnel); ok {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Задержка до сервера VPN", Value: v,
-			Note: "Время ответа сервера VPN; большая — голос идёт с запаздыванием"})
-	}
-	if v, ok := rtt(pathmon.Beyond); ok {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Задержка за сервером VPN", Value: v,
-			Note: "До интернета через канал; сильно больше задержки до сервера — медленно у поставщика VPN"})
-	}
-	return b
-}
-
-func guardBlock(f overviewFacts) ui.LinkCard {
-	b := ui.LinkCard{Title: "Защита", URL: "/security"}
-	switch {
-	case !f.Protected:
-		b.Note = "Запрет выхода мимо VPN действует в защищённом режиме; сейчас офис работает напрямую."
-	case f.Channel == nil:
-		b.Note = "Счётчик защиты сейчас получить не удалось."
-	case !f.Channel.OutboundGuard:
-		b.Metrics = []ui.Metric{{Label: "Запрет выхода мимо VPN", Value: "не стоит", Judged: ui.Judge(ui.Bad, ownerGuard),
-			Note: "Трафик офиса может уйти мимо канала. Откройте раздел VPN и примените настройки"}}
-	default:
-		b.Metrics = []ui.Metric{{Label: "Попыток выйти мимо VPN заблокировано", Value: strconv.FormatInt(f.Channel.BlockedOutbound, 10),
-			Judged: ui.Judge(ui.OK, ownerGuard),
-			Note:   "С момента последнего применения правил; защита работает, делать ничего не нужно"}}
-	}
-	return b
-}
-
-func officeBlock(f overviewFacts) ui.LinkCard {
-	b := ui.LinkCard{Title: "Офис", URL: "/diagnostics"}
-	if f.Online < 0 {
-		b.Note = "Число устройств сейчас получить не удалось."
-		return b
-	}
-	b.Metrics = []ui.Metric{{Label: "Устройств в сети сейчас", Value: strconv.Itoa(f.Online), Note: "кто это и готовы ли они к звонкам — в «Диагностике»"}}
-	return b
-}
-
-func updatesBlock(f overviewFacts) ui.LinkCard {
-	b := ui.LinkCard{Title: "Обновления", URL: "/security"}
-	if f.Version != "" {
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Установленная версия", Value: "v" + strings.TrimPrefix(f.Version, "v"),
-			Note: "Её называют, когда пишут в поддержку"})
-	}
-	switch {
-	case f.Updates == nil:
-		b.Note = "Состояние автообновлений сейчас получить не удалось."
-	case f.Updates.Enabled:
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Автообновления", Value: "включены", Judged: ui.Judge(ui.OK, ownerUpdates),
-			Note: "Исправления безопасности ставятся сами"})
-	default:
-		b.Metrics = append(b.Metrics, ui.Metric{Label: "Автообновления", Value: "выключены", Judged: ui.Judge(ui.Warn, ownerUpdates),
-			Note: "Исправления безопасности придётся ставить вручную; включаются в разделе «Защита»"})
-	}
-	return b
 }
 
 func threshold(v float64) string {
@@ -366,7 +208,7 @@ func portNames() []string {
 
 func serverFacts(f overviewFacts) ui.Facts {
 	m := f.Machine
-	out := ui.Facts{Title: "Сервер"}
+	out := ui.Facts{Title: "Сервер", Tiles: true}
 
 	cpu := ui.Fact{Label: "Процессор", Value: m.CPU.Model,
 		Note: "На нём считается шифрование канала; число ядер ядро системы сейчас не сообщило"}
@@ -448,4 +290,16 @@ func serverFacts(f overviewFacts) ui.Facts {
 		out.Items = append(out.Items, fact)
 	}
 	return out
+}
+
+func recentEvents(limit int, after uint) []models.AuthEvent {
+	var rows []models.AuthEvent
+	q := facades.Orm().Query()
+	if after > 0 {
+		q = q.Where("id > ?", after)
+	}
+	if err := q.OrderBy("id", "desc").Limit(limit).Find(&rows); err != nil {
+		return nil
+	}
+	return rows
 }

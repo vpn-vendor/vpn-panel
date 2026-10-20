@@ -55,16 +55,16 @@ var sections = []Section{
 
 	{Key: "network", Title: "Сеть", Subtitle: "Карты, адреса, провайдер", URL: "/network", Icon: "network", Group: "Сеть офиса", Width: Wide},
 	{Key: "dhcp", Title: "DHCP", Subtitle: "Раздача адресов устройствам", URL: "/dhcp", Icon: "dhcp", Group: "Сеть офиса", Width: Wide},
-	{Key: "dns", Title: "DNS", Subtitle: "Имена вместо адресов", URL: "/dns", Icon: "dns", Group: "Сеть офиса", Width: Narrow},
-	{Key: "qos", Title: "QoS", Subtitle: "Приоритет разговоров", URL: "/qos", Icon: "qos", Group: "Сеть офиса", Width: Narrow},
+	{Key: "dns", Title: "DNS", Subtitle: "Имена вместо адресов", URL: "/dns", Icon: "dns", Group: "Сеть офиса", Width: Wide},
+	{Key: "qos", Title: "QoS", Subtitle: "Приоритет разговоров", URL: "/qos", Icon: "qos", Group: "Сеть офиса", Width: Wide},
 
 	{Key: "vpn", Title: "VPN", Subtitle: "Защищённый канал офиса", URL: "/vpn", Icon: "vpn", Group: "Защита и доступ", Width: Wide},
 	{Key: "security", Title: "Защита", Subtitle: "Невидимость и обновления", URL: "/security", Icon: "shield", Group: "Защита и доступ", Width: Wide},
 	{Key: "devices", Title: "Устройства", Subtitle: "Доступ к панели и журнал", URL: "/devices", Icon: "devices", Group: "Защита и доступ", Width: Wide},
-	{Key: "backup", Title: "Резервная копия", Subtitle: "Копия и перенос настроек", URL: "/backup", Icon: "backup", Group: "Защита и доступ", Width: Narrow},
+	{Key: "backup", Title: "Резервная копия", Subtitle: "Копия и перенос настроек", URL: "/backup", Icon: "backup", Group: "Защита и доступ", Width: Wide},
 
 	{Key: "diagnostics", Title: "Диагностика", Subtitle: "Проверки и их результат", URL: "/diagnostics", Icon: "diagnostics", Group: "Проверки", Width: Wide},
-	{Key: "help", Title: "Помощь", Subtitle: "Что делать, если…", URL: "/help", Icon: "help", Group: "Проверки", Width: Narrow},
+	{Key: "help", Title: "Помощь", Subtitle: "Что делать, если…", URL: "/help", Icon: "help", Group: "Проверки", Width: Wide},
 }
 
 var entries = []Entry{
@@ -107,6 +107,10 @@ var entries = []Entry{
 		Keywords: []string{"обновление", "update", "версия"}},
 	{Title: "Пароль диска", Hint: "Шифрование диска и смена пароля при включении", URL: "/security", Section: "security",
 		Keywords: []string{"шифрование", "диск", "пароль", "luks", "encryption"}},
+	{Title: "Политика защиты", Hint: "Что временно отключено аварийной мерой", URL: "/security", Section: "security",
+		Keywords: []string{"политика", "жгут", "отключено", "policy", "флаг"}},
+	{Title: "После обновления", Hint: "Проверка новой версии и возврат на прежнюю при сбое", URL: "/security", Section: "security",
+		Keywords: []string{"обновление", "откат", "версия", "rollback", "вернуть"}},
 
 	{Title: "Выдать код входа", Hint: "Пустить новое устройство в панель", URL: "/devices", Section: "devices",
 		Keywords: []string{"код", "вход", "доступ", "устройство", "login"}},

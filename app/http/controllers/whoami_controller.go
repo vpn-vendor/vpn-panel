@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
 	"net"
 	"time"
 
@@ -81,7 +82,7 @@ func (c *WhoamiController) Propose(ctx contractshttp.Context) contractshttp.Resp
 	if err != nil {
 		setFlash(ctx, flashError, "Предложение не отправлено: "+err.Error())
 	} else {
-		setFlash(ctx, flashCode, "Спасибо! Предложение отправлено администратору — после проверки оно станет подписью устройства.")
+		setFlash(ctx, flashCode, "Спасибо! Предложение отправлено "+ui.MainAdmin.Dat+" — после проверки оно станет подписью устройства.")
 	}
 	return ctx.Response().Redirect(contractshttp.StatusFound, back)
 }
@@ -93,7 +94,7 @@ func (c *WhoamiController) Identify(ctx contractshttp.Context) contractshttp.Res
 		back = "/"
 	}
 	if !c.attempts.Allow(ip) || !c.limiter.Allow(ip) {
-		c.service.Audit("device_label_throttled", ip, "слишком частые сообщения администратору")
+		c.service.Audit("device_label_throttled", ip, "слишком частые сообщения "+ui.MainAdmin.Dat)
 		setFlash(ctx, flashError, "Сообщение уже отправлялось несколько раз подряд — подождите немного.")
 		return ctx.Response().Redirect(contractshttp.StatusFound, back)
 	}
@@ -101,7 +102,7 @@ func (c *WhoamiController) Identify(ctx contractshttp.Context) contractshttp.Res
 	if err := c.service.RequestIdentify(id, ctx.Request().Input("note")); err != nil {
 		setFlash(ctx, flashError, "Сообщение не отправлено: "+err.Error())
 	} else {
-		setFlash(ctx, flashCode, "Администратор получил сообщение: он увидит этот компьютер в списке и подпишет его.")
+		setFlash(ctx, flashCode, ui.MainAdmin.Nom+" получил сообщение: он увидит этот компьютер в списке и подпишет его.")
 	}
 	return ctx.Response().Redirect(contractshttp.StatusFound, back)
 }

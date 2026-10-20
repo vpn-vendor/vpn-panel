@@ -1,0 +1,60 @@
+{{ define "security/outside" }}
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Снаружи</h2>
+            <p class="muted card-sub">Как шлюз выглядит из интернета и откуда открывается панель.</p>
+        </div>
+    </div>
+    <div class="setting">
+        <div>
+            <div class="setting-title">Невидимость из интернета
+                {{ if .exposureKnown }}{{ if .protected }}<span class="tag tag-ok">невидим</span>{{ else }}<span class="tag tag-error">не защищён</span>{{ end }}{{ end }}</div>
+            <p class="setting-text">Подключения из интернета к самому серверу не принимаются и остаются без ответа:
+            для сканеров сервер выглядит выключенным. Панель, имена и раздача адресов работают только из локальной сети.
+            {{ if .exposureKnown }}IPv6 на входе: {{ if .ipv6Closed }}закрыт{{ else if .ipv6 }}разрешён минимум для работы самого сервера{{ else }}не закрыт{{ end }}.{{ end }}</p>
+        </div>
+        <div class="setting-ctl"><span class="tag">не отключается</span></div>
+    </div>
+
+    <form method="post" action="/security/apply" data-unsaved>
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/switch-row" .switchHidden }}
+        {{ template "components/switch-row" .switchIPv6 }}
+        
+        <div class="alert alert-warn" data-switch-warn>
+            <div class="alert-row">
+                <div>
+                    {{ if .rolesReady }}
+                    <strong>Смена IPv6 меняет параметры сетевых карт</strong> и применяется с проверкой
+                    связи, как настройки сети: если панель перестанет отвечать, всё вернётся как было.
+                    Разговоры могут кратко прерваться.
+                    {{ else }}
+                    <strong>Роли сетевых карт ещё не назначены.</strong> Настройки сохранятся и вступят в силу вместе с ними.
+                    {{ end }}
+                </div>
+                <div class="alert-actions">
+                    <button type="button" class="btn btn-secondary btn-small" data-switch-cancel>Отмена</button>
+                    <button type="submit" class="btn btn-small">Применить</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div class="setting">
+        <div>
+            <div class="setting-title">Где открыта панель</div>
+            <p class="setting-text">
+            {{ if eq .listenMode "roles" }}Только с самого сервера и из локальной сети — по адресам карт с ролью «локальная сеть».
+            {{ else if eq .listenMode "pre-roles" }}Роли карт ещё не назначены: панель открыта с самого сервера и по всем частным адресам его карт. Из интернета она недоступна и сейчас.
+            {{ else if eq .listenMode "dev" }}Среда разработки: панель открыта на всех адресах контейнера.
+            {{ end }}
+            Адрес карты с ролью «интернет» панель не слушает никогда.</p>
+        </div>
+        <div class="setting-ctl">
+            <span class="tag tag-ok">сам сервер · 127.0.0.1</span>
+            {{ range .listeners }}<span class="tag tag-ok">{{ .Iface }} · {{ .URL }}</span>{{ end }}
+        </div>
+    </div>
+</section>
+{{ end }}

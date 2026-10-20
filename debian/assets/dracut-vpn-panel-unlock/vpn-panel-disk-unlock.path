@@ -1,0 +1,16 @@
+# Запрос пароля появился — запустить агента панели. После старта заставки:
+# рисует ли она, агент решает по ней самой.
+[Unit]
+Description=VPN Panel disk password requests watch
+DefaultDependencies=no
+After=plymouth-start.service
+Before=paths.target cryptsetup.target
+Conflicts=emergency.service shutdown.target
+Before=emergency.service shutdown.target
+
+[Path]
+DirectoryNotEmpty=/run/systemd/ask-password
+MakeDirectory=yes
+
+[Install]
+WantedBy=sysinit.target

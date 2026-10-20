@@ -48,6 +48,27 @@ type Port struct {
 	SpeedMbit  int
 	Duplex     string
 	SpeedKnown bool
+
+	Place string
+}
+
+const (
+	PlaceBoard = "board"
+	PlaceSlot  = "slot"
+)
+
+func placeOf(base, name string) string {
+	dev := filepath.Join(base, "device")
+	if readFile(filepath.Join(dev, "acpi_index")) != "" || strings.TrimSpace(readFile(filepath.Join(dev, "label"))) != "" {
+		return PlaceBoard
+	}
+	switch {
+	case strings.HasPrefix(name, "eno"):
+		return PlaceBoard
+	case strings.HasPrefix(name, "ens"):
+		return PlaceSlot
+	}
+	return ""
 }
 
 var Root = "/"
@@ -148,11 +169,13 @@ func ParseMemTotal(raw []byte) uint64 {
 	return 0
 }
 
-func ParseOSName(raw []byte) string {
+func ParseOSName(raw []byte) string { return ParseOSField(raw, "PRETTY_NAME") }
+
+func ParseOSField(raw []byte, field string) string {
 	sc := bufio.NewScanner(bytes.NewReader(raw))
 	for sc.Scan() {
 		key, val, ok := strings.Cut(sc.Text(), "=")
-		if ok && key == "PRETTY_NAME" {
+		if ok && key == field {
 			return strings.Trim(strings.TrimSpace(val), `"`)
 		}
 	}
@@ -274,6 +297,7 @@ func Ports(names []string) []Port {
 		if v, err := strconv.Atoi(strings.TrimSpace(readFile(filepath.Join(base, "speed")))); err == nil && v > 0 {
 			p.SpeedMbit, p.SpeedKnown = v, true
 		}
+		p.Place = placeOf(base, n)
 		out = append(out, p)
 	}
 	return out

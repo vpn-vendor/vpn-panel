@@ -102,7 +102,7 @@ func ValidateSection(v Section) fielderr.List {
 	case v.ActiveSlug != "" && !slugs[v.ActiveSlug]:
 		errs.Add("active_slug", "выбранного подключения %q нет среди подключений", v.ActiveSlug)
 	case v.ActiveSlug == "" && v.Mode == ModeBlack:
-		errs.Add("active_slug", "выберите подключение — без него весь офис через защищённый канал направить не получится")
+		errs.Add("active_slug", "выберите подключение — без него направить трафик офиса в канал не получится")
 	}
 	return errs
 }

@@ -120,6 +120,7 @@ type DangerConfirm struct {
 }
 
 type Button struct {
+	Icon     string
 	Label    string
 	Type     string
 	Kind     string
@@ -140,7 +141,7 @@ func (b Button) Class() string {
 	class := "btn"
 	switch b.Kind {
 	case "", "primary":
-	case "secondary", "danger", "ghost":
+	case "secondary", "danger", "ghost", "danger-outline":
 		class += " btn-" + b.Kind
 	default:
 
@@ -187,13 +188,22 @@ type Metric struct {
 	Unit   string
 	Note   string
 	Judged Judgment
+
+	Icon string
+	Hue  string
+
+	CopyID string
 }
 
 func (m Metric) Class() string {
+	c := "metric"
 	if l := m.Judged.Level(); l != None {
-		return "metric metric-" + string(l)
+		c += " metric-" + string(l)
 	}
-	return "metric"
+	if m.Icon != "" {
+		c += " metric-has-icon"
+	}
+	return c
 }
 
 type ChartRow struct {
@@ -201,6 +211,17 @@ type ChartRow struct {
 	Label  string
 	Value  string
 	Series int
+	Tone   Tone
+}
+
+func (r ChartRow) ToneName() string {
+	if r.Tone != "" {
+		return string(r.Tone)
+	}
+	if r.Series == 2 {
+		return string(ToneTraffic2)
+	}
+	return string(ToneTraffic)
 }
 
 func (r ChartRow) Shown() string {
@@ -229,6 +250,23 @@ type ChartCard struct {
 	Note   string
 
 	Scale *Scale
+
+	Span int
+
+	Tag *Tag
+
+	Follow bool
+
+	Chips *WindowChips
+
+	Stub string
+}
+
+func (c ChartCard) SpanAttr() string {
+	if c.Span <= 0 {
+		return ""
+	}
+	return strconv.Itoa(c.Span)
 }
 
 type Scale struct {
@@ -252,18 +290,19 @@ func NewScale(warn, bad float64, owner string) *Scale {
 func (s *Scale) Owner() string { return s.owner }
 
 func (c ChartCard) KindName() string {
-	if c.Kind == "band" {
-		return "band"
+	switch c.Kind {
+	case "band", "area", "tile":
+		return c.Kind
 	}
 	return "spark"
 }
 
 func (c ChartCard) WindowName() string {
 	switch c.Window {
-	case "24h", "7d":
+	case "2h", "24h", "7d":
 		return c.Window
 	}
-	return "2h"
+	return "live"
 }
 
 func (c ChartCard) UnitName() string {
@@ -351,6 +390,8 @@ func (s StatusLine) Live() bool {
 
 type WindowChips struct {
 	Current string
+
+	Bare bool
 }
 
 type Chip struct {
@@ -370,7 +411,7 @@ func (w WindowChips) Label() string {
 
 func (w WindowChips) Chips() []Chip {
 	cur := ChartCard{Window: w.Current}.WindowName()
-	all := []Chip{{Key: "2h", Label: "2 часа"}, {Key: "24h", Label: "24 часа"}, {Key: "7d", Label: "7 дней"}}
+	all := []Chip{{Key: "live", Label: "Живое · 15 мин"}, {Key: "2h", Label: "2 часа"}, {Key: "24h", Label: "24 часа"}, {Key: "7d", Label: "7 дней"}}
 	for i := range all {
 		all[i].Pressed = all[i].Key == cur
 	}
@@ -379,6 +420,8 @@ func (w WindowChips) Chips() []Chip {
 
 type ChartPanel struct{}
 
+func (ChartPanel) Chips() WindowChips { return WindowChips{Bare: true} }
+
 type ChartTip struct{}
 
 func (ChartTip) Slots() []int { return make([]int, MaxChartRows) }
@@ -386,12 +429,16 @@ func (ChartTip) Slots() []int { return make([]int, MaxChartRows) }
 type ChartGrid struct {
 	Cards []ChartCard
 
-	Wide bool
+	Wide  bool
+	Tight bool
 }
 
 func (g ChartGrid) Class() string {
-	if g.Wide {
+	switch {
+	case g.Wide:
 		return "chart-grid chart-grid-wide"
+	case g.Tight:
+		return "chart-grid chart-grid-tight"
 	}
 	return "chart-grid"
 }
@@ -405,6 +452,11 @@ type LinkCard struct {
 	URL     string
 	Metrics []Metric
 	Note    string
+
+	Tag  *Tag
+	Mark *ProtoMark
+
+	Stub string
 }
 
 type CardGrid struct{ Cards []LinkCard }
@@ -463,12 +515,14 @@ type ChoiceOption struct {
 
 type Choice struct {
 	Name    string
+	Row     bool
 	Options []ChoiceOption
 }
 
 func (c Choice) ID(o ChoiceOption) string { return c.Name + "-" + o.Value }
 
 type Facts struct {
+	Tiles bool
 	Title string
 	URL   string
 	Items []Fact
@@ -483,4 +537,417 @@ func Plural(n int, one, few, many string) string {
 		word = few
 	}
 	return strconv.Itoa(n) + " " + word
+}
+
+type Tag struct {
+	Text   string
+	Judged Judgment
+}
+
+func (t Tag) Class() string {
+	if l := t.Judged.Level(); l != None {
+		return "tag tag-" + string(l)
+	}
+	return "tag"
+}
+
+type ChoiceCardOption struct {
+	Value    string
+	Label    string
+	Meta     string
+	Hint     string
+	Tags     []Tag
+	Checked  bool
+	Disabled bool
+
+	Tone   string
+	Points []Point
+	Icon   string
+}
+
+type Point struct {
+	Kind string
+	Text string
+}
+
+func (p Point) Sign() string {
+	switch p.Kind {
+	case "plus":
+		return "+"
+	case "minus":
+		return "−"
+	}
+	return "·"
+}
+
+type ChoiceCards struct {
+	Trailing bool
+	Name     string
+	Legend   string
+	Form     string
+	Options  []ChoiceCardOption
+}
+
+func (c ChoiceCards) ID(o ChoiceCardOption) string { return c.Name + "-" + o.Value }
+
+type HeroStatus struct {
+	Title   string
+	Text    string
+	Judged  Judgment
+	Metrics []Metric
+	Tags    []Tag
+	Ring    *Ring
+
+	Icon string
+}
+
+type Ring struct{ Done, Total int }
+
+func (r Ring) Percent() int {
+	if r.Total <= 0 || r.Done <= 0 {
+		return 0
+	}
+	if r.Done >= r.Total {
+		return 100
+	}
+	return r.Done * 100 / r.Total
+}
+
+func (h HeroStatus) Class() string {
+	if l := h.Judged.Level(); l != None {
+		return "hero hero-" + string(l)
+	}
+	return "hero"
+}
+
+type SwitchRow struct {
+	ID       string
+	Name     string
+	Label    string
+	Text     string
+	Checked  bool
+	Disabled bool
+	Value    string
+	Tag      Tag
+	OnWord   string
+	OffWord  string
+}
+
+func (s SwitchRow) FormValue() string {
+	if s.Value == "" {
+		return "1"
+	}
+	return s.Value
+}
+
+func (s SwitchRow) OnText() string {
+	if s.OnWord == "" {
+		return "включено"
+	}
+	return s.OnWord
+}
+
+func (s SwitchRow) OffText() string {
+	if s.OffWord == "" {
+		return "выключено"
+	}
+	return s.OffWord
+}
+
+type UsageBar struct {
+	Label   string
+	Value   string
+	Of      string
+	Percent int
+	Note    string
+	Judged  Judgment
+}
+
+func (u UsageBar) Step() int {
+	p := u.Percent
+	if p < 0 {
+		p = 0
+	}
+	if p > 100 {
+		p = 100
+	}
+	return (p + 2) / 5 * 5
+}
+
+func (u UsageBar) Class() string {
+	if l := u.Judged.Level(); l != None {
+		return "usage usage-" + string(l)
+	}
+	return "usage"
+}
+
+type PageLink struct {
+	URL       string
+	Label     string
+	Icon      string
+	Secondary bool
+}
+
+type ActionForm struct {
+	Action   string
+	CSRF     string
+	Hidden   map[string]string
+	Button   Button
+	Question string
+}
+
+type ItemCard struct {
+	Icon    string
+	Title   string
+	Tags    []Tag
+	Meta    []string
+	Note    string
+	Bar     *UsageBar
+	Actions []ActionForm
+	Muted   bool
+	Current bool
+}
+
+func (c ItemCard) Class() string {
+	switch {
+	case c.Muted:
+		return "item-card item-muted"
+	case c.Current:
+		return "item-card item-current"
+	}
+	return "item-card"
+}
+
+type ItemGrid struct {
+	Items []ItemCard
+	List  bool
+	Tight bool
+	Cards bool
+}
+
+type FilterBar struct {
+	ID      string
+	Filters []TimelineFilter
+}
+
+type TimelineEvent struct {
+	Kind   string
+	Tag    Tag
+	Time   string
+	Title  string
+	Text   string
+	Extra  string
+	Judged Judgment
+}
+
+func (e TimelineEvent) Class() string {
+	if l := e.Judged.Level(); l != None {
+		return "tl-event tl-" + string(l)
+	}
+	return "tl-event"
+}
+
+type TimelineDay struct {
+	Title  string
+	Events []TimelineEvent
+}
+
+type Timeline struct {
+	ID      string
+	Filters []TimelineFilter
+	Days    []TimelineDay
+	Empty   string
+}
+
+type TimelineFilter struct {
+	Kind  string
+	Label string
+}
+
+type ProtoMark struct {
+	Mono  string
+	Label string
+	Tone  int
+}
+
+func (m ProtoMark) Class() string {
+	if m.Tone >= 1 && m.Tone <= 2 {
+		return "proto-mark proto-tone-" + strconv.Itoa(m.Tone)
+	}
+	return "proto-mark"
+}
+
+type PathNode struct {
+	Sub   string
+	State string
+
+	Mark string
+}
+
+func (n PathNode) MarkIcon() string {
+	switch n.Mark {
+	case "ok":
+		return "check"
+	case "error":
+		return "close"
+	case "add":
+		return "plus"
+	}
+	return "warning"
+}
+
+func (n PathNode) Class() string {
+	if n.State == "" {
+		return "tp-node"
+	}
+	return "tp-node tp-" + n.State
+}
+
+type TrafficPath struct {
+	Aria         string
+	Gateway      PathNode
+	Server       PathNode
+	Exit         string
+	Link         string
+	LinkTag      Tag
+	Provider     string
+	ProviderWarn bool
+}
+
+func (p TrafficPath) PipeClass() string { return "tp-pipe tp-pipe-" + p.Link }
+
+func (p TrafficPath) PipeIcon() string {
+	switch p.Link {
+	case "broken":
+		return "close"
+	case "open":
+		return "eye"
+	}
+	return "lock"
+}
+
+type ProfileFact struct {
+	Label  string
+	Value  string
+	CopyID string
+}
+
+type ProfileCard struct {
+	Form      string
+	Name      string
+	Value     string
+	Checked   bool
+	Current   bool
+	Title     string
+	Mark      ProtoMark
+	Protocol  string
+	State     Tag
+	Live      string
+	Facts     []ProfileFact
+	Tags      []Tag
+	PickLabel string
+	Delete    *ActionForm
+
+	DeleteNote string
+
+	Fresh bool
+}
+
+func (c ProfileCard) ID() string { return c.Name + "-" + c.Value }
+
+type UploadKind struct {
+	Mark ProtoMark
+	Ext  string
+}
+
+type UploadZone struct {
+	ID        string
+	Action    string
+	CSRF      string
+	FileName  string
+	Accept    string
+	Title     string
+	Text      string
+	Kinds     []UploadKind
+	NameField Field
+	Button    Button
+}
+
+type GuideStep struct {
+	Title string
+	Text  string
+}
+
+type ProfileGrid struct {
+	Cards  []ProfileCard
+	Upload *UploadZone
+	Steps  []GuideStep
+}
+
+type CheckStep struct {
+	State  string
+	Title  string
+	Text   string
+	Link   *PageLink
+	Action *ActionForm
+}
+
+func (s CheckStep) Class() string { return "cl-step cl-" + s.State }
+
+func (s CheckStep) Current() bool { return s.State == "current" }
+
+type Checklist struct {
+	ID    string
+	Title string
+	Text  string
+	Steps []CheckStep
+
+	View string
+}
+
+func (c Checklist) CurrentStep() CheckStep {
+	for _, s := range c.Steps {
+		if s.Current() {
+			return s
+		}
+	}
+	return CheckStep{}
+}
+
+func ViewOf(cookie string) string {
+	switch cookie {
+	case "bar", "hidden":
+		return cookie
+	}
+	return "full"
+}
+
+func (c Checklist) DoneCount() int {
+	n := 0
+	for _, s := range c.Steps {
+		if s.State == "done" {
+			n++
+		}
+	}
+	return n
+}
+
+func NewChecklist(id, title, text string, steps []CheckStep, done []bool) *Checklist {
+	c := &Checklist{ID: id, Title: title, Text: text, View: "full"}
+	current := false
+	for i, s := range steps {
+		switch {
+		case done[i]:
+			s.State = "done"
+		case !current:
+			s.State, current = "current", true
+		default:
+			s.State = "todo"
+		}
+		c.Steps = append(c.Steps, s)
+	}
+	if !current {
+		return nil
+	}
+	return c
 }

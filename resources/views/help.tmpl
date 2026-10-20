@@ -1,31 +1,38 @@
 {{ define "help.tmpl" }}
 {{ template "app-top" . }}
 
-<div class="card">
-    <h2>Что делать, если…</h2>
-    <p class="muted">Те же темы есть в меню на консоли сервера — на случай,
-    когда панель не открывается: команда <code>sudo vpn-panel</code>, пункт «Помощь».</p>
-    <ul class="help-index">
-        {{ range .topics }}<li><a href="#{{ .Key }}">{{ .Question }}</a></li>{{ end }}
+<div class="cols cols-pick" data-pick>
+<div class="col">
+<nav class="card" aria-label="Вопросы">
+    <div class="card-head"><div><h2>Что случилось?</h2></div></div>
+    <ul class="pick-list">
+        {{ range .topics }}<li><a class="pick-item" href="#{{ .Key }}" data-pick-for="{{ .Key }}"><span>{{ .Question }}</span>{{ template "components/icon" "chevron" }}</a></li>{{ end }}
     </ul>
+    <p class="muted">Те же темы есть в меню на консоли сервера — на случай, когда панель не открывается:
+    <code>sudo vpn-panel</code>, пункт «Помощь».</p>
+</nav>
 </div>
 
+<div class="col">
 {{ range .topics }}
-<section class="card help-topic" id="{{ .Key }}">
+<section class="card help-topic" id="{{ .Key }}" data-pick-panel>
     <h2>{{ .Question }}</h2>
     {{ if .Checks.Lines }}
-    <h3>Проверено сейчас</h3>
+    <h3 class="caps-label">Проверено сейчас</h3>
     {{ template "components/status-grid" .Checks }}
     {{ end }}
-    <h3>Что делать</h3>
-    <ol class="help-steps">
-        {{ range .Steps }}<li>{{ . }}</li>{{ end }}
+    <h3 class="caps-label">Что делать</h3>
+    <ol class="flow">
+        {{ range .Steps }}<li class="flow-step"><p class="help-step">{{ . }}</p></li>{{ end }}
     </ol>
     {{ if .Means }}
-    <p class="muted">Здесь поможет: {{ range $i, $m := .Means }}{{ if $i }}, {{ end }}{{ if $m.URL }}<a href="{{ $m.URL }}">{{ $m.Text }}</a>{{ else }}{{ $m.Text }} — {{ $m.Note }}{{ end }}{{ end }}.</p>
+    <h3 class="caps-label">Здесь поможет</h3>
+    <div class="hero-tags">{{ range .Means }}{{ if .URL }}<a class="tag tag-link" href="{{ .URL }}">{{ .Text }}</a>{{ else }}<span class="tag">{{ .Text }} — {{ .Note }}</span>{{ end }}{{ end }}</div>
     {{ end }}
 </section>
 {{ end }}
+</div>
+</div>
 
 {{ template "app-bottom" . }}
 {{ end }}

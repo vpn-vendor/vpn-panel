@@ -1,0 +1,17 @@
+{{ define "components/feed" }}
+<section class="card feed" aria-labelledby="feed-title" data-island="feed" data-after="{{ .LastID }}" data-cap="{{ .Cap }}">
+    <header class="score-head">
+        <h3 class="chart-title" id="feed-title">Что происходит</h3>
+        <span class="tag">живая лента</span>
+    </header>
+    <ol class="feed-list" data-feed-list aria-live="polite">
+        {{ range .Events }}
+        <li class="{{ .Class }}"><span class="feed-dot" aria-hidden="true"></span><span class="feed-words"><span class="feed-title">{{ .Title }}</span>{{ if .Detail }}<span class="feed-detail">{{ .Detail }}</span>{{ end }}</span><time class="feed-time num">{{ .Time }}</time></li>
+        {{ else }}
+        <li class="feed-ev feed-none feed-empty"><span class="feed-dot" aria-hidden="true"></span><span class="feed-words"><span class="feed-title">Событий пока нет</span></span><time class="feed-time num"></time></li>
+        {{ end }}
+    </ol>
+    <template data-feed-row><li class="feed-ev"><span class="feed-dot" aria-hidden="true"></span><span class="feed-words"><span class="feed-title"></span><span class="feed-detail"></span></span><time class="feed-time num"></time></li></template>
+    <a class="feed-more" href="/devices">Весь журнал безопасности</a>
+</section>
+{{ end }}

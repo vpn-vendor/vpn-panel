@@ -9,6 +9,7 @@ var Rules = []admission.Rule{
 	{Method: "POST", Prefix: "/qos/speedtest", Class: admission.Sheddable},
 	{Method: "GET", Prefix: "/diagnostics/probe/status", Class: admission.Sheddable},
 	{Method: "POST", Prefix: "/diagnostics/probe", Class: admission.Sheddable},
+	{Method: "POST", Prefix: "/diagnostics/surroundings/recheck", Class: admission.Sheddable},
 	{Method: "POST", Prefix: "/diagnostics/support", Class: admission.Sheddable},
 	{Method: "GET", Prefix: "/vpn/check/status", Class: admission.Sheddable},
 	{Method: "POST", Prefix: "/vpn/check", Class: admission.Sheddable},
@@ -19,6 +20,7 @@ var Rules = []admission.Rule{
 	{Method: "GET", Prefix: "/network/suggest", Class: admission.Sheddable},
 	{Method: "GET", Prefix: "/agent/ping", Class: admission.Sheddable},
 	{Method: "GET", Prefix: "/metrics/series", Class: admission.Sheddable},
+	{Method: "GET", Prefix: "/overview/feed", Class: admission.Sheddable},
 
 	{Prefix: "/", Class: admission.Ordinary},
 	{Method: "GET", Prefix: "/health", Class: admission.Ordinary},
@@ -68,6 +70,7 @@ var Rules = []admission.Rule{
 	{Method: "POST", Prefix: "/diagnostics/fullcheck", Class: admission.Critical},
 	{Method: "POST", Prefix: "/vpn/apply", Class: admission.Critical},
 	{Method: "POST", Prefix: "/vpn/remove", Class: admission.Critical},
+	{Method: "POST", Prefix: "/vpn/reconnect", Class: admission.Critical},
 	{Method: "POST", Prefix: "/vpn/probe-target", Class: admission.Critical},
 	{Method: "POST", Prefix: "/security", Class: admission.Critical},
 	{Method: "POST", Prefix: "/network/apply", Class: admission.Critical},

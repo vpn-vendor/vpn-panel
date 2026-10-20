@@ -3,6 +3,7 @@ package controllers
 import (
 	"crypto/rand"
 	"errors"
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
 	"net"
 	"strconv"
 	"time"
@@ -64,7 +65,7 @@ func (c *LanTestController) Data(ctx contractshttp.Context) contractshttp.Respon
 	mode := ctx.Request().Input("mode", "quick")
 
 	if !c.service.Settings().ActiveProbes {
-		return ctx.Response().String(contractshttp.StatusForbidden, "проверки скорости выключены администратором")
+		return ctx.Response().String(contractshttp.StatusForbidden, "проверки скорости выключены "+ui.MainAdmin.Ins)
 	}
 
 	if c.service.FullCheck().State().Active {

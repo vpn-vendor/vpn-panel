@@ -1,0 +1,7 @@
+{{ define "components/pult-trio" }}
+<div class="pult-trio">
+    {{ template "components/score-card" .Score }}
+    {{ template "components/uptime-card" .Uptime }}
+    {{ template "components/chart-card" .LAN }}
+</div>
+{{ end }}

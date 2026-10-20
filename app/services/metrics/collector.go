@@ -262,10 +262,13 @@ func (c *Collector) strike(s *Source, f *fuse, now time.Time, err error, took, l
 	_ = c.store.Set(SettingSource+s.Name, State{Mode: Paused, Until: until}.String())
 	c.states[s.Name] = State{Mode: Paused, Until: until}
 	why := "чтение дороже порога (" + took.Round(time.Microsecond).String() + " > " + limit.Round(time.Microsecond).String() + ")"
+	human := "его чтение стало слишком дорогим для сервера"
 	if err != nil {
 		why = "ошибка чтения: " + err.Error()
+		human = "его данные не удалось прочитать"
 	}
-	c.notices[s.Name] = "Источник показателей «" + s.Title + "» приостановлен до " + until.Local().Format("15:04") + ": " + why + ". Вернуть сразу можно на странице «Защита»."
+
+	c.notices[s.Name] = "Источник показателей «" + s.Title + "» приостановлен до " + until.Local().Format("15:04") + ": " + human + ". Вернуть сразу можно на странице «Защита»."
 	c.record(models.AuthEvent{Event: "metrics_source_paused", OccurredAt: now, Details: s.Name + ": " + why + ", до " + until.Local().Format("02.01.2006 15:04:05")})
 	log.Printf("сбор показателей: источник %s на паузе до %s: %s", s.Name, until.Format(time.RFC3339), why)
 }

@@ -8,14 +8,21 @@ KEY="${VP_KEY_FILE:?}"
 PLACEHOLDER="${VP_PLACEHOLDER:?}"
 LOG="${VP_LOG:?}"
 out() { echo "vpn-panel: $*" | tee -a "$LOG"; }
-D="$(lsblk -pnro NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1; exit}')"
-[ -n "$D" ] || { out "VP-FIRSTBOOT: FAIL no LUKS volume"; exit 1; }
+# Наш том — тот, который открывает временный ключ: рядом может стоять чужой
+# шифрованный раздел другой системы.
+D=""
+for cand in $(lsblk -pnro NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1}'); do
+    if cryptsetup open --test-passphrase --key-file "$KEY" "$cand" 2>/dev/null; then
+        D="$cand"
+        break
+    fi
+done
+[ -n "$D" ] || { out "VP-FIRSTBOOT: FAIL temporary key does not open any LUKS volume"; exit 1; }
 if printf %s "$PLACEHOLDER" | cryptsetup open --test-passphrase --key-file - "$D" 2>/dev/null; then
     out "VP-FIRSTBOOT: FAIL placeholder opens the disk"
     exit 1
 fi
-printf %s "$(cat "$KEY")" | cryptsetup open --test-passphrase --key-file - "$D" \
-    || { out "VP-FIRSTBOOT: FAIL temporary key does not open the disk"; exit 1; }
+echo "$D" > /run/vp-luks-device
 install -d -m 0700 /target/etc/cryptsetup-keys.d
 install -m 0400 "$KEY" /target/etc/cryptsetup-keys.d/system.key
 printf 'install_items+=" /etc/cryptsetup-keys.d/system.key "\n' \

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/vpndriver"
 	"github.com/vpn-vendor/vpn-panel-core/internal/wggen"
 )
@@ -251,4 +252,10 @@ func (d *wgDriver) checkForeignInterface() *agentrpc.ErrorObject {
 	return &agentrpc.ErrorObject{Code: codeVPNUp,
 		Message: "имя служебного канала занято другим программным обеспечением — обратитесь в поддержку",
 		Data:    map[string]any{"recoverable": false}}
+}
+
+func (d *wgDriver) hostProbes() []hostProbe {
+	return []hostProbe{kernelProbe("kernel.wireguard", hostcaps.ClassGuard, []string{"vpn"}, "Модуль WireGuard в ядре",
+		"В ядре нет модуля WireGuard: канал WireGuard не поднимется. Обновите систему или подключитесь по "+
+			"другому протоколу.", "wireguard")}
 }

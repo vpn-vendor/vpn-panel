@@ -41,7 +41,7 @@ func (r *Runner) Run() error {
 		return ""
 	}
 	qos := NewQoSSource(r.roles, rtnl.DumpQdiscs, rtnl.Dump)
-	c := New(Sources(links, qos, r.extra...), dbStore{}, r.dataDir, lanName)
+	c := New(Sources(r.dataDir, links, qos, r.extra...), dbStore{}, r.dataDir, lanName)
 	c.Load()
 	setCurrent(c)
 	return r.loop(c, links)

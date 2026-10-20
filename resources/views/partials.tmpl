@@ -33,7 +33,7 @@
 <body>
 <header class="chrome">
     <div class="chrome-left">
-        <button id="sidebar-toggle" class="chrome-btn" type="button" aria-controls="sidebar" aria-expanded="true" aria-label="Свернуть меню" title="Свернуть меню">{{ template "components/icon" "menu" }}</button>
+        <button id="sidebar-toggle" class="chrome-btn chrome-burger" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню" title="Открыть меню">{{ template "components/icon" "menu" }}</button>
         <a class="chrome-brand" href="/" aria-label="vpn-panel — на главную">
             {{ template "components/brand-mark" }}
             <span class="brand-text">
@@ -66,11 +66,11 @@
         <button id="theme-toggle" class="chrome-btn chrome-theme" type="button" data-theme-toggle aria-label="Переключить тему" title="Переключить тему">{{ template "components/icon" "theme" }}</button>
         <details class="menu">
             <summary class="chrome-account" aria-label="Аккаунт" title="Аккаунт">
-                <span class="avatar" aria-hidden="true">А</span>
-                <span class="account-name">Администратор</span>
+                <span class="avatar" aria-hidden="true">{{ .roleMain.Initial }}</span>
+                <span class="account-name">{{ .roleMain.Nom }}</span>
             </summary>
             <div class="menu-panel">
-                <div class="menu-head"><strong>Администратор</strong><span>Вход с доверенного устройства</span></div>
+                <div class="menu-head"><strong>{{ .roleMain.Nom }}</strong><span>Вход с доверенного устройства</span></div>
                 <a class="menu-item" href="/devices">{{ template "components/icon" "devices" }}Доверенные устройства</a>
                 
                 <button type="button" class="menu-item menu-only-phone" data-theme-toggle>{{ template "components/icon" "theme" }}Сменить тему</button>
@@ -87,18 +87,23 @@
 <div class="shell">
     
     <button type="button" class="scrim" data-scrim aria-label="Закрыть меню" hidden></button>
-    <button type="button" class="nav-edge" id="sidebar-edge" data-sidebar-edge
-            aria-controls="sidebar" aria-expanded="true" title="Свернуть меню" hidden>
-        {{ template "components/icon" "chevron" }}<span class="visually-hidden">Свернуть меню</span>
-    </button>
     <aside class="sidebar" id="sidebar">
+        <div class="nav-panel">
+        <div class="nav-track">
+        <div class="nav-head">
+            <span class="nav-head-ico" aria-hidden="true">{{ template "components/icon" "sidebar" }}</span>
+            <span class="nav-head-title">Меню</span>
+            <button type="button" class="nav-tool nav-pin" data-nav-pin aria-pressed="false" aria-label="Закрепить меню" title="Закрепить меню" hidden>{{ template "components/icon" "pin" }}</button>
+            <button type="button" class="nav-tool nav-close" data-nav-close aria-label="Закрыть меню" title="Закрыть меню" hidden>{{ template "components/icon" "close" }}</button>
+        </div>
         <nav class="nav" aria-label="Разделы панели">
             {{ range .nav }}
             <div class="nav-group">
                 {{ if .Title }}<div class="nav-group-title">{{ .Title }}</div>{{ end }}
                 {{ range .Sections }}
                 {{ $key := .Key }}
-                <a href="{{ .URL }}"{{ if eq $.active .Key }} class="active" aria-current="page"{{ end }}>
+                
+                <a href="{{ .URL }}" title="{{ .Title }}: {{ .Subtitle }}"{{ if eq $.active .Key }} class="active" aria-current="page"{{ end }}>
                     {{ template "components/icon" .Icon }}
                     <span class="nav-text"><span class="nav-title">{{ .Title }}{{ with $.navBadges }}{{ with index . $key }} <span class="tag tag-main">{{ . }}</span>{{ end }}{{ end }}</span><span class="nav-sub">{{ .Subtitle }}</span></span>
                 </a>
@@ -106,11 +111,30 @@
             </div>
             {{ end }}
         </nav>
+        
+        <div class="nav-foot">
+            <span class="avatar" aria-hidden="true">{{ .roleMain.Initial }}</span>
+            <span class="nav-who"><strong>{{ .roleMain.Nom }}</strong><small>вход с доверенного устройства</small></span>
+            <form method="post" action="/logout">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                <button type="submit" class="nav-tool" aria-label="Выйти" title="Выйти">{{ template "components/icon" "logout" }}</button>
+            </form>
+        </div>
+        </div>
+        </div>
     </aside>
     <div class="content" data-width="{{ .pageWidth }}">
         <div class="pagehead">
-            <h1 class="pagehead-title">{{ .title }}</h1>
-            {{ if .subtitle }}<p class="pagehead-sub">{{ .subtitle }}</p>{{ end }}
+            <div class="pagehead-text">
+                <p class="pagehead-path">Шлюз офиса / {{ if .pageGroup }}{{ .pageGroup }} / {{ end }}{{ .title }}</p>
+                <h1 class="pagehead-title">{{ .title }}</h1>
+                {{ if .subtitle }}<p class="pagehead-sub">{{ .subtitle }}</p>{{ end }}
+            </div>
+            
+            {{ with .pageAction }}<div class="pagehead-action">{{ template "components/action-form" . }}</div>{{ end }}
+            
+            {{ if .pageLive }}<div class="pagehead-action"><span class="live-pill" data-island="live-pill" data-live-pill data-text-now="только что" data-text-ago="с назад" title="Обновляется каждую секунду; во фоновой вкладке на паузе" hidden><b class="live-dot" aria-hidden="true"></b>Живое · обновлено <span data-live-ago>только что</span></span></div>{{ end }}
+            {{ with .pageLink }}<div class="pagehead-action"><a class="btn{{ if .Secondary }} btn-secondary{{ end }}" href="{{ .URL }}">{{ if .Icon }}{{ template "components/icon" .Icon }}{{ end }}{{ .Label }}</a></div>{{ end }}
         </div>
         <main class="page">
 {{ template "island-fuse" . }}
@@ -142,6 +166,7 @@
 
 {{ define "app-bottom" }}
         </main>
+        {{ template "components/unsaved-bar" }}
         <footer class="appfoot">
             <span>vpn-panel{{ if .version }} {{ .version }}{{ end }}</span>
         </footer>
@@ -167,22 +192,31 @@
 {{ end }}
 
 {{ define "wizard-top" }}
-{{ template "html-head" . }}
+
+{{ if .open }}{{ template "plain-head" . }}{{ else }}{{ template "html-head" . }}{{ end }}
 <body class="wizard-body">
-<div class="wizard-wrap">
-    <header class="wizard-head">
+<div class="wz">
+    <header class="wz-top">
+        {{ if .open }}
+        <span class="wizard-brand">{{ template "components/icon" "shield" }}<span class="wizard-brand-text"><span>Шлюз офиса</span><span class="wizard-brand-sub">Первая настройка</span></span></span>
+        {{ else }}
         <a class="wizard-brand" href="/" aria-label="vpn-panel — на главную">
             {{ template "components/brand-mark" }}
             <span class="wizard-brand-text"><span class="brand-name">vpn-panel</span><span class="wizard-brand-sub">Первая настройка</span></span>
         </a>
+        {{ end }}
+        {{ with .phases }}{{ template "components/wizard-phases" . }}{{ end }}
+        {{ if not .open }}
         <form method="post" action="/setup/answer" class="wizard-leave">
             <input type="hidden" name="_csrf" value="{{ .csrf }}">
             <input type="hidden" name="action" value="finish">
-            <button type="submit" class="btn btn-ghost btn-small">Перейти в панель</button>
+            <button type="submit" class="btn btn-ghost btn-small">Настроить позже и открыть панель</button>
         </form>
+        {{ end }}
     </header>
-    {{ template "components/stepper" .stepper }}
-    <main class="wizard-main">
+    <main class="wz-main">
+        <div class="wz-art">{{ if .wait }}{{ template "components/wait-ring" .wait }}{{ else if .pcRear }}{{ template "components/pc-rear" .pcRear }}{{ else if .contract }}{{ template "components/contract" .contract }}{{ else }}<div aria-hidden="true">{{ template "components/setup-scene" .scene }}</div>{{ end }}</div>
+        <section class="wz-pane">
 {{ if .error }}<div class="alert alert-error" role="alert">{{ .error }}</div>{{ end }}
 {{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
 {{ if .agentDown }}
@@ -190,17 +224,18 @@
 Сведения о сетевых картах получить не удалось. Если это повторяется —
 перезагрузите сервер или обратитесь в поддержку.</div>
 {{ end }}
-<section class="card wizard-card">
-    <h1 class="wizard-question">{{ .step.Question }}</h1>
-    <p class="wizard-hint">{{ .step.Hint }}</p>
+            {{ with .phases }}{{ if .Where }}<p class="wz-eyebrow">{{ .Where }}</p>{{ end }}{{ end }}
+            <h1 class="wizard-question">{{ .step.Question }}</h1>
+            <p class="wizard-hint">{{ .step.Hint }}</p>
 {{ end }}
 
 {{ define "wizard-bottom" }}
-</section>
-<script src="{{ .static }}/js/wizard.js" defer></script>
+        </section>
     </main>
-    <footer class="appfoot wizard-foot"><span>vpn-panel{{ if .version }} {{ .version }}{{ end }}</span></footer>
+    {{ with .foot }}{{ template "components/wizard-foot" . }}{{ end }}
 </div>
+<script src="{{ .static }}/js/wizard.js" defer></script>
+{{ with .islandScript }}<script src="{{ $.static }}/js/{{ . }}" defer></script>{{ end }}
 </body>
 </html>
 {{ end }}

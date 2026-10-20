@@ -1,0 +1,21 @@
+{{ define "components/contract" }}
+<figure class="ct">
+    <div class="ct-paper" role="img" aria-label="Пример договора с провайдером: где написан способ подключения">
+        <p class="ct-head">Договор № ________</p>
+        <p class="ct-sub">об оказании услуг доступа в интернет</p>
+        <span class="ct-gray"></span><span class="ct-gray ct-gray-short"></span><span class="ct-gray"></span>
+        <p class="ct-part">Параметры подключения</p>
+        <p class="ct-row ct-type"><span>Тип подключения:</span><em><span class="ct-v ct-v-dhcp">динамический IP (DHCP)</span><span class="ct-v ct-v-pppoe">PPPoE</span><span class="ct-v ct-v-static">статический IP</span></em></p>
+        <p class="ct-row ct-pppoe"><span>Логин:</span><em></em></p>
+        <p class="ct-row ct-pppoe"><span>Пароль:</span><em></em></p>
+        <p class="ct-row ct-static"><span>IP-адрес:</span><em></em></p>
+        <p class="ct-row ct-static"><span>Маска:</span><em></em></p>
+        <p class="ct-row ct-static"><span>Шлюз:</span><em></em></p>
+        <p class="ct-row ct-static"><span>DNS:</span><em></em></p>
+        <p class="ct-row ct-mac"><span>Привязка по MAC:</span><em><span class="ct-v ct-v-dhcp">да / нет</span></em></p>
+        <span class="ct-gray ct-gray-short"></span>
+        <p class="ct-sign">Подпись абонента ____________</p>
+    </div>
+    {{ if .Caption }}<figcaption class="ct-caption">Где это взять: раздел «Параметры подключения» в договоре или в личном кабинете провайдера</figcaption>{{ end }}
+</figure>
+{{ end }}

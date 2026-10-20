@@ -32,7 +32,7 @@ const (
 	SystemKeepDays      = 7
 	SystemKeepDaysTight = 1
 
-	BootsKeepDays = SystemKeepDays + 1
+	BootsKeepDays = 31
 
 	Batch       = 1000
 	SweepBudget = time.Second

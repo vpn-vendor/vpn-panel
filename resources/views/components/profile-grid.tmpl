@@ -1,0 +1,13 @@
+{{ define "components/profile-grid" }}
+{{ if .Cards }}
+<div class="pc-grid">
+    {{ range .Cards }}{{ template "components/profile-card" . }}{{ end }}
+    {{ with .Upload }}{{ template "components/upload-zone" . }}{{ end }}
+</div>
+{{ else }}
+<div class="pc-empty">
+    {{ if .Steps }}<ol class="flow">{{ range .Steps }}<li class="flow-step"><div class="flow-body"><p class="flow-title">{{ .Title }}</p><p class="flow-text">{{ .Text }}</p></div></li>{{ end }}</ol>{{ end }}
+    {{ with .Upload }}{{ template "components/upload-zone" . }}{{ end }}
+</div>
+{{ end }}
+{{ end }}

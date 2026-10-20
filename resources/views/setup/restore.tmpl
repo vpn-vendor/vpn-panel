@@ -1,22 +1,32 @@
 {{ define "setup/restore" }}
 {{ template "wizard-top" . }}
-<form method="post" action="/backup/import" enctype="multipart/form-data">
-    <input type="hidden" name="_csrf" value="{{ .csrf }}">
-    <input type="hidden" name="wizard" value="1">
-    {{ template "components/file-field" .fileField }}
-    {{ template "components/field" .passField }}
-    <p class="muted">Панель покажет, что изменится, и ничего не тронет без
-    вашего решения. После того как настройки закреплены, мастер продолжит
-    с нужного места сам.</p>
-    <div class="wizard-actions">
-        {{ template "components/button" .uploadBtn }}
-    </div>
-</form>
-<form method="post" action="/setup/answer" class="wizard-actions">
+<div class="wz-fork">
+    <button type="submit" class="wz-fork-card" form="skip-form">
+        <span class="wz-fork-title">Настроить с нуля</span>
+        <span class="wz-fork-text">Мастер задаст несколько вопросов и сам найдёт кабели и провайдера. Так делают почти все.</span>
+        <ul class="wz-fork-list">
+            <li>Найдёт кабель провайдера и карту офиса</li>
+            <li>Подскажет способ подключения по договору</li>
+            <li>Настроит адреса офиса и защиту</li>
+            <li>Займёт {{ .forkMinutes }}</li>
+        </ul>
+        <span class="wz-fork-go">Начать настройку {{ template "components/icon" "chevron" }}</span>
+    </button>
+    <form method="post" action="/backup/import" enctype="multipart/form-data" id="step-form" class="wz-fork-card wz-fork-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <input type="hidden" name="wizard" value="1">
+        <span class="wz-fork-title">Загрузить копию или шаблон</span>
+        <span class="wz-fork-text"><strong>Копия</strong> — всё как было на прежнем шлюзе, включая ключи VPN.
+        <strong>Шаблон</strong> — правила офиса для нового ПК: карты и адреса подберутся под это железо.</span>
+        {{ template "components/file-field" .fileField }}
+        {{ template "components/field" .passField }}
+        <span class="wz-fork-text">Панель покажет, что изменится, и ничего не тронет без вашего решения.</span>
+    </form>
+</div>
+<form method="post" action="/setup/answer" id="skip-form" hidden>
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="step" value="restore">
     <input type="hidden" name="action" value="skip">
-    {{ template "components/button" .skipBtn }}
 </form>
 {{ template "wizard-bottom" . }}
 {{ end }}

@@ -1,0 +1,12 @@
+{{ define "components/item-card" }}
+<article class="{{ .Class }}">
+    {{ if .Icon }}<span class="item-icon" aria-hidden="true">{{ template "components/icon" .Icon }}</span>{{ end }}
+    <div class="item-body">
+        <div class="item-title">{{ .Title }}{{ range .Tags }} <span class="{{ .Class }}">{{ .Text }}</span>{{ end }}</div>
+        {{ if .Meta }}<div class="item-meta">{{ range .Meta }}<span>{{ . }}</span>{{ end }}</div>{{ end }}
+        {{ with .Bar }}{{ template "components/usage-bar" . }}{{ end }}
+        {{ if .Note }}<p class="item-note">{{ .Note }}</p>{{ end }}
+    </div>
+    {{ if .Actions }}<div class="item-actions">{{ range .Actions }}{{ template "components/action-form" . }}{{ end }}</div>{{ end }}
+</article>
+{{ end }}

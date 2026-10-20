@@ -17,116 +17,170 @@
 </div>
 {{ else }}
 
-<div class="card">
-    <h2>Роли сетевых карт</h2>
-    <p class="muted">Назначьте, какая карта смотрит в интернет, а какая — в
-    локальную сеть офиса. Изменения безопасны: если связь с панелью
-    прервётся, всё автоматически вернётся как было.</p>
-    <form method="post" action="/network/apply">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <table>
-            <thead>
-                <tr><th>Карта</th><th>MAC</th><th>Состояние</th><th>Текущие адреса</th><th>Роль</th><th>Адрес в локальной сети</th></tr>
-            </thead>
-            <tbody>
-                {{ range .ifaces }}
-                <tr data-iface="{{ .Name }}">
-                    <td><code>{{ .Name }}</code></td>
-                    <td><code>{{ .MAC }}</code></td>
-                    <td>{{ if eq .State "UP" }}<span class="state-up">работает</span>{{ else if eq .State "DOWN" }}<span class="state-down">выключен</span>{{ else }}{{ .State }}{{ end }}</td>
-                    <td>{{ range .Addresses }}<code>{{ . }}</code> {{ else }}—{{ end }}</td>
-                    <td>
-                        <select name="role_{{ .Name }}" class="js-role" data-iface="{{ .Name }}">
-                            <option value="unused" {{ if eq .Role "unused" }}selected{{ end }}>не используется</option>
-                            <option value="wan" {{ if eq .Role "wan" }}selected{{ end }}>интернет (WAN)</option>
-                            <option value="lan" {{ if eq .Role "lan" }}selected{{ end }}>локальная сеть (LAN)</option>
-                        </select>
-                    </td>
-                    <td>
-                        <input class="js-lan-cidr" name="cidr_{{ .Name }}" value="{{ .CIDR }}" placeholder="192.168.11.1/24" {{ if ne .Role "lan" }}hidden{{ end }}>
-                        <span class="muted js-wan-note" {{ if ne .Role "wan" }}hidden{{ end }}>интернет-подключение — в блоке ниже</span>
-                    </td>
-                </tr>
-                {{ end }}
-            </tbody>
-        </table>
+<section class="card">
+    {{ template "components/hero-status" .hero }}
+</section>
 
-        {{ if .wan }}
-        <div class="wan-config" data-wan-iface="{{ .wan.Name }}">
-            <h3>Подключение к интернету — карта <code>{{ .wan.Name }}</code></h3>
-            <label>Тег VLAN <span class="muted">(только если провайдер его требует)</span>
-                <input class="js-vlan" name="vlan_{{ .wan.Name }}" value="{{ .wan.VLAN }}" placeholder="например 100" inputmode="numeric" autocomplete="off">
-                <span class="muted js-vlan-hint">{{ if .wan.VLANIface }}Будет создано подключение <code>{{ .wan.VLANIface }}</code>.{{ else }}Оставьте пустым, если провайдер про VLAN ничего не писал.{{ end }}</span></label>
-            <label>Как ваш провайдер даёт адрес?
-                <select name="wanmethod_{{ .wan.Name }}" class="js-wanmethod">
-                    <option value="dhcp" {{ if eq .wan.WANMethod "dhcp" }}selected{{ end }}>Автоматически — провайдер выдаёт адрес сам (DHCP)</option>
-                    <option value="static" {{ if eq .wan.WANMethod "static" }}selected{{ end }}>Статический адрес — провайдер дал фиксированные настройки</option>
-                    <option value="pppoe" {{ if eq .wan.WANMethod "pppoe" }}selected{{ end }}>По логину и паролю (PPPoE) — провайдер дал имя пользователя</option>
-                </select>
-            </label>
-            <div class="js-static-fields static-fields" {{ if ne .wan.WANMethod "static" }}hidden{{ end }}>
-                <p class="muted">Впишите то, что дал провайдер. Маску можно указать прямо в адресе (например <code>203.0.113.45/24</code>) — тогда поле «Маска» заполнять не нужно.</p>
-                <div class="field-grid">
-                    <label>IP-адрес
-                        <input class="js-ip" name="cidr_{{ .wan.Name }}" value="{{ if eq .wan.WANMethod "static" }}{{ .wan.CIDR }}{{ end }}" placeholder="203.0.113.45" autocomplete="off"></label>
-                    <label>Маска подсети
-                        <input class="js-mask" placeholder="255.255.255.0 или /24" autocomplete="off">
-                        <span class="muted js-mask-hint"></span></label>
-                    <label>Шлюз <span class="muted">(адрес роутера провайдера)</span>
-                        <input class="js-gw" name="gateway_{{ .wan.Name }}" value="{{ .wan.Gateway }}" placeholder="203.0.113.1" autocomplete="off"></label>
-                    <label>Серверы имён <span class="muted">(необязательно)</span>
-                        <input name="dns_{{ .wan.Name }}" value="{{ .wan.DNS }}" placeholder="9.9.9.9, 149.112.112.112" autocomplete="off"></label>
-                </div>
-                <p class="alert alert-warn js-gw-warn" hidden></p>
-                <p class="muted">Не уверены в маске? Впишите адрес и шлюз — панель подскажет подходящую. Панель всегда советует, но применяет то, что выбрали вы.</p>
-            </div>
-            <div class="js-pppoe-fields static-fields" {{ if ne .wan.WANMethod "pppoe" }}hidden{{ end }}>
-                <p class="muted">Впишите имя пользователя и пароль из договора с провайдером. Адрес выдаст сам провайдер, когда подключение поднимется.</p>
-                <div class="field-grid">
-                    <label>Имя пользователя
-                        <input name="pppoeuser_{{ .wan.Name }}" value="{{ .wan.PPPoEUser }}" placeholder="user@provider" autocomplete="off"></label>
-                    <label>Пароль
-                        <input type="password" name="pppoepass_{{ .wan.Name }}" placeholder="{{ if .wan.PPPoESaved }}пароль сохранён{{ else }}пароль от провайдера{{ end }}" autocomplete="new-password">
-                        {{ if .wan.PPPoESaved }}<span class="muted">Оставьте пустым, чтобы не менять сохранённый пароль.</span>{{ end }}</label>
-                </div>
-                <p class="muted">Подключение занимает до минуты: панель дождётся ответа провайдера и скажет, если логин или пароль не подошли. Пароль хранится только на сервере и на странице не показывается.</p>
+<div class="cols cols-main">
+<div class="col">
+<form method="post" action="/network/apply" id="net-apply" data-unsaved>
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+
+    <section class="card">
+        <div class="card-head">
+            <div>
+                <h2>Сетевые карты <span class="tag">{{ len .ifaces }}</span></h2>
+                <p class="muted card-sub">Назначьте каждой карте роль. Изменения безопасны: если связь с панелью
+                прервётся, всё вернётся как было.</p>
             </div>
         </div>
-        {{ end }}
-
-        <div class="alert alert-warn">
-            <strong>Применение изменит работу локальной сети.</strong>
-            Текущие разговоры и подключения сотрудников прервутся.
-            Рекомендуем применять изменения в нерабочее время.
+        <div class="item-list">
+            {{ range .ifaces }}
+            <article class="item-card{{ if eq .Role "wan" }} item-current{{ end }}" data-iface-row="{{ .Name }}">
+                <span class="item-icon" aria-hidden="true">{{ template "components/icon" "port" }}</span>
+                <div class="item-body">
+                    <div class="item-title">{{ .Name }}
+                        {{ if eq .State "UP" }}<span class="tag tag-ok">кабель есть</span>{{ else if eq .State "DOWN" }}<span class="tag">кабеля нет</span>{{ else }}<span class="tag">{{ .State }}</span>{{ end }}
+                        {{ if .Provider }}<span class="tag tag-ok">провайдер отвечает</span>{{ end }}</div>
+                    <div class="item-meta"><span>{{ .MAC }}</span><span>{{ range $i, $a := .Addresses }}{{ if $i }}, {{ end }}{{ $a }}{{ else }}адреса нет{{ end }}</span>{{ if .SpeedMbit }}<span>{{ .SpeedMbit }} Мбит/с</span>{{ end }}</div>
+                    <div class="lan-cidr" data-lan-cidr{{ if ne .Role "lan" }} hidden{{ end }}>
+                        <label class="field-label" for="cidr-{{ .Name }}">Адрес шлюза в офисе</label>
+                        <input class="field-input js-lan-cidr" id="cidr-{{ .Name }}" name="cidr_{{ .Name }}" value="{{ .CIDR }}" placeholder="192.168.11.1/24">
+                        <p class="muted">Отсюда устройства офиса получают адреса.</p>
+                    </div>
+                    <p class="muted js-wan-note"{{ if ne .Role "wan" }} hidden{{ end }}>Подключение к провайдеру — в карточке ниже.</p>
+                </div>
+                <div class="seg" role="radiogroup" aria-label="Роль карты {{ .Name }}">
+                    <label class="seg-item"><input type="radio" class="js-role" name="role_{{ .Name }}" value="wan"{{ if eq .Role "wan" }} checked{{ end }}><span>Интернет</span></label>
+                    <label class="seg-item"><input type="radio" class="js-role" name="role_{{ .Name }}" value="lan"{{ if eq .Role "lan" }} checked{{ end }}><span>Офис</span></label>
+                    <label class="seg-item"><input type="radio" class="js-role" name="role_{{ .Name }}" value="unused"{{ if eq .Role "unused" }} checked{{ end }}><span>Не используется</span></label>
+                </div>
+            </article>
+            {{ end }}
         </div>
-        <button type="submit" class="btn">Применить настройки сети</button>
-    </form>
-    <p class="muted">При назначенных ролях интернет и адреса выдаются устройствам
-    офиса автоматически — вручную на компьютерах ничего настраивать не нужно.
-    Адреса карт с ролями задаёт панель: если изменить их в настройках сети на
-    самом сервере, при следующем применении панель вернёт свои значения.</p>
+    </section>
+
+    {{ if .wan }}
+    <section class="card wan-config" data-wan-iface="{{ .wan.Name }}">
+        <div class="card-head">
+            <div>
+                <h2>Подключение к интернету <span class="tag tag-main">карта {{ .wan.Name }}</span></h2>
+                <p class="muted card-sub">Как ваш провайдер даёт адрес — посмотрите в договоре или спросите у провайдера.</p>
+            </div>
+        </div>
+        {{ template "components/choice-card" .wanMethods }}
+        <div class="js-static-fields"{{ if ne .wan.WANMethod "static" }} hidden{{ end }}>
+            <div class="flow-fields">
+                <label>IP-адрес
+                    <input class="js-ip" name="cidr_{{ .wan.Name }}" value="{{ if eq .wan.WANMethod "static" }}{{ .wan.CIDR }}{{ end }}" placeholder="203.0.113.45" autocomplete="off">
+                    <span class="muted">Маску можно вписать прямо в адрес: 203.0.113.45/24</span></label>
+                <label>Маска подсети
+                    <input class="js-mask" placeholder="255.255.255.0 или /24" autocomplete="off">
+                    <span class="muted js-mask-hint">Не уверены — впишите адрес и шлюз, панель подскажет</span></label>
+                <label>Шлюз провайдера
+                    <input class="js-gw" name="gateway_{{ .wan.Name }}" value="{{ .wan.Gateway }}" placeholder="203.0.113.1" autocomplete="off"></label>
+                <label>Серверы имён <span class="muted">необязательно</span>
+                    <input name="dns_{{ .wan.Name }}" value="{{ .wan.DNS }}" placeholder="9.9.9.9, 149.112.112.112" autocomplete="off"></label>
+            </div>
+            <p class="alert alert-warn js-gw-warn" hidden></p>
+            <p class="muted">Панель всегда советует, но применяет то, что выбрали вы.</p>
+        </div>
+        <div class="js-pppoe-fields"{{ if ne .wan.WANMethod "pppoe" }} hidden{{ end }}>
+            <div class="flow-fields">
+                <label>Имя пользователя
+                    <input name="pppoeuser_{{ .wan.Name }}" value="{{ .wan.PPPoEUser }}" placeholder="user@provider" autocomplete="off"></label>
+                <label>Пароль
+                    <input type="password" name="pppoepass_{{ .wan.Name }}" placeholder="{{ if .wan.PPPoESaved }}пароль сохранён{{ else }}пароль от провайдера{{ end }}" autocomplete="new-password">
+                    {{ if .wan.PPPoESaved }}<span class="muted">Оставьте пустым, чтобы не менять сохранённый.</span>{{ end }}</label>
+            </div>
+            <p class="muted">Подключение занимает до минуты: панель дождётся ответа провайдера и скажет, если логин или пароль
+            не подошли. Пароль хранится только на сервере и на странице не показывается.</p>
+        </div>
+        <details class="fold"{{ if .wan.VLAN }} open{{ end }}>
+            <summary>{{ template "components/icon" "chevron" }}Тег VLAN <span class="tag">только если провайдер требует</span></summary>
+            <div class="fold-body">
+                <label>Тег VLAN
+                    <input class="js-vlan input-days" name="vlan_{{ .wan.Name }}" value="{{ .wan.VLAN }}" placeholder="например 100" inputmode="numeric" autocomplete="off">
+                    <span class="muted js-vlan-hint">{{ if .wan.VLANIface }}Будет создано подключение {{ .wan.VLANIface }}.{{ else }}Оставьте пустым, если провайдер про VLAN ничего не писал.{{ end }}</span></label>
+            </div>
+        </details>
+        <details class="fold"{{ if .wan.CloneMAC }} open{{ end }}>
+            <summary>{{ template "components/icon" "chevron" }}MAC-адрес для провайдера <span class="tag">{{ if .wan.CloneMAC }}адрес старого роутера{{ else }}родной адрес карты{{ end }}</span></summary>
+            <div class="fold-body">
+                <input type="hidden" name="clonemac_set_{{ .wan.Name }}" value="1">
+                <label>MAC-адрес старого роутера
+                    <input name="clonemac_{{ .wan.Name }}" value="{{ .wan.CloneMAC }}" placeholder="например 00-1A-2B-3C-4D-5E" autocomplete="off">
+                    <span class="muted">Нужен, если провайдер пускает в интернет только старый роутер. Родной адрес карты — {{ .wan.MAC }}. Пусто — шлюз представляется родным адресом.</span></label>
+                {{ if .wan.CloneMAC }}<button type="submit" class="btn btn-secondary btn-small" name="clonemac_reset_{{ .wan.Name }}" value="1">Вернуть родной адрес</button>{{ end }}
+            </div>
+        </details>
+    </section>
+    {{ end }}
+
+    
+    <div class="alert alert-warn" data-switch-warn>
+        <div class="alert-row">
+            <div>
+                <strong>Применение изменит работу сети.</strong>
+                Разговоры и подключения сотрудников прервутся на несколько секунд. Если панель перестанет
+                отвечать, настройки сами вернутся к прежним.
+            </div>
+            <div class="alert-actions">
+                <button type="button" class="btn btn-secondary btn-small" data-switch-cancel>Отмена</button>
+                <button type="submit" class="btn btn-small">Применить настройки сети</button>
+            </div>
+        </div>
+    </div>
+    <div class="btn-row btn-row-end"><button type="submit" class="btn">Применить настройки сети</button></div>
+</form>
 </div>
 
-<div class="card">
-    <h2>Шлюз по умолчанию</h2>
-    {{ if .routes }}
-    <table>
-        <thead>
-            <tr><th>Через</th><th>Интерфейс</th><th>Метрика</th></tr>
-        </thead>
-        <tbody>
-            {{ range .routes }}
-            <tr>
-                <td><code>{{ .Via }}</code></td>
-                <td><code>{{ .Dev }}</code></td>
-                <td>{{ if .Metric }}{{ .Metric }}{{ else }}—{{ end }}</td>
-            </tr>
-            {{ end }}
-        </tbody>
-    </table>
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Шлюз по умолчанию</h2>
+            <p class="muted card-sub">Куда сервер отправляет всё, что не в офисе.</p>
+        </div>
+    </div>
+    {{ range .routes }}
+    <div class="setting">
+        <div>
+            <div class="setting-title">{{ .Via }}</div>
+            <p class="setting-text">через {{ .Dev }}{{ if .Metric }} · метрика {{ .Metric }}{{ end }}</p>
+        </div>
+        <div class="setting-ctl"><span class="tag tag-ok">действует</span></div>
+    </div>
     {{ else }}
     <div class="alert alert-warn">Маршрут по умолчанию не настроен — выхода в интернет нет.</div>
     {{ end }}
+</section>
+
+<section class="card">
+    <div class="card-head"><div><h2>Как это работает</h2></div></div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Безопасное применение</div>
+            <p class="setting-text">После «Применить» панель ждёт, что вы снова откроете её. Не открыли вовремя —
+            настройки сами вернутся к прежним. Выключение света посреди применения даёт тот же результат.</p>
+        </div>
+    </div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Адреса задаёт панель</div>
+            <p class="setting-text">Если изменить адреса карт в настройках сети на самом сервере, при следующем
+            применении панель вернёт свои.</p>
+        </div>
+    </div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Офис получает всё сам</div>
+            <p class="setting-text">При назначенных ролях интернет и адреса выдаются устройствам автоматически;
+            адреса и пулы — на странице <a href="/dhcp">DHCP</a>.</p>
+        </div>
+    </div>
+</section>
+</div>
 </div>
 
 {{ end }}

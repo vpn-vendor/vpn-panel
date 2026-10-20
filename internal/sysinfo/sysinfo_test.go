@@ -139,3 +139,30 @@ func TestParseBootID(t *testing.T) {
 		}
 	}
 }
+
+func TestPortPlace(t *testing.T) {
+	root := t.TempDir()
+	mk := func(rel, body string) {
+		p := filepath.Join(root, rel)
+		if err := os.MkdirAll(filepath.Dir(p), 0o750); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(p, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	mk("sys/class/net/enp3s0/device/acpi_index", "1\n")
+	mk("sys/class/net/enp3s0/speed", "1000\n")
+	mk("sys/class/net/enp5s0/speed", "100\n")
+	mk("sys/class/net/eno1/speed", "-1\n")
+	mk("sys/class/net/ens4/speed", "100\n")
+	old := Root
+	Root = root
+	defer func() { Root = old }()
+	want := map[string]string{"enp3s0": PlaceBoard, "eno1": PlaceBoard, "ens4": PlaceSlot, "enp5s0": ""}
+	for _, p := range Ports([]string{"enp3s0", "eno1", "ens4", "enp5s0"}) {
+		if p.Place != want[p.Name] {
+			t.Errorf("%s: место %q, ждали %q", p.Name, p.Place, want[p.Name])
+		}
+	}
+}

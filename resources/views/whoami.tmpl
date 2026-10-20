@@ -10,7 +10,7 @@
 
         {{ if .loopback }}
         <h1>Это сам сервер</h1>
-        <p class="muted">Страница «Это я» предназначена для компьютеров сотрудников:
+        <p class="muted">Страница «Это я» предназначена для компьютеров {{ .roleJunior.PluralGen }}:
         откройте на рабочем компьютере адрес <code>{{ .shortName }}/</code>.</p>
         {{ else if not .found }}
         <h1>Устройство не опознано</h1>
@@ -20,32 +20,32 @@
         <h1>Это ваш компьютер</h1>
         <p><strong>Устройство №{{ .number }}</strong>{{ if .hostname }} · <code>{{ .hostname }}</code>{{ end }}</p>
         <p class="muted">Адрес <code>{{ .ip }}</code>, аппаратный адрес <code>{{ .mac }}</code>{{ if .vendor }}, {{ .vendor }}{{ end }}.</p>
-        {{ if .label }}<p>Подпись администратора: <strong>{{ .label }}</strong></p>{{ end }}
-        {{ if .proposed }}<p class="muted">Ваше предложение «{{ .proposed }}» ждёт проверки администратора.</p>{{ end }}
+        {{ if .label }}<p>Подпись {{ .roleMain.Gen }}: <strong>{{ .label }}</strong></p>{{ end }}
+        {{ if .proposed }}<p class="muted">Ваше предложение «{{ .proposed }}» ждёт проверки {{ .roleMain.Gen }}.</p>{{ end }}
 
         {{ if .selfLabel }}
-        <h2>Сообщить администратору</h2>
-        <p class="muted">Не знаете, что вписать? Одно нажатие — и администратор
+        <h2>Сообщить {{ .roleMain.Dat }}</h2>
+        <p class="muted">Не знаете, что вписать? Одно нажатие — и {{ .roleMain.Nom }}
         увидит этот компьютер в списке и подпишет его сам.{{ if .identifyAt }}
-        Ваше сообщение от {{ .identifyAt }} ждёт администратора.{{ end }}</p>
+        Ваше сообщение от {{ .identifyAt }} ждёт {{ .roleMain.Gen }}.{{ end }}</p>
         <form method="post" action="/whoami/identify">
             <input type="hidden" name="_csrf" value="{{ .csrf }}">
             <label>Кто я и где сижу (необязательно) <input name="note" maxlength="120" placeholder="Ирина, бухгалтерия"></label>
-            <button type="submit" class="btn">Сообщить администратору, что я за этим компьютером</button>
+            <button type="submit" class="btn">Сообщить {{ .roleMain.Dat }}, что я за этим компьютером</button>
         </form>
 
         <h2>Подписать компьютер</h2>
-        <p class="muted">Напишите, чей это компьютер и где он стоит — администратор
+        <p class="muted">Напишите, чей это компьютер и где он стоит — {{ .roleMain.Nom }}
         увидит подпись и подтвердит её. Можно заполнить не все поля.</p>
         <form method="post" action="/whoami">
             <input type="hidden" name="_csrf" value="{{ .csrf }}">
             <label>Название <input name="label" maxlength="40" placeholder="ПК Ирины" autofocus></label>
             <label>Где стоит <input name="location" maxlength="60" placeholder="бухгалтерия, правый угол"></label>
             <label>Кому принадлежит <input name="owner" maxlength="40" placeholder="Ирина"></label>
-            <button type="submit" class="btn">Отправить администратору</button>
+            <button type="submit" class="btn">Отправить {{ .roleMain.Dat }}</button>
         </form>
         {{ else }}
-        <p class="muted">Подписи компьютеров вводит администратор.</p>
+        <p class="muted">Подписи компьютеров вводит {{ .roleMain.Nom }}.</p>
         {{ end }}
         <p class="muted"><a href="/lantest">Проверить скорость до сервера</a></p>
         {{ end }}

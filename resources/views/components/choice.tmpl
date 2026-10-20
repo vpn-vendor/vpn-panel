@@ -1,5 +1,5 @@
 {{ define "components/choice" }}
-<div class="choice" role="radiogroup">
+<div class="choice{{ if .Row }} choice-row{{ end }}" role="radiogroup">
     {{ $c := . }}
     {{ range .Options }}
     <label class="choice-item" for="{{ $c.ID . }}">

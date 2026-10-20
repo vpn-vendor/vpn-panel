@@ -79,6 +79,24 @@ func (im *Importer) MarkExported(ip string) {
 	_ = im.Store.Set(SettingExported, strconv.FormatInt(im.Now().Unix(), 10)+" "+ip+" "+d)
 }
 
+func (im *Importer) LastExport() (at time.Time, from string, changed, ok bool) {
+	f := strings.Fields(im.Store.Get(SettingExported))
+	if len(f) < 2 {
+		return time.Time{}, "", false, false
+	}
+	sec, _ := strconv.ParseInt(f[0], 10, 64)
+	from = "с адреса " + f[1]
+	if f[1] == fromConsole {
+		from = "с консоли шлюза"
+	}
+	if len(f) > 2 {
+		if d, err := im.cachedDigest(); err == nil && d != f[2] {
+			changed = true
+		}
+	}
+	return time.Unix(sec, 0), from, changed, true
+}
+
 func (im *Importer) Notices() []Notice {
 	f := strings.Fields(im.Store.Get(SettingExported))
 	if len(f) < 2 {

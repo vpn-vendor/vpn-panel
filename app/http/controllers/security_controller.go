@@ -16,6 +16,8 @@ import (
 	"github.com/vpn-vendor/vpn-panel-core/app/services/metrics"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/network"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/overload"
+	policysvc "github.com/vpn-vendor/vpn-panel-core/app/services/policy"
+	releasesvc "github.com/vpn-vendor/vpn-panel-core/app/services/release"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/retention"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/security"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/updates"
@@ -30,6 +32,8 @@ type SecurityController struct {
 	network  *network.Service
 	security *security.Service
 	updates  *updates.Service
+	policy   *policysvc.Service
+	release  *releasesvc.Service
 	disk     *disk.Service
 
 	switches *ratelimit.Limiter
@@ -39,7 +43,8 @@ func NewSecurityController() *SecurityController {
 	orch := network.NewOrchestrator()
 	switches := ratelimit.New(6, 1, time.Minute)
 	return &SecurityController{orch: orch, network: orch.Network(),
-		security: security.New(), updates: updates.New(), disk: disk.New(), switches: switches}
+		security: security.New(), updates: updates.New(), policy: policysvc.New(),
+		release: releasesvc.New(), disk: disk.New(), switches: switches}
 }
 
 type listenerView struct {
@@ -65,6 +70,7 @@ func (c *SecurityController) Index(ctx contractshttp.Context) contractshttp.Resp
 	case devmode.Enabled:
 
 	case err == nil:
+		view["exposureKnown"] = true
 		view["protected"] = st.InputFiltered
 		view["pingAnswered"] = st.PingAnswered
 		view["ipv6Closed"] = st.IPv6Closed
@@ -133,14 +139,34 @@ func (c *SecurityController) Index(ctx contractshttp.Context) contractshttp.Resp
 		view["updatesTool"] = ust.ToolPresent
 		view["panelVersion"] = ust.Version
 		view["updatesLastRun"] = lastRunText(ust.LastRun)
-		if ust.Enabled && !ust.TimerActive {
+		view["updatesPaused"] = ust.PausedByPolicy
+
+		if ust.Enabled && !ust.TimerActive && !ust.PausedByPolicy {
 			notices = append(notices, notice{Level: "warn",
 				Text: "Автоматические обновления включены, но системный таймер обновлений не запущен — обновления не придут. Выключите и включите ручку заново; если повторится, обратитесь в поддержку."})
 		}
 	}
 
+	if pst, err := c.policy.Status(); err == nil {
+		view["policyKnown"] = true
+		active := pst.Active()
+		view["policyActive"] = active
+		view["policyAllClear"] = len(active) == 0 && pst.Advisory.Message == ""
+		if pst.Advisory.Message != "" {
+			view["policyAdvisory"] = pst.Advisory.Message
+		}
+	}
+
+	if rst, err := c.release.Status(); err == nil && rst.Active() {
+		view["releaseKnown"] = true
+		view["releasePhase"] = rst.Phase
+		view["releaseAnchor"] = rst.Anchor
+		view["releaseReasons"] = rst.Reasons
+		view["releaseSettling"] = rst.Settling()
+	}
+
 	if dst, err := c.disk.Status(); err == nil && !devmode.Enabled {
-		view["diskKnown"] = true
+		view["encKnown"] = true
 		view["diskEncrypted"] = dst.Encrypted
 		view["diskPending"] = dst.FirstBootPending
 		view["diskCipher"] = disk.CipherText(*dst)
@@ -155,26 +181,27 @@ func (c *SecurityController) Index(ctx contractshttp.Context) contractshttp.Resp
 	keep := retention.Load()
 	view["fieldJournalDays"] = ui.Field{
 		ID: "retention-journal", Name: "journal_days", Type: "number",
-		Label: "Сколько дней хранить журнал безопасности",
+		Label: "Журнал безопасности",
 		Value: strconv.Itoa(keep.JournalDays),
 		Min:   strconv.Itoa(retention.JournalDaysMin), Max: strconv.Itoa(retention.JournalDaysMax),
 		Hint: fmt.Sprintf("От %d до %d дней. Выдача кодов, подключение устройств и смена настроек хранятся в пределах этого срока всегда, даже если кто-то в сети засыпает журнал попытками.", retention.JournalDaysMin, retention.JournalDaysMax),
 	}
 	view["fieldForgetDays"] = ui.Field{
 		ID: "retention-forget", Name: "forget_days", Type: "number",
-		Label: "Через сколько дней забывать неподписанные устройства со случайным MAC",
+		Label: "Неподписанные устройства со случайным MAC",
 		Value: strconv.Itoa(keep.ForgetDays),
 		Min:   strconv.Itoa(retention.ForgetDaysMin), Max: strconv.Itoa(retention.ForgetDaysMax),
 		Hint: fmt.Sprintf("От %d до %d дней. Телефоны и ноутбуки меняют случайный адрес, и без забывания список устройств растёт годами. Подписанные устройства не забываются никогда.", retention.ForgetDaysMin, retention.ForgetDaysMax),
 	}
 	view["fieldTrustDays"] = ui.Field{
 		ID: "retention-trust", Name: "trust_days", Type: "number",
-		Label: "Сколько дней помнить устройства, которые вышли из панели",
+		Label: "Устройства, которые вышли из панели",
 		Value: strconv.Itoa(keep.TrustDays),
 		Min:   strconv.Itoa(retention.TrustKeepDaysMin), Max: strconv.Itoa(retention.TrustKeepDaysMax),
 		Hint: fmt.Sprintf("От %d до %d дней. Устройство, которое вышло, было отозвано или долго не входило, в панель уже не пускается; запись о нём хранится для журнала, потом удаляется.", retention.TrustKeepDaysMin, retention.TrustKeepDaysMax),
 	}
-	view["buttonRetention"] = ui.Button{Label: "Сохранить сроки", Kind: "secondary"}
+	view["buttonRetention"] = ui.Button{Label: "Сохранить сроки", Kind: "secondary", Small: true}
+	view["retentionRows"] = []ui.Field{view["fieldJournalDays"].(ui.Field), view["fieldForgetDays"].(ui.Field), view["fieldTrustDays"].(ui.Field)}
 
 	disk := retention.CurrentDisk()
 	view["diskKnown"] = !disk.Checked.IsZero() && disk.Error == ""
@@ -186,6 +213,8 @@ func (c *SecurityController) Index(ctx contractshttp.Context) contractshttp.Resp
 	view["diskStarved"] = disk.Starved
 	view["diskOverBudget"] = disk.OverBudget()
 	view["diskPressure"] = disk.Pressure
+	view["diskBar"] = securityDiskBar(disk.Total, disk.AvailUnpriv, disk.Pressure, disk.Starved,
+		retention.Human(disk.Total-min(disk.AvailUnpriv, disk.Total)), retention.Human(disk.Total))
 	view["logsTotal"] = retention.Human(disk.LogsTotal())
 	view["logsEmpty"] = disk.LogsTotal() < 8*retention.MiB
 	if !disk.LastTrim.IsZero() {
@@ -263,6 +292,13 @@ func (c *SecurityController) Index(ctx contractshttp.Context) contractshttp.Resp
 		}
 	}
 
+	view["switchHidden"], view["switchIPv6"] = securitySwitches(settings.HiddenMode, settings.IPv6)
+	auto, _ := view["autoUpdates"].(bool)
+	tool, _ := view["updatesTool"].(bool)
+	last, _ := view["updatesLastRun"].(string)
+	paused, _ := view["updatesPaused"].(bool)
+	view["switchUpdates"] = securityUpdatesSwitch(auto, tool, paused, last)
+	view["hero"] = securityHero(view)
 	view["notices"] = notices
 	return ctx.Response().View().Make("security.tmpl", page(ctx, "Защита", "security", view))
 }
@@ -309,7 +345,7 @@ func (c *SecurityController) LogsTrim(ctx contractshttp.Context) contractshttp.R
 		}
 		return ctx.Response().Redirect(contractshttp.StatusFound, "/security")
 	}
-	c.network.Audit("syslog_trimmed", ctx.Request().Ip(), "по кнопке администратора, освобождено "+retention.Human(res.Freed))
+	c.network.Audit("syslog_trimmed", ctx.Request().Ip(), "по кнопке "+ui.MainAdmin.Gen+", освобождено "+retention.Human(res.Freed))
 	setFlash(ctx, flashCode, "Системные журналы очищены, освобождено "+retention.Human(res.Freed)+". Последние записи каждого журнала сохранены.")
 	return ctx.Response().Redirect(contractshttp.StatusFound, "/security")
 }
@@ -405,6 +441,21 @@ func (c *SecurityController) Updates(ctx contractshttp.Context) contractshttp.Re
 	} else {
 		setFlash(ctx, flashCode, "Автоматические обновления выключены. Обновлять панель нужно вручную.")
 	}
+	return ctx.Response().Redirect(contractshttp.StatusFound, "/security")
+}
+
+func (c *SecurityController) ReleaseAccept(ctx contractshttp.Context) contractshttp.Response {
+	if err := c.release.Accept(); err != nil {
+		var terr *agentrpc.TransportError
+		if errors.As(err, &terr) {
+			setFlash(ctx, flashError, "Системная служба недоступна — решение не сохранено.")
+		} else {
+			setFlash(ctx, flashError, network.ErrText(err))
+		}
+		return ctx.Response().Redirect(contractshttp.StatusFound, "/security")
+	}
+	c.network.Audit("release_accept", ctx.Request().Ip(), "владелец оставил новую версию панели, авто-откат отменён")
+	setFlash(ctx, flashCode, "Новая версия оставлена. Автоматический откат отменён — панель считает эту версию рабочей.")
 	return ctx.Response().Redirect(contractshttp.StatusFound, "/security")
 }
 

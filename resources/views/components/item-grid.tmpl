@@ -1,0 +1,5 @@
+{{ define "components/item-grid" }}
+<div class="{{ if .List }}item-list{{ else }}item-grid{{ if .Tight }} item-grid-tight{{ end }}{{ if .Cards }} item-grid-cards{{ end }}{{ end }}">
+    {{ range .Items }}{{ template "components/item-card" . }}{{ end }}
+</div>
+{{ end }}

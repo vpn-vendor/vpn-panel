@@ -3,8 +3,13 @@ package multilisten
 import (
 	"errors"
 	"net"
+	"os"
 	"reflect"
 	"runtime"
+	"slices"
+	"strings"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -88,6 +93,137 @@ func TestFreeBindToAbsentAddress(t *testing.T) {
 
 	if err := l.Rebind([]string{"192.0.2.10"}); err != nil {
 		t.Fatalf("freebind: %v", err)
+	}
+}
+
+func TestInUseWhileAnotherSocketHoldsPort(t *testing.T) {
+	occupant, err := net.Listen("tcp4", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	port := occupant.Addr().(*net.TCPAddr).Port
+	l := New(port, nil)
+	defer func() { _ = l.Close() }()
+
+	err = l.Rebind([]string{"127.0.0.1"})
+	if !errors.Is(err, syscall.EADDRINUSE) {
+		_ = occupant.Close()
+		t.Fatalf("ждали «адрес занят», получили %v", err)
+	}
+	if _, ok := l.InUse()["127.0.0.1"]; !ok || len(l.Bound()) != 0 {
+		_ = occupant.Close()
+		t.Fatalf("занятый адрес: InUse = %v, Bound = %v", l.InUse(), l.Bound())
+	}
+
+	if err := occupant.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := l.Rebind([]string{"127.0.0.1"}); err != nil {
+		t.Fatalf("после ухода чужого: %v", err)
+	}
+	if got := l.Bound(); !reflect.DeepEqual(got, []string{"127.0.0.1"}) {
+		t.Fatalf("bound = %v", got)
+	}
+	if got := l.InUse(); len(got) != 0 {
+		t.Fatalf("InUse после привязки = %v", got)
+	}
+}
+
+type stubSock struct {
+	once sync.Once
+	done chan struct{}
+}
+
+func newStubSock() *stubSock { return &stubSock{done: make(chan struct{})} }
+
+func (s *stubSock) Accept() (net.Conn, error) {
+	<-s.done
+	return nil, net.ErrClosed
+}
+
+func (s *stubSock) Close() error {
+	s.once.Do(func() { close(s.done) })
+	return nil
+}
+
+func (s *stubSock) Addr() net.Addr { return &net.TCPAddr{} }
+
+func bindErr(errno syscall.Errno) error {
+	return &net.OpError{Op: "listen", Net: "tcp4", Err: os.NewSyscallError("bind", errno)}
+}
+
+func TestInUseStreaks(t *testing.T) {
+	const a, b = "10.0.0.1", "10.0.0.2"
+	inUse, notAvail := bindErr(syscall.EADDRINUSE), bindErr(syscall.EADDRNOTAVAIL)
+	steps := []struct {
+		name   string
+		at     time.Duration
+		want   []string
+		result map[string]error
+		inUse  map[string]time.Duration
+		bound  []string
+	}{
+		{"занят и недоступен", 0, []string{a, b},
+			map[string]error{a: inUse, b: notAvail}, map[string]time.Duration{a: 0}, nil},
+		{"полоса продолжается", 5 * time.Second, []string{a, b},
+			map[string]error{a: inUse, b: notAvail}, map[string]time.Duration{a: 0}, nil},
+		{"сменился род ошибки", 10 * time.Second, []string{a, b},
+			map[string]error{a: notAvail, b: notAvail}, map[string]time.Duration{}, nil},
+		{"снова занят — новая полоса", 15 * time.Second, []string{a, b},
+			map[string]error{a: inUse, b: notAvail}, map[string]time.Duration{a: 15 * time.Second}, nil},
+		{"адрес больше не нужен", 20 * time.Second, []string{b},
+			map[string]error{b: notAvail}, map[string]time.Duration{}, nil},
+		{"вернулся занятым", 25 * time.Second, []string{a, b},
+			map[string]error{a: inUse, b: inUse}, map[string]time.Duration{a: 25 * time.Second, b: 25 * time.Second}, nil},
+		{"один освободился", 30 * time.Second, []string{a, b},
+			map[string]error{b: inUse}, map[string]time.Duration{b: 25 * time.Second}, []string{a}},
+		{"всё привязано", 35 * time.Second, []string{a, b},
+			nil, map[string]time.Duration{}, []string{a, b}},
+	}
+
+	start := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	var clock time.Time
+	var result map[string]error
+	l := New(80, nil)
+	l.now = func() time.Time { return clock }
+	l.listen = func(addr string) (net.Listener, error) {
+		host, _, _ := net.SplitHostPort(addr)
+		if err := result[host]; err != nil {
+			return nil, err
+		}
+		return newStubSock(), nil
+	}
+
+	for _, st := range steps {
+		clock, result = start.Add(st.at), st.result
+		err := l.Rebind(st.want)
+		if (err != nil) != (len(st.result) > 0) {
+			t.Fatalf("%s: ошибка привязки = %v", st.name, err)
+		}
+		if err != nil {
+			if lines := strings.Split(err.Error(), "\n"); !slices.IsSorted(lines) {
+				t.Fatalf("%s: порядок ошибок плавает: %q", st.name, lines)
+			}
+		}
+		want := map[string]time.Time{}
+		for ip, d := range st.inUse {
+			want[ip] = start.Add(d)
+		}
+		if got := l.InUse(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("%s: InUse = %v, ждали %v", st.name, got, want)
+		}
+		if got := l.Bound(); !slices.Equal(got, st.bound) {
+			t.Fatalf("%s: Bound = %v, ждали %v", st.name, got, st.bound)
+		}
+	}
+
+	result = map[string]error{"10.0.0.3": inUse}
+	if err := l.Rebind([]string{a, b, "10.0.0.3"}); err == nil || len(l.InUse()) != 1 {
+		t.Fatalf("третий адрес занят: err = %v, InUse = %v", err, l.InUse())
+	}
+	_ = l.Close()
+	if got := l.InUse(); len(got) != 0 {
+		t.Fatalf("после Close InUse = %v", got)
 	}
 }
 

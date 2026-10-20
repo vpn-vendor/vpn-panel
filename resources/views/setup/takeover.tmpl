@@ -1,0 +1,36 @@
+{{ define "setup/takeover" }}
+{{ template "wizard-top" . }}
+<form method="post" action="/setup/answer" id="step-form">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    <input type="hidden" name="step" value="takeover">
+    <input type="hidden" name="action" value="approve">
+    <input type="hidden" name="digest" value="{{ .takeoverDigest }}">
+    {{ template "components/takeover-list" .takeoverList }}
+    <p class="muted">Отмеченное выключится, когда вы примените настройки сети на
+    следующем шаге и связь подтвердится. Если связи не будет, шлюз вернёт
+    старое вместе с прежней сетью. Всё, что выключается, уходит в резервную
+    копию на сервере.</p>
+    {{ if .takeoverState }}
+    <div class="alert alert-warn">{{ .takeoverState }}</div>
+    {{ end }}
+</form>
+{{ if .legacyTaken }}
+<section class="card">
+    <h2>Что возьмём у старого шлюза</h2>
+    <p class="muted card-sub">Панель подставит это в следующие шаги. Проверьте и поправьте, если нужно.</p>
+    <ul class="wz-prep">
+        {{ range .legacyTaken }}<li>{{ . }}</li>{{ end }}
+    </ul>
+</section>
+{{ end }}
+{{ if .legacyMissing }}
+<section class="card">
+    <h2>Не удалось прочитать у старого шлюза</h2>
+    <p class="muted card-sub">Эти ответы придётся дать самим.</p>
+    <ul class="wz-prep">
+        {{ range .legacyMissing }}<li>{{ . }}</li>{{ end }}
+    </ul>
+</section>
+{{ end }}
+{{ template "wizard-bottom" . }}
+{{ end }}

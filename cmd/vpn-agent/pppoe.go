@@ -7,18 +7,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netplangen"
 )
 
 const (
-	pppoePeerName = "vpn_panel_wan"
-	pppoePeerPath = "/etc/ppp/peers/" + pppoePeerName
-	pppoeUnit     = "ppp@" + pppoePeerName + ".service"
+	pppoePeerName   = "vpn_panel_wan"
+	pppoePeerPath   = "/etc/ppp/peers/" + pppoePeerName
+	pppoeUnit       = "vpn-panel-ppp@" + pppoePeerName + ".service"
+	pppoeLegacyUnit = "ppp@" + pppoePeerName + ".service"
+
+	pppoeFailFile = "/run/vpn-panel/ppp-fails-" + pppoePeerName
 )
 
 const (
@@ -162,6 +167,9 @@ func replaceSecretLine(path, username, line string) error {
 }
 
 func pppoeStart() error {
+
+	_ = durable.Remove(pppoeFailFile)
+	pppoeStopLegacy()
 	if err := runSystemctl(false, "enable", pppoeUnit); err != nil {
 		return err
 	}
@@ -170,8 +178,26 @@ func pppoeStart() error {
 }
 
 func pppoeStop() {
+	pppoeStopLegacy()
 	_ = runSystemctl(false, "disable", pppoeUnit)
 	_ = runSystemctl(true, "stop", pppoeUnit)
+}
+
+func pppoeStopLegacy() {
+	_ = runSystemctl(false, "disable", pppoeLegacyUnit)
+	_ = runSystemctl(true, "stop", pppoeLegacyUnit)
+}
+
+func pppoeBlocked(caps hostCapsSource) string {
+	if caps == nil {
+		return ""
+	}
+	for _, f := range caps.current().Facts {
+		if f.Class == hostcaps.ClassGuard && f.Answer == hostcaps.No && slices.Contains(f.Consumers, consumerPPPoE) {
+			return f.Missing
+		}
+	}
+	return ""
 }
 
 func pppoeUp() bool {
@@ -308,6 +334,23 @@ func (a *netplanApplier) bringUpEffectiveWAN(p applyParams) *agentrpc.ErrorObjec
 		a.pppoePrevEnabled, a.pppoeTouched = pppoeUnitEnabled(), true
 		pppoeStop()
 		return nil
+	}
+
+	if msg := pppoeBlocked(a.caps); msg != "" {
+		return &agentrpc.ErrorObject{Code: codeVPNUp, Message: msg, Data: map[string]any{"recoverable": false}}
+	}
+
+	if p.PPPoEPassword == "" && p.PPPoEPasswordSource == legacySecretSource {
+		if a.takeover == nil {
+			return invalidParams()
+		}
+		pw, ok := a.takeover.legacyPPPoEPassword(wan.Username)
+		if !ok {
+			return &agentrpc.ErrorObject{Code: codeVPNUp,
+				Message: "у старого шлюза нет пароля для логина «" + wan.Username + "» — введите пароль из договора",
+				Data:    map[string]any{"recoverable": false}}
+		}
+		p.PPPoEPassword = pw
 	}
 
 	a.pppoePrevEnabled, a.pppoeTouched = pppoeUnitEnabled(), true

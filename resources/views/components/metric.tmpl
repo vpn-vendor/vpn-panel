@@ -1,7 +1,9 @@
 {{ define "components/metric" }}
 <div class="{{ .Class }}">
+    {{ if .Icon }}<span class="metric-ico mi-{{ .Hue }}" aria-hidden="true">{{ template "components/icon" .Icon }}</span><div class="metric-body">{{ end }}
     <div class="metric-label">{{ .Label }}</div>
-    <div class="metric-value">{{ .Value }}{{ if .Unit }} <span class="metric-unit">{{ .Unit }}</span>{{ end }}</div>
+    <div class="metric-value">{{ if .CopyID }}<span id="{{ .CopyID }}" class="copy-src">{{ .Value }}</span>{{ else }}{{ .Value }}{{ end }}{{ if .Unit }} <span class="metric-unit">{{ .Unit }}</span>{{ end }}{{ if .CopyID }}<button type="button" class="copy-btn" data-copy="{{ .CopyID }}" aria-label="Скопировать: {{ .Label }}" title="Скопировать" hidden>{{ template "components/icon" "copy" }}</button>{{ end }}</div>
     {{ if .Note }}<div class="metric-note">{{ .Note }}</div>{{ end }}
+    {{ if .Icon }}</div>{{ end }}
 </div>
 {{ end }}

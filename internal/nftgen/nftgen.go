@@ -216,14 +216,23 @@ const icmpv6Required = "{ destination-unreachable, packet-too-big, time-exceeded
 	"nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, " +
 	"mld-listener-query, mld-listener-report, mld-listener-reduction }"
 
-func exitNames(p *FirewallPlan) []string {
+func (p FirewallPlan) Exits() []string {
 	if p.Black() {
 		return []string{p.Tunnel.Iface}
 	}
 	return p.WANs
 }
 
-func (p *FirewallPlan) Generate() []byte {
+func (p *FirewallPlan) officeAllow(lanSet string) string {
+	exits := p.Exits()
+	if p.Black() {
+
+		return fmt.Sprintf("iifname %s oifname \"%s\"", lanSet, exits[0])
+	}
+	return fmt.Sprintf("iifname %s oifname %s", lanSet, quotedSet(exits))
+}
+
+func (p *FirewallPlan) Generate(c Caps) []byte {
 	wanSet := quotedSet(p.WANs)
 	lanNames := make([]string, 0, len(p.LANs))
 	for _, l := range p.LANs {
@@ -256,6 +265,11 @@ func (p *FirewallPlan) Generate() []byte {
 
 		fmt.Fprintf(&b, "\tset %s {\n\t\ttype ipv4_addr\n\t\tsize %d\n\t\tflags dynamic\n\t}\n", SetPanelConns, panelSetSize)
 		fmt.Fprintf(&b, "\tset %s {\n\t\ttype ipv4_addr\n\t\tsize %d\n\t\tflags dynamic,timeout\n\t\ttimeout %s\n\t}\n", SetPanelNew, panelSetSize, panelNewTimeout)
+	}
+	if c.Witness {
+		for _, name := range []string{SeenEarlyCounter, SeenLateCounter} {
+			fmt.Fprintf(&b, "\tcounter %s {\n\t\tpackets 0 bytes 0\n\t}\n", name)
+		}
 	}
 	b.WriteString("\tchain postrouting {\n")
 	b.WriteString("\t\ttype nat hook postrouting priority srcnat; policy accept;\n")
@@ -314,24 +328,25 @@ func (p *FirewallPlan) Generate() []byte {
 
 	b.WriteString("\t\ttcp flags syn tcp option maxseg size set rt mtu\n")
 
-	fmt.Fprintf(&b, "\t\tct state established,related oifname %s accept\n", quotedSet(append(append([]string(nil), lanNames...), exitNames(p)...)))
+	fmt.Fprintf(&b, "\t\tct state established,related oifname %s accept\n", quotedSet(append(append([]string(nil), lanNames...), p.Exits()...)))
 
 	fmt.Fprintf(&b, "\t\tiifname %s meta l4proto { tcp, udp } th dport 53 ip daddr != { %s } update @%s { ip saddr }\n", lanSet, strings.Join(lanIPs, ", "), SetForeignDNS)
 	fmt.Fprintf(&b, "\t\tiifname %s oifname %s udp dport { 500, 1194, 4500, 51820 } update @%s { ip saddr }\n", lanSet, outSet, SetOwnVPN)
 	fmt.Fprintf(&b, "\t\tiifname %s oifname %s tcp dport 1194 update @%s { ip saddr }\n", lanSet, outSet, SetOwnVPN)
 	fmt.Fprintf(&b, "\t\tiifname %s oifname %s tcp dport 7680 update @%s { ip saddr }\n", lanSet, outSet, SetUpdatesP2P)
 
-	fmt.Fprintf(&b, "\t\tiifname %s udp dport 3544 update @%s { ip saddr } drop\n", lanSet, SetIPv6Tunnel)
-	fmt.Fprintf(&b, "\t\tiifname %s meta l4proto 41 update @%s { ip saddr } drop\n", lanSet, SetIPv6Tunnel)
+	for _, m := range []string{"udp dport 3544", "meta l4proto 41"} {
+		fmt.Fprintf(&b, "\t\tiifname %s %s update @%s { ip saddr }\n", lanSet, m, SetIPv6Tunnel)
+		fmt.Fprintf(&b, "\t\tiifname %s %s drop\n", lanSet, m)
+	}
 
 	b.WriteString("\t\tmeta nfproto ipv6 drop\n")
-	if p.Black() {
-
-		fmt.Fprintf(&b, "\t\tiifname %s oifname \"%s\" accept\n", lanSet, p.Tunnel.Iface)
-	} else {
-		fmt.Fprintf(&b, "\t\tiifname %s oifname %s accept\n", lanSet, wanSet)
-	}
+	allow := p.officeAllow(lanSet)
+	fmt.Fprintf(&b, "\t\t%s accept\n", allow)
 	b.WriteString("\t}\n")
+	if c.Witness {
+		writeWitnesses(&b, allow)
+	}
 	p.writeOutputChain(&b)
 	p.writeLeakWatch(&b)
 	p.writeMarkKeep(&b)

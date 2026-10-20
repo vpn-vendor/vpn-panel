@@ -5,59 +5,146 @@
 {{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
 
 {{ if .pending }}
-<div class="card">
-    <h2>Импорт ждёт решения</h2>
-    {{ if .expired }}
-    <p>Срок подтверждения истёк — настройки возвращаются к прежним.</p>
-    {{ else }}
-    <p>Настройки из файла применены. Проверьте, что интернет, канал и
-    устройства офиса работают, и закрепите их до <strong>{{ .until }}</strong>.
-    Без решения в срок настройки вернутся к прежним сами.</p>
-    {{ end }}
-    <form method="post" action="/backup/confirm" class="inline-form">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/button" .confirmBtn }}
-    </form>
-    <form method="post" action="/backup/rollback" class="inline-form">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/button" .undoBtn }}
-    </form>
+<div class="alert alert-warn" role="alert">
+    <div class="alert-row">
+        <div>
+            <strong>Импорт ждёт решения.</strong>
+            {{ if .expired }}
+            Срок подтверждения истёк — настройки возвращаются к прежним.
+            {{ else }}
+            Настройки из файла применены. Проверьте, что интернет, канал и
+            устройства офиса работают, и закрепите их до <strong>{{ .until }}</strong>.
+            Без решения в срок, как и при выключении света, настройки вернутся к прежним сами.
+            {{ end }}
+        </div>
+        <div class="alert-actions">
+            <form method="post" action="/backup/rollback" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                {{ template "components/button" .undoBtn }}
+            </form>
+            <form method="post" action="/backup/confirm" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                {{ template "components/button" .confirmBtn }}
+            </form>
+        </div>
+    </div>
 </div>
 {{ end }}
 
-<div class="card">
-    <h2>Выгрузить настройки</h2>
-    <p><strong>Копия</strong> — всё, включая ключи подключений и пароль
-    провайдера, в зашифрованном файле. Нужна, чтобы вернуть этот шлюз или
-    перенести его на новое железо. Код для выгрузки выдаёт только экран
-    самого шлюза: так копию не унесёт тот, кто просто открыл панель.</p>
+<div class="cols">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <span class="card-icon" aria-hidden="true">{{ template "components/icon" "download" }}</span>
+        <div>
+            <h2>Выгрузить настройки</h2>
+            <p class="muted card-sub">Файл с настройками шлюза, включая ключи подключений и пароль провайдера.
+            Зашифрован паролем, который знаете только вы.</p>
+        </div>
+    </div>
     <form method="post" action="/backup/export/copy">
         <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/field" .codeField }}
-        {{ template "components/field" .passField }}
-        {{ template "components/field" .pass2Field }}
-        {{ template "components/button" .exportBtn }}
+        <ol class="flow">
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Код с экрана шлюза</p>
+                    <p class="flow-text">Код для выгрузки выдаёт только экран самого шлюза: так копию не
+                    унесёт тот, кто просто открыл панель.</p>
+                    {{ template "components/field" .codeField }}
+                </div>
+            </li>
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Придумайте пароль файла</p>
+                    <p class="flow-text">Без него файл не прочитать никому, включая нас. Запишите его:
+                    восстановить пароль нельзя.</p>
+                    <div class="flow-fields">
+                        {{ template "components/field" .passField }}
+                        {{ template "components/field" .pass2Field }}
+                    </div>
+                </div>
+            </li>
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Что попадёт в файл</p>
+                    <p class="flow-text">Всё, что нужно, чтобы поднять такой же шлюз с нуля.</p>
+                    <div class="choice-facts">{{ range .copyParts }}<span class="{{ .Class }}">{{ .Text }}</span>{{ end }}</div>
+                </div>
+            </li>
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Скачайте файл и уберите его в надёжное место</p>
+                    <p class="flow-text">Копия — единственный путь после забытого пароля диска или поломки
+                    сервера. Храните её вне шлюза.</p>
+                    {{ template "components/button" .exportBtn }}
+                </div>
+            </li>
+        </ol>
     </form>
-    <p class="muted"><strong>Шаблон</strong> — только правила офиса, без
-    ключей, адресов и привязки к железу: чтобы настроить второй шлюз так же.</p>
-    <form method="post" action="/backup/export/template">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/button" .tmplBtn }}
-    </form>
+    <div class="setting">
+        <div>
+            <div class="setting-title">Последняя выгрузка
+                {{ if .lastExport }}{{ if .lastExportChanged }}<span class="tag tag-warn">настройки изменились после неё</span>{{ else }}<span class="tag tag-ok">актуальна</span>{{ end }}{{ end }}</div>
+            <p class="setting-text">{{ if .lastExport }}{{ .lastExport }}.{{ else }}Копию ещё не выгружали.{{ end }}</p>
+        </div>
+    </div>
+    <details class="fold">
+        <summary>{{ template "components/icon" "chevron" }}Шаблон для второго шлюза<span class="fold-note">без ключей и адресов</span></summary>
+        <div class="fold-body">
+            <p class="muted">Шаблон — только правила офиса, без ключей, адресов и привязки к железу:
+            чтобы настроить второй шлюз так же. Код и пароль ему не нужны.</p>
+            <form method="post" action="/backup/export/template">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                {{ template "components/button" .tmplBtn }}
+            </form>
+        </div>
+    </details>
+</section>
 </div>
-
-<div class="card">
-    <h2>Загрузить настройки из файла</h2>
-    <p>Сначала панель покажет, что изменится, и ничего не тронет без вашего
-    решения. После применения настройки нужно закрепить — иначе они вернутся
-    к прежним сами.</p>
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <span class="card-icon card-icon-alt" aria-hidden="true">{{ template "components/icon" "upload" }}</span>
+        <div>
+            <h2>Загрузить настройки из файла</h2>
+            <p class="muted card-sub">Вернуть шлюз к сохранённому состоянию или перенести настройки на новое железо.</p>
+        </div>
+    </div>
     {{ if .hasSlot }}<p><a href="/backup/import">Вернуться к открытому файлу</a></p>{{ end }}
     <form method="post" action="/backup/import" enctype="multipart/form-data">
         <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/file-field" .fileField }}
-        {{ template "components/field" .openField }}
-        {{ template "components/button" .uploadBtn }}
+        <ol class="flow">
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Файл и его пароль</p>
+                    <div class="dropzone">
+                        <span class="dropzone-title">Перетащите файл сюда или выберите на диске</span>
+                        {{ template "components/file-field" .fileField }}
+                    </div>
+                    {{ template "components/field" .openField }}
+                </div>
+            </li>
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Копия или шаблон</p>
+                    <p class="flow-text">Что в файле, панель узнаёт сама. Разница в одном: берём ли из файла
+                    адреса и карты этого конкретного шлюза.</p>
+                    {{ template "components/item-grid" .kindCards }}
+                </div>
+            </li>
+            <li class="flow-step">
+                <div class="flow-body">
+                    <p class="flow-title">Проверьте, что изменится</p>
+                    <p class="flow-text">Панель покажет разделы файла и что станет с каждым, и ничего не тронет без
+                    вашего решения. После применения будет время проверить работу и закрепить настройки; без решения
+                    в срок, как и при выключении света, они вернутся к прежним сами.</p>
+                    {{ template "components/button" .uploadBtn }}
+                </div>
+            </li>
+        </ol>
     </form>
+</section>
+</div>
 </div>
 
 {{ template "app-bottom" . }}

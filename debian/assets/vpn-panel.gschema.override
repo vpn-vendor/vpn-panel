@@ -1,0 +1,9 @@
+# Умолчания рабочего стола шлюза: без страниц первой настройки человек этих
+# переключателей не видит, поэтому они выключены явно. Сменить можно в
+# «Параметрах» — это умолчание, не запрет.
+[org.gnome.system.location]
+enabled = false
+
+[org.gnome.desktop.privacy]
+report-technical-problems = false
+send-software-usage-stats = false

@@ -146,3 +146,22 @@ func TestValidateTarget(t *testing.T) {
 		t.Fatal("ошибка запрета")
 	}
 }
+
+func TestVoiceScoreNeedsFullSet(t *testing.T) {
+	full := Snapshot{LossPct: 0.1, LossKnown: true, JitterMs: 3, JitterKnown: true}
+	out := map[string]float64{}
+	voiceRows(full, 24, out, RowTunnelLoss, RowTunnelJitter, RowTunnelMOS)
+	if out[RowTunnelJitter] != 3 || out[RowTunnelMOS] < 4.3 || out[RowTunnelMOS] > 4.5 {
+		t.Fatalf("полный набор: %v", out)
+	}
+	for name, p := range map[string]Snapshot{
+		"без потерь":   {JitterMs: 3, JitterKnown: true},
+		"без дрожания": {LossPct: 0, LossKnown: true},
+	} {
+		out := map[string]float64{}
+		voiceRows(p, 24, out, RowTunnelLoss, RowTunnelJitter, RowTunnelMOS)
+		if _, ok := out[RowTunnelMOS]; ok {
+			t.Errorf("%s: оценка записана: %v", name, out)
+		}
+	}
+}

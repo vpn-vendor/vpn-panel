@@ -41,7 +41,7 @@ func renderOpen(t *testing.T, name string, data map[string]any) string {
 func TestOpenPagesCarryNoMarksForVisitors(t *testing.T) {
 	cases := map[string]map[string]any{
 		"login.tmpl":   {"title": "Вход", "onServer": false},
-		"setup.tmpl":   {"title": "Установка", "needCode": true, "stepper": ui.Stepper{Total: 3, Current: 1, Items: []ui.StepperItem{{Key: "account", Title: "Администратор", State: "current"}}}},
+		"setup.tmpl":   {"title": "Установка", "open": true, "welcome": true, "scene": "all", "needCode": true, "stepper": ui.Stepper{Total: 3, Current: 1, Items: []ui.StepperItem{{Key: "account", Title: "Администратор", State: "current"}}}},
 		"whoami.tmpl":  {"title": "Это я"},
 		"lantest.tmpl": {"title": "Скорость до сервера"},
 	}

@@ -1,0 +1,17 @@
+{{ define "components/switch-row" }}
+<div class="setting switch-row">
+    <div>
+        <div class="setting-title" id="{{ .ID }}-title">{{ .Label }}{{ if .Tag.Text }} <span class="{{ .Tag.Class }}">{{ .Tag.Text }}</span>{{ end }}</div>
+        {{ if .Text }}<p class="setting-text" id="{{ .ID }}-text">{{ .Text }}</p>{{ end }}
+    </div>
+    <div class="setting-ctl">
+        <label class="switch" for="{{ .ID }}">
+            <input type="checkbox" id="{{ .ID }}" name="{{ .Name }}" value="{{ .FormValue }}"
+                   {{ if .Checked }}checked{{ end }}{{ if .Disabled }} disabled{{ end }}
+                   aria-labelledby="{{ .ID }}-title"{{ if .Text }} aria-describedby="{{ .ID }}-text"{{ end }}>
+            <span class="switch-track" aria-hidden="true"></span>
+            <span class="switch-on">{{ .OnText }}</span><span class="switch-off">{{ .OffText }}</span>
+        </label>
+    </div>
+</div>
+{{ end }}

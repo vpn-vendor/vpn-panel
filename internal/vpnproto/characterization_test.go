@@ -98,8 +98,14 @@ func characterizeRaw(text string) parsed {
 		m := prof.Meta()
 		out.Meta = &m
 		out.Library = string(prof.Library())
+
+		var caps ovpngen.Caps
+		for _, o := range ovpngen.Options {
+			o.Enable(&caps)
+		}
 		out.Generated = string(prof.Generate(ovpngen.Render{Iface: d.Iface, Mark: vpndriver.Mark, MTU: 1400,
-			Remotes: []ovpngen.Remote{{Host: "192.0.2.10", Port: 1194, Proto: "udp"}}, Management: "/run/management.sock"}))
+			Remotes: []ovpngen.Remote{{Host: "192.0.2.10", Port: 1194, Proto: "udp"}}, Management: "/run/management.sock",
+			Caps: caps}))
 	}
 	return out
 }

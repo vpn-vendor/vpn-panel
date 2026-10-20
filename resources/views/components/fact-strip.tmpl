@@ -1,0 +1,9 @@
+{{ define "components/fact-strip" }}
+<section class="card fact-strip" aria-label="Коротко о шлюзе">
+    <dl class="fact-strip-list">
+        {{ range .Items }}
+        <div class="{{ .Class }}"><dt>{{ .Label }}</dt><dd class="num">{{ .Value }}</dd></div>
+        {{ end }}
+    </dl>
+</section>
+{{ end }}

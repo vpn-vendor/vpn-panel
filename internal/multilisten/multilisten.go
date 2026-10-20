@@ -3,22 +3,34 @@ package multilisten
 import (
 	"errors"
 	"fmt"
+	"maps"
 	"net"
+	"slices"
 	"sort"
 	"strconv"
 	"sync"
+	"syscall"
+	"time"
 )
 
 type Listener struct {
-	port  int
-	logf  func(format string, args ...any)
-	conns chan net.Conn
-	done  chan struct{}
-	gate  admission
+	port   int
+	logf   func(format string, args ...any)
+	now    func() time.Time
+	listen func(addr string) (net.Listener, error)
+	conns  chan net.Conn
+	done   chan struct{}
+	gate   admission
 
 	mu     sync.Mutex
 	socks  map[string]net.Listener
+	fails  map[string]failure
 	closed bool
+}
+
+type failure struct {
+	since time.Time
+	inUse bool
 }
 
 func New(port int, logf func(string, ...any)) *Listener {
@@ -26,12 +38,15 @@ func New(port int, logf func(string, ...any)) *Listener {
 		logf = func(string, ...any) {}
 	}
 	return &Listener{
-		port:  port,
-		logf:  logf,
-		conns: make(chan net.Conn),
-		done:  make(chan struct{}),
-		gate:  admission{active: map[string]int{}},
-		socks: map[string]net.Listener{},
+		port:   port,
+		logf:   logf,
+		now:    time.Now,
+		listen: listenFreeBind,
+		conns:  make(chan net.Conn),
+		done:   make(chan struct{}),
+		gate:   admission{active: map[string]int{}},
+		socks:  map[string]net.Listener{},
+		fails:  map[string]failure{},
 	}
 }
 
@@ -126,22 +141,50 @@ func (l *Listener) Rebind(ips []string) error {
 			l.logf("listener: unbound %s", net.JoinHostPort(ip, strconv.Itoa(l.port)))
 		}
 	}
+	for ip := range l.fails {
+		if !want[ip] {
+			delete(l.fails, ip)
+		}
+	}
 	var errs []error
-	for ip := range want {
+
+	for _, ip := range slices.Sorted(maps.Keys(want)) {
 		if _, ok := l.socks[ip]; ok {
 			continue
 		}
 		addr := net.JoinHostPort(ip, strconv.Itoa(l.port))
-		s, err := listenFreeBind(addr)
+		s, err := l.listen(addr)
 		if err != nil {
+			l.noteFailure(ip, err)
 			errs = append(errs, fmt.Errorf("%s: %w", addr, err))
 			continue
 		}
+		delete(l.fails, ip)
 		l.socks[ip] = s
 		l.logf("listener: bound %s", addr)
 		go l.pump(s)
 	}
 	return errors.Join(errs...)
+}
+
+func (l *Listener) noteFailure(ip string, err error) {
+	inUse := errors.Is(err, syscall.EADDRINUSE)
+	if f, ok := l.fails[ip]; ok && f.inUse == inUse {
+		return
+	}
+	l.fails[ip] = failure{since: l.now(), inUse: inUse}
+}
+
+func (l *Listener) InUse() map[string]time.Time {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	out := map[string]time.Time{}
+	for ip, f := range l.fails {
+		if f.inUse {
+			out[ip] = f.since
+		}
+	}
+	return out
 }
 
 func (l *Listener) pump(s net.Listener) {
@@ -187,6 +230,7 @@ func (l *Listener) Close() error {
 		_ = s.Close()
 		delete(l.socks, ip)
 	}
+	clear(l.fails)
 	return nil
 }
 

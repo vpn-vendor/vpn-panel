@@ -1,17 +1,35 @@
 {{ define "setup/wan" }}
 {{ template "wizard-top" . }}
 {{ if .cards }}
-<form method="post" action="/setup/answer">
+{{ with .pcRearInline }}<div class="wz-art-inline">{{ template "components/pc-rear" . }}</div>{{ end }}
+{{ if .missingCard }}
+<ol class="wz-prep">
+    <li><span class="wz-prep-n" aria-hidden="true">1</span><span><strong>Выключите компьютер</strong>Кнопкой «Завершить работу» — не выдёргивайте шнур питания.</span></li>
+    <li><span class="wz-prep-n" aria-hidden="true">2</span><span><strong>Вставьте сетевую плату в свободный слот</strong>На рисунке он обведён. Закрутите винт планки.</span></li>
+    <li><span class="wz-prep-n" aria-hidden="true">3</span><span><strong>Включите компьютер</strong>Мастер продолжит с этого же места сам — настройки не потеряются.</span></li>
+</ol>
+<div class="wz-note wz-note-ok"><span class="wz-note-ic" aria-hidden="true">{{ template "components/icon" "check" }}</span><span><strong>Кабель провайдера оставьте как есть</strong>Он уже в правильном гнезде. Офис подключите к новой карте.</span></div>
+{{ else }}
+<form method="post" action="/setup/answer" id="step-form">
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="step" value="wan">
     <input type="hidden" name="action" value="choose">
     {{ template "components/choice" .choice }}
     {{ if .suggested }}<p class="muted">Панель предлагает карту «{{ .suggested }}»: {{ .why }}.</p>{{ end }}
-    <div class="wizard-actions">
-        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
-        {{ template "components/button" .nextBtn }}
-    </div>
 </form>
+{{ end }}
+{{ with .portAdvice }}
+{{ with .Single }}<div class="{{ .Class }}"><span class="wz-note-ic" aria-hidden="true">{{ .Mark }}</span><span><strong>{{ .Title }}</strong>{{ .Text }}</span></div>{{ end }}
+{{ if .Options }}
+<div class="wz-advice">
+    <div class="wz-tariff" role="radiogroup" aria-label="Скорость интернета по договору">
+        <span class="wz-tariff-label">Скорость интернета по договору:</span>
+        {{ range $i, $o := .Options }}<label class="chip wz-tariff-chip"><input type="radio" name="tariff" value="{{ .Key }}" class="wz-tariff-radio" form="tariff-only"{{ if eq $i 0 }} checked{{ end }}>{{ .Label }}</label>{{ end }}
+    </div>
+    {{ range .Options }}<div class="{{ .Class }} wz-advice-{{ .Key }}"><span class="wz-note-ic" aria-hidden="true">{{ .Mark }}</span><span><strong>{{ .Title }}</strong>{{ .Text }}</span></div>{{ end }}
+</div>
+{{ end }}
+{{ end }}
 {{ else }}
 <div class="alert alert-warn">У сервера не видно ни одной сетевой карты. Проверьте, что
 карты установлены, и обновите страницу.</div>

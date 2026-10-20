@@ -173,7 +173,8 @@ func TestHelpTopicsAreSearchable(t *testing.T) {
 			t.Errorf("по «%s» тема %s не найдена: %+v", q, key, Search(q))
 		}
 	}
-	if s, ok := SectionByKey("help"); !ok || s.Width != Narrow {
-		t.Error("раздел помощи без записи в реестре или не узкий лист")
+
+	if s, ok := SectionByKey("help"); !ok || s.Width != Wide {
+		t.Error("раздел помощи без записи в реестре или не широкий лист")
 	}
 }

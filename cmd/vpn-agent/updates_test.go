@@ -10,7 +10,7 @@ func TestUpdatesConfClearsSystemOrigins(t *testing.T) {
 	conf := updatesConf()
 	clearAllowed := strings.Index(conf, "#clear Unattended-Upgrade::Allowed-Origins")
 	clearPattern := strings.Index(conf, "#clear Unattended-Upgrade::Origins-Pattern")
-	ours := strings.Index(conf, `"origin=VPN Vendor,codename=resolute"`)
+	ours := strings.Index(conf, `"origin=VPN Vendor,codename=${distro_codename}"`)
 	if clearAllowed < 0 || clearPattern < 0 {
 		t.Fatalf("в настройке нет очистки системных источников:\n%s", conf)
 	}

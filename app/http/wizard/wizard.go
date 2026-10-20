@@ -1,6 +1,10 @@
 package wizard
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
+)
 
 type Fact string
 
@@ -9,6 +13,7 @@ const (
 	FactRestore  Fact = "restore"
 	FactWAN      Fact = "wan"
 	FactLAN      Fact = "lan"
+	FactTakeover Fact = "takeover"
 	FactRoles    Fact = "roles"
 	FactInternet Fact = "internet"
 	FactSpeed    Fact = "speed"
@@ -17,8 +22,9 @@ const (
 )
 
 type Facts struct {
-	Set   map[Fact]bool
-	Cards int
+	Set      map[Fact]bool
+	Cards    int
+	Takeover int
 }
 
 func (f Facts) Has(fact Fact) bool { return f.Set[fact] }
@@ -34,37 +40,60 @@ type Step struct {
 	Section  string
 
 	When func(Facts) bool
+
+	Phase string
+
+	Minutes int
 }
 
+type Phase struct {
+	Key   string
+	Title string
+}
+
+var phases = []Phase{
+	{Key: "intro", Title: "Знакомство"},
+	{Key: "internet", Title: "Интернет"},
+	{Key: "office", Title: "Офис"},
+	{Key: "protect", Title: "Защита"},
+	{Key: "done", Title: "Готово"},
+}
+
+func Phases() []Phase { return append([]Phase(nil), phases...) }
+
 var steps = []Step{
-	{Key: "account", Title: "Администратор", Question: "Кто будет управлять шлюзом?",
-		Hint: "Учётная запись администратора; это устройство станет главным доверенным.",
-		Done: FactAccount, Section: "devices"},
+	{Key: "account", Title: ui.MainAdmin.Nom, Question: "Кто будет управлять шлюзом?",
+		Hint: "Учётная запись " + ui.MainAdmin.Gen + "; это устройство станет главным доверенным.",
+		Done: FactAccount, Section: "devices", Phase: "intro", Minutes: 1},
 	{Key: "restore", Title: "Копия настроек", Question: "Есть файл с настройками шлюза?",
 		Hint: "Если шлюз уже настраивали или настройки передали файлом — загрузите его: остальные шаги заполнятся сами.",
-		Done: FactRestore, Needs: []Fact{FactAccount}, Optional: true, Section: "backup"},
+		Done: FactRestore, Needs: []Fact{FactAccount}, Optional: true, Section: "backup", Phase: "intro", Minutes: 1},
 	{Key: "wan", Title: "Карта в интернет", Question: "Какая карта смотрит в интернет?",
-		Hint: "В неё воткнут кабель провайдера или модема. Панель подсказывает ответ сама — проверьте и нажмите «Дальше».",
-		Done: FactWAN, Needs: []Fact{FactAccount}, Section: "network"},
+		Hint: "В неё воткнут кабель провайдера или модема. Панель подсказывает ответ сама — проверьте и нажмите «Далее».",
+		Done: FactWAN, Needs: []Fact{FactAccount}, Section: "network", Phase: "internet", Minutes: 1},
 	{Key: "lan", Title: "Карта в офис", Question: "Какая карта смотрит в офис?",
 		Hint: "В неё воткнут кабель к коммутатору или компьютерам офиса.",
-		Done: FactLAN, Needs: []Fact{FactWAN}, Section: "network",
+		Done: FactLAN, Needs: []Fact{FactWAN}, Section: "network", Phase: "internet", Minutes: 1,
 		When: func(f Facts) bool { return f.Cards > 2 }},
+	{Key: "takeover", Title: "Старый шлюз", Question: "Шлюз выключит старое",
+		Hint: "На сервере работает старый шлюз или похожая программа. Панель выключит отмеченное при применении настроек сети, файлы уйдут в резервную копию.",
+		Done: FactTakeover, Needs: []Fact{FactWAN, FactLAN}, Section: "network", Phase: "internet", Minutes: 1,
+		When: func(f Facts) bool { return f.Takeover > 0 }},
 	{Key: "provider", Title: "Провайдер", Question: "Как провайдер даёт адрес?",
 		Hint: "Чаще всего — автоматически. Постоянный адрес или логин с паролем написаны в договоре. Панель применит настройки и проверит связь.",
-		Done: FactRoles, Needs: []Fact{FactWAN, FactLAN}, Section: "network"},
+		Done: FactRoles, Needs: []Fact{FactWAN, FactLAN}, Section: "network", Phase: "internet", Minutes: 2},
 	{Key: "internet", Title: "Интернет", Question: "Интернет появился?",
 		Hint: "Панель наблюдает за провайдером сама. Если интернета нет, можно продолжить без него и вернуться сюда позже.",
-		Done: FactInternet, Needs: []Fact{FactRoles}, Optional: true, Section: "diagnostics"},
+		Done: FactInternet, Needs: []Fact{FactRoles}, Optional: true, Section: "diagnostics", Phase: "internet", Minutes: 1},
 	{Key: "speed", Title: "Скорость", Question: "Какая скорость у вашего интернета?",
 		Hint: "Чтобы звонки шли вперёд закачек. Проще всего нажать «Запустить замер» — панель узнает сама.",
-		Done: FactSpeed, Needs: []Fact{FactRoles}, Optional: true, Section: "qos"},
+		Done: FactSpeed, Needs: []Fact{FactRoles}, Optional: true, Section: "qos", Phase: "office", Minutes: 2},
 	{Key: "channel", Title: "Канал VPN", Question: "Есть файл подключения VPN?",
 		Hint: "Файл от поставщика VPN. Без него офис выходит в интернет напрямую — это тоже полноценный режим.",
-		Done: FactChannel, Needs: []Fact{FactRoles}, Optional: true, Section: "vpn"},
-	{Key: "check", Title: "Готово", Question: "Проверьте и откройте панель",
-		Hint: "Вот что настроено. Дальше всё это можно менять в разделах панели.",
-		Done: FactFinished, Needs: []Fact{FactRoles}, Section: "home"},
+		Done: FactChannel, Needs: []Fact{FactRoles}, Optional: true, Section: "vpn", Phase: "protect", Minutes: 1},
+	{Key: "check", Title: "Готово", Question: "Шлюз настроен",
+		Hint: "Вот что получилось. Всё это можно поменять в панели в любой момент.",
+		Done: FactFinished, Needs: []Fact{FactRoles}, Section: "home", Phase: "done", Minutes: 1},
 }
 
 func Steps() []Step { return append([]Step(nil), steps...) }
@@ -100,6 +129,61 @@ type Progress struct {
 	Done     int
 	Total    int
 	Finished bool
+}
+
+type PhaseState struct {
+	Phase
+	State  State
+	Number int
+}
+
+func (p Progress) PhaseStates() []PhaseState {
+	current := ""
+	for _, s := range p.Steps {
+		if s.State == StateCurrent {
+			current = s.Phase
+		}
+	}
+	out := make([]PhaseState, 0, len(phases))
+	for i, ph := range phases {
+		st, any, all := StateTodo, false, true
+		for _, s := range p.Steps {
+			if s.Phase != ph.Key || s.State == StateHidden {
+				continue
+			}
+			any = true
+			if s.State != StateDone {
+				all = false
+			}
+		}
+		switch {
+		case ph.Key == current:
+			st = StateCurrent
+		case any && all:
+			st = StateDone
+		}
+		out = append(out, PhaseState{Phase: ph, State: st, Number: i + 1})
+	}
+	return out
+}
+
+func PhaseTitle(key string) string {
+	for _, ph := range phases {
+		if ph.Key == key {
+			return ph.Title
+		}
+	}
+	return ""
+}
+
+func (p Progress) MinutesLeft() int {
+	n := 0
+	for _, s := range p.Steps {
+		if s.State != StateHidden && s.State != StateDone {
+			n += s.Minutes
+		}
+	}
+	return n
 }
 
 func (p Progress) Shown() []Placed {
@@ -146,8 +230,21 @@ func Plan(f Facts) Progress {
 			p.Current = &p.Steps[len(p.Steps)-1]
 		}
 	}
-	p.Finished = p.Current == nil
+
+	p.Finished = p.Current == nil && p.Steps[len(p.Steps)-1].State != StateHidden
 	return p
+}
+
+func (p Progress) Resume() string {
+	if p.Current != nil {
+		return p.Current.Key
+	}
+	for i := len(p.Steps) - 1; i >= 0; i-- {
+		if p.Steps[i].State != StateHidden {
+			return p.Steps[i].Key
+		}
+	}
+	return steps[0].Key
 }
 
 func (p Progress) Viewing(key string) Progress {
@@ -209,7 +306,23 @@ func (p Progress) Neighbours(key string) (prev, next string) {
 
 func Validate(list []Step) error {
 	keys, done := map[string]bool{}, map[Fact]bool{}
+	order := map[string]int{}
+	for i, ph := range phases {
+		order[ph.Key] = i + 1
+	}
+	last := 0
 	for _, s := range list {
+
+		switch at := order[s.Phase]; {
+		case at == 0:
+			return fmt.Errorf("шаг «%s»: этап «%s» не объявлен", s.Key, s.Phase)
+		case at < last:
+			return fmt.Errorf("шаг «%s»: этап «%s» раньше предыдущего шага", s.Key, s.Phase)
+		case s.Minutes <= 0:
+			return fmt.Errorf("шаг «%s»: нет оценки времени", s.Key)
+		default:
+			last = at
+		}
 		switch {
 		case s.Key == "" || s.Title == "" || s.Question == "" || s.Done == "":
 			return fmt.Errorf("шаг «%s»: нужны имя, название, вопрос и факт", s.Key)

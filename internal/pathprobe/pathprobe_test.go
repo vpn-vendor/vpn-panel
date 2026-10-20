@@ -100,3 +100,31 @@ func TestPingLoopback(t *testing.T) {
 		t.Fatalf("время обхода %v", rtt)
 	}
 }
+
+func TestJitterPerTarget(t *testing.T) {
+	var j Jitter
+	for i := 0; i < 20; i++ {
+		j.Add(i%2, 2, time.Duration(10+30*(i%2))*time.Millisecond)
+	}
+	if v, ok := j.Ms(); !ok || v != 0 {
+		t.Fatalf("две ровные цели дали дрожание %v (%v)", v, ok)
+	}
+	var k Jitter
+	k.Add(0, 1, 20*time.Millisecond)
+	if _, ok := k.Ms(); ok {
+		t.Fatal("один ответ — дрожание ещё неизвестно")
+	}
+	k.Add(0, 1, 36*time.Millisecond)
+	if v, _ := k.Ms(); v != 16 {
+		t.Fatalf("первая разница %v", v)
+	}
+	k.Add(0, 1, 36*time.Millisecond)
+	if v, _ := k.Ms(); v != 15 {
+		t.Fatalf("сглаживание 1/16: %v", v)
+	}
+	k.Add(0, 1, 0)
+	k.Add(0, 1, 90*time.Millisecond)
+	if v, _ := k.Ms(); v != 15 {
+		t.Fatalf("разница через потерянный ответ посчитана: %v", v)
+	}
+}

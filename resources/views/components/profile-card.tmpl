@@ -1,0 +1,24 @@
+{{ define "components/profile-card" }}
+<article class="pc-card{{ if .Current }} pc-current{{ end }}{{ if .Fresh }} pc-fresh{{ end }}">
+    <div class="pc-top">
+        <span class="{{ .Mark.Class }}" aria-hidden="true">{{ .Mark.Mono }}</span>
+        <div class="pc-head">
+            <div class="pc-name">{{ .Title }}</div>
+            <div class="pc-proto">{{ .Protocol }}</div>
+        </div>
+        {{ if .State.Text }}<span class="{{ .State.Class }}">{{ .State.Text }}</span>{{ end }}
+    </div>
+    {{ if .Live }}<p class="pc-live"><span class="pc-pulse" aria-hidden="true"></span>{{ .Live }}</p>{{ end }}
+    {{ if .Facts }}<dl class="pc-facts">{{ range .Facts }}<dt>{{ .Label }}</dt><dd>{{ if .CopyID }}<span id="{{ .CopyID }}" class="copy-src">{{ .Value }}</span><button type="button" class="copy-btn" data-copy="{{ .CopyID }}" aria-label="Скопировать: {{ .Label }}" title="Скопировать" hidden>{{ template "components/icon" "copy" }}</button>{{ else }}{{ .Value }}{{ end }}</dd>{{ end }}</dl>{{ end }}
+    {{ if .Tags }}<div class="pc-tags">{{ range .Tags }}<span class="{{ .Class }}">{{ .Text }}</span>{{ end }}</div>{{ end }}
+    <div class="pc-foot">
+        <label class="pc-pick" for="{{ .ID }}">
+            <input class="choice-input" type="radio" id="{{ .ID }}" name="{{ .Name }}" value="{{ .Value }}"
+                   {{ if .Form }}form="{{ .Form }}"{{ end }}{{ if .Checked }} checked{{ end }}>
+            {{ .PickLabel }}
+        </label>
+        {{ with .Delete }}{{ template "components/action-form" . }}{{ end }}
+        {{ if .DeleteNote }}<span class="pc-note">{{ .DeleteNote }}</span>{{ end }}
+    </div>
+</article>
+{{ end }}

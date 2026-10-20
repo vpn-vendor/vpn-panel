@@ -11,6 +11,7 @@ import (
 
 	contractshttp "github.com/goravel/framework/contracts/http"
 
+	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/dhcp"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/network"
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
@@ -108,9 +109,13 @@ func (c *DhcpController) lans() []netip.Prefix {
 }
 
 func (c *DhcpController) applyAndFlash(ctx contractshttp.Context, msg string) {
-	if _, err := c.orch.ApplyDHCP(ctx.Request().Ip()); err != nil {
+	_, warning, err := c.orch.ApplyDHCP(ctx.Request().Ip())
+	if err != nil {
 		setFlash(ctx, flashError, "Настройки сохранены, но применить их не удалось: "+network.ErrText(err))
 		return
+	}
+	if warning != "" {
+		msg += " " + warning
 	}
 	setFlash(ctx, flashCode, msg)
 }
@@ -121,6 +126,7 @@ func (c *DhcpController) Index(ctx contractshttp.Context) contractshttp.Response
 		"error":     takeFlash(ctx, flashError),
 		"ok":        takeFlash(ctx, flashCode),
 		"leaseTime": keagen.DefaultValidLifetime / 3600 / 24,
+		"pageLink":  ui.PageLink{URL: "#dhcp-reserve", Label: "Закрепить адрес вручную", Icon: "pin", Secondary: true},
 	}
 	var notices []notice
 
@@ -207,7 +213,11 @@ func (c *DhcpController) Index(ctx contractshttp.Context) contractshttp.Response
 	}
 
 	view["leases"] = rows
+	view["rows"] = dhcpRows(rows, resViews)
+	view["pinnedCount"] = len(resViews)
 	view["pools"] = stats
+	view["poolCards"] = dhcpPoolCards(stats)
+	view["rowFilters"] = dhcpFilters()
 	view["service"] = state
 	view["notices"] = notices
 	return ctx.Response().View().Make("dhcp.tmpl", page(ctx, "DHCP", "dhcp", view))

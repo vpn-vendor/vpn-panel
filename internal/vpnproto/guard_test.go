@@ -31,6 +31,7 @@ var allowed = map[string]allowance{
 	"cmd/vpn-agent/vpn_ovpn.go":          {"драйвер агента", false},
 	"cmd/vpn-agent/backup_secrets_v1.go": {"застывший формат копии секретов версии 1 — только чтение старых копий", false},
 	"database/migrations/":               {"застывшая история: смысл миграции не меняется вместе с кодом", false},
+	"internal/legacyvpn/":                {"застывшая опись чужого старого скрипта: его файлы и службы названы так, как назвал их он", false},
 }
 
 func isAllowed(rel string) (string, allowance, bool) {

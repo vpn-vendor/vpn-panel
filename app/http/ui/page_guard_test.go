@@ -91,7 +91,6 @@ func TestNavigationAsksTheStyleNotTheScreen(t *testing.T) {
 	js := readTree(t, "public", "js", "app.js")
 	for _, want := range []string{
 		`getPropertyValue("--nav-mode")`,
-		`getPropertyValue("--calm")`,
 		`root.classList.add("js-nav")`,
 		`aria-expanded`,
 	} {
@@ -170,35 +169,141 @@ func mediaBlocks(t *testing.T, css, header string) []string {
 	return out
 }
 
-func TestMenuHasOneStateWithTwoReadings(t *testing.T) {
+func TestMenuRailOpensOverTheSheet(t *testing.T) {
 	css := readTree(t, "public", "css", "app.css")
 	docked := mediaBlocks(t, css, "@media (min-width: 48em) {")
-	hidden, outside := false, css
+	outside := css
+	var all string
 	for _, b := range docked {
-		if strings.Contains(b, ".nav-closed .sidebar { display: none; }") {
-			hidden = true
-		}
+		all += b
 		outside = strings.Replace(outside, b, "", 1)
 	}
-	if !hidden {
-		t.Error("скрытие меню обязано быть объявлено в режиме потока")
+	for _, want := range []string{
+		"width: var(--sidebar-rail-w); flex: 0 0 var(--sidebar-rail-w);",
+		".sidebar:hover :is(.nav-panel, .nav-track), .sidebar:focus-within :is(.nav-panel, .nav-track)",
+		":root.nav-pinned .sidebar { width: var(--sidebar-w);",
+		"transform: translateX(calc(var(--nav-shift) * -1));",
+		"transform: translateX(var(--nav-shift));",
+		".sidebar:hover :is(.nav-panel, .nav-track) { transition-delay:",
+		"--nav-slide: var(--motion-3) var(--ease-slide);",
+		"transition: transform var(--nav-slide);",
+	} {
+		if !strings.Contains(all, want) {
+			t.Errorf("в режиме потока нет %q", want)
+		}
 	}
-	if regexp.MustCompile(`\.sidebar[^{]*\{[^}]*display:\s*none`).MatchString(outside) {
-		t.Error("меню скрывается вне режима потока: в выдвижном режиме это даёт затемнение без меню")
+
+	if strings.Contains(all, ".nav-panel { box-shadow") {
+		t.Error("у раскрытой панели меню снова тень: сдвиг пойдёт рывками на программной отрисовке")
 	}
-	for _, gone := range []string{"sidebar-collapsed", "sidebar-open", "sidebar-away"} {
-		if strings.Contains(css, gone) || strings.Contains(readTree(t, "public", "js", "app.js"), gone) {
+
+	touch := mediaBlocks(t, css, "@media (min-width: 48em) and (hover: none) {")
+	if !strings.Contains(touch[0], "width: var(--sidebar-w)") ||
+		!strings.Contains(touch[0], ":root:not(.nav-pinned) .sidebar:not(:hover):not(:focus-within) :is(.nav-text, .nav-head-title) { opacity: 1; }") {
+		t.Error("на экране без наведения меню обязано стоять раскрытым, с видимыми подписями")
+	}
+	if regexp.MustCompile(`\.sidebar[^{]*\{[^}]*display:\s*none`).MatchString(css) {
+		t.Error("меню скрывается целиком: на компьютере оно рельса, в шторке уезжает за край")
+	}
+	if strings.Contains(outside, "--sidebar-rail-w)") {
+		t.Error("рельса применяется вне режима потока: шторка обязана оставаться во всю ширину")
+	}
+	js := readTree(t, "public", "js", "app.js")
+	for _, gone := range []string{"sidebar-collapsed", "sidebar-open", "sidebar-away", "nav-edge", "sidebar-edge",
+		"nav-closed", "nav-away", "sidebar-fold", "nav-fold"} {
+		if strings.Contains(css, gone) || strings.Contains(js, gone) {
 			t.Errorf("прежнее состояние меню %q не убрано — два состояния снова могут встретиться", gone)
 		}
 	}
-	js := readTree(t, "public", "js", "app.js")
 	for _, want := range []string{
 		`root.classList.toggle("nav-open", opened)`,
-		`root.classList.toggle("nav-closed", !opened)`,
-		"return !drawer();",
+		`root.classList.toggle("nav-pinned")`,
+		`"vp-nav-pin"`,
 	} {
 		if !strings.Contains(js, want) {
-			t.Errorf("состояние меню потеряло %q", want)
+			t.Errorf("меню потеряло %q", want)
+		}
+	}
+}
+
+func TestPhoneContentStaysInside(t *testing.T) {
+	css := readTree(t, "public", "css", "app.css")
+	for _, want := range []string{
+		".item-list .item-card > .seg { grid-column: 1 / -1; }",
+		"@container item-list (max-width: 16rem)",
+		"display: block; padding: var(--s2) 0 var(--s2) var(--fold-hang); text-indent:",
+		".choice-card-body { display: grid; grid-template-columns: minmax(0, 1fr);",
+		".card-head-wrap > :not(:first-child) { flex: 0 1 auto; min-width: 0; }",
+		".table-wrap { max-width: 100%; overflow-x: auto; }",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("в стилях нет %q", want)
+		}
+	}
+	for _, f := range []string{"metrics.tmpl", "storage.tmpl"} {
+		if !strings.Contains(readTree(t, "resources", "views", "security", f), `<div class="table-wrap">`) {
+			t.Errorf("таблица в %s без обёртки прокрутки: на компьютере налезет на соседнюю колонку", f)
+		}
+	}
+}
+
+func TestUnsavedChangesAreNeverSilent(t *testing.T) {
+	shell := readTree(t, "resources", "views", "partials.tmpl")
+	if !strings.Contains(shell, `{{ template "components/unsaved-bar" }}`) {
+		t.Error("в оболочке нет полосы несохранённых изменений")
+	}
+	if !strings.Contains(readTree(t, "resources", "views", "components", "unsaved-bar.tmpl"), "data-unsaved-bar role=\"status\" aria-live=\"polite\" hidden") {
+		t.Error("полоса обязана приходить скрытой: без сценария у форм свои кнопки")
+	}
+	core := readTree(t, "public", "js", "app.js")
+	for _, want := range []string{`querySelectorAll("form[data-unsaved]")`, `"beforeunload"`, `new Event("change", { bubbles: true })`} {
+		if !strings.Contains(core, want) {
+			t.Errorf("в ядре нет %q", want)
+		}
+	}
+	for _, f := range [][]string{
+		{"network.tmpl", `action="/network/apply" id="net-apply" data-unsaved`},
+		{"vpn.tmpl", `id="vpn-apply" class="vpn-mode-form" data-unsaved`},
+		{"qos.tmpl", `action="/qos/apply" data-island="qos-form" data-unsaved`},
+		{"security/retention.tmpl", `action="/security/retention" data-unsaved`},
+		{"security/outside.tmpl", `action="/security/apply" data-unsaved`},
+	} {
+		if !strings.Contains(readTree(t, append([]string{"resources", "views"}, strings.Split(f[0], "/")...)...), f[1]) {
+			t.Errorf("форма настроек в %s не помечена data-unsaved", f[0])
+		}
+	}
+}
+
+func TestTrafficPathIsARibbonOnPhone(t *testing.T) {
+	css := readTree(t, "public", "css", "app.css")
+	for _, want := range []string{
+		"grid-template-columns: auto minmax(var(--s2), 1fr) auto minmax(calc(var(--ctl-sm) + var(--s4)), 1.8fr) auto minmax(var(--s2), 1fr) auto;",
+		".tp-tunnel { display: contents; }",
+		".tp-isp { grid-column: 1 / -1; grid-row: 2;",
+		".tp-name-more, .tp-sub, .tp-tunnel > .tag { display: none; }",
+		"@container (min-width: 52rem) {\n  .tp { --tp-tile: calc(var(--ctl-lg) + var(--s4));",
+	} {
+		if !strings.Contains(css, want) {
+			t.Errorf("в стилях схемы нет %q", want)
+		}
+	}
+	if !strings.Contains(readTree(t, "resources", "views", "components", "traffic-path.tmpl"), `Сервер<span class="tp-name-more"> VPN</span>`) {
+		t.Error("подпись сервера на ленте должна сокращаться до «Сервер»")
+	}
+}
+
+func TestChartPanelStaysPutAndClosesOutside(t *testing.T) {
+	css := readTree(t, "public", "css", "app.css")
+	if regexp.MustCompile(`(?m)^\.chart-panel\s*\{[^}]*\bposition\s*:`).MatchString(css) {
+		t.Error("у .chart-panel задано position: окно перестанет стоять на месте при прокрутке")
+	}
+	if !strings.Contains(css, "html:has(.chart-panel[open]) { overflow: hidden; scrollbar-gutter: stable; }") {
+		t.Error("страница под открытым окном графика должна стоять")
+	}
+	js := readTree(t, "public", "js", "dashboard.js")
+	for _, want := range []string{`h.on(root, "click", function (e) {`, `if (e.target !== root) { return; }`, `root.getBoundingClientRect()`} {
+		if !strings.Contains(js, want) {
+			t.Errorf("окно графика не закрывается щелчком мимо: нет %q", want)
 		}
 	}
 }

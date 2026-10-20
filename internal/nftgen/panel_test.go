@@ -34,7 +34,7 @@ func TestPanelLimitsFrozen(t *testing.T) {
 func TestNoPanelNoRules(t *testing.T) {
 	p := planWithPanel()
 	p.Panel = nil
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	for _, needle := range []string{SetPanelConns, SetPanelNew, "ct count", "limit rate over"} {
 		if strings.Contains(out, needle) {
 			t.Fatalf("без плана панели в рулсете есть %q:\n%s", needle, out)
@@ -44,7 +44,7 @@ func TestNoPanelNoRules(t *testing.T) {
 
 func TestPanelSetsBounded(t *testing.T) {
 	p := planWithPanel()
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	if !strings.Contains(out, "set panel_conns {\n\t\ttype ipv4_addr\n\t\tsize 4096\n\t\tflags dynamic\n\t}") {
 		t.Fatalf("набор счёта соединений не тот:\n%s", out)
 	}
@@ -55,7 +55,7 @@ func TestPanelSetsBounded(t *testing.T) {
 
 func TestPanelRulesBeforeLANAccept(t *testing.T) {
 	p := planWithPanel()
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	want := []string{
 		`iifname { "ens4" } tcp dport { 80, 443 } ct state new add @panel_conns { ip saddr ct count over 16 } counter drop`,
 		`iifname { "ens4" } tcp dport { 80, 443 } ct state new add @panel_new { ip saddr limit rate over 10/second burst 30 packets } counter drop`,
@@ -82,7 +82,7 @@ func TestPanelRulesBeforeLANAccept(t *testing.T) {
 
 func TestPanelRulesOnlyOnLAN(t *testing.T) {
 	p := planWithPanel()
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	for _, line := range strings.Split(out, "\n") {
 		if strings.Contains(line, "panel_") && strings.Contains(line, `"ens3"`) {
 			t.Fatalf("правило пределов упоминает WAN: %s", line)

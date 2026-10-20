@@ -3,7 +3,9 @@ package controllers
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -54,6 +56,7 @@ type profileView struct {
 	Protocol  string
 	Transport string
 	VoiceFit  bool
+	Mark      ui.ProtoMark
 }
 
 func protocolLabel(p string) string {
@@ -111,6 +114,7 @@ func (c *VpnController) Index(ctx contractshttp.Context) contractshttp.Response 
 			Protocol: protocolLabel(p.Protocol), Transport: transportLabel(p.Transport),
 
 			VoiceFit: p.VoiceFit && vpndriver.VoiceFit(p.Transport),
+			Mark:     protoMark(p.Protocol),
 		})
 	}
 
@@ -127,19 +131,32 @@ func (c *VpnController) Index(ctx contractshttp.Context) contractshttp.Response 
 		"maxMTU":     vpndriver.MaxMTU,
 		"rolesReady": c.network.HasWANAndLAN(),
 		"agentDown":  false,
+		"pageLink":   ui.PageLink{URL: "#vpn-profiles", Label: "Загрузить файл подключения", Icon: "upload"},
+		"modeCards":  vpnModeCards(settings.Mode == vpnsvc.ModeBlack, len(rows) > 0),
+		"tunnelWord": tunnelWord,
+		"tunnelMode": tunnelModeName(),
+		"failCards":  vpnFailCards(settings.OnFailure == vpnsvc.FailStrict),
 	}
+	csrf, _ := withCsrf(ctx, map[string]any{})["csrf"].(string)
+	activeDNS := ""
+	var active *profileView
+	for i, r := range rows {
+		if r.Active {
+			view["activeName"] = r.Name
+			activeDNS = r.ConfigDNS
+			active = &rows[i]
+		}
+	}
+	view["dnsCards"] = vpnDNSCards(settings.DNSChoice == vpnsvc.DNSConfig, activeDNS)
 	var notices []notice
 
-	if !c.network.HasWANAndLAN() {
-		notices = append(notices, notice{Level: "info",
-			Text: "VPN включится вместе с ролями сетевых карт: назначьте на странице «Сеть», какая карта смотрит в интернет, а какая — в офис."})
+	if active == nil && len(rows) > 0 {
+		active = &rows[0]
 	}
-	if len(rows) == 0 {
-
-		notices = append(notices, notice{Level: "info",
-			Text: "Подключений пока нет. Загрузите файл подключения — его выдаёт поставщик услуги. Панель не создаёт подключения сама: файл всегда приходит от поставщика."})
-	}
-
+	facts := vpnFacts{Black: settings.Mode == vpnsvc.ModeBlack, Strict: settings.OnFailure == vpnsvc.FailStrict, Active: active,
+		NeverEnabled: settings.ActiveSlug == "",
+		Unknown:      "Системная служба не ответила. Настройки ниже можно менять: они сохранятся и применятся, когда служба вернётся."}
+	link := vpnLink{}
 	st, err := c.service.Status()
 	switch {
 	case devmode.Enabled:
@@ -154,6 +171,31 @@ func (c *VpnController) Index(ctx contractshttp.Context) contractshttp.Response 
 		}
 	default:
 		notices = append(notices, c.statusView(view, settings, st)...)
+		facts.Status = st
+		facts.Protocol, facts.Transport = protocolLabel(st.Protocol), transportLabel(st.Transport)
+		facts.RxText, facts.TxText = bytesText(st.RxBytes), bytesText(st.TxBytes)
+		link = vpnLink{Known: true, Black: st.Mode == vpnsvc.ModeBlack, Online: st.Online, Handshake: st.HandshakeS}
+	}
+	if devmode.Enabled {
+		facts.Unknown = "В среде разработки канала нет. Режим и подключения ниже настраиваются так же, как на шлюзе."
+	}
+	scene := vpnSceneOf(facts)
+	view["scene"] = scene
+	added := ctx.Request().Query("added", "")
+	view["profileGrid"] = vpnProfileGrid(rows, link, settings.Mode == vpnsvc.ModeBlack, added, csrf)
+	view["verdict"] = vpnVerdictKind(settings)
+	slug := settings.ActiveSlug
+	if slug == "" && len(rows) > 0 {
+		slug = rows[0].Slug
+	}
+	view["reconnect"], view["reconnectWait"] = vpnReconnectView(facts.Status, c.service.ReconnectWait(), csrf)
+	check, _ := view["check"].(checkViewModel)
+	running, _ := view["checkRunning"].(bool)
+	view["setup"] = vpnSetup(vpnSetupFacts{RolesReady: c.network.HasWANAndLAN(), HasProfiles: len(rows) > 0,
+		Enabled: settings.Mode == vpnsvc.ModeBlack && settings.ActiveSlug != "", Known: link.Known, Online: link.Online,
+		Checked: check.Has && !check.Past, Running: running, Slug: slug, Settings: settings}, csrf)
+	if setup, ok := view["setup"].(*ui.Checklist); ok && setup != nil {
+		setup.View = ui.ViewOf(ctx.Request().Cookie("vp_cl_" + setup.ID))
 	}
 
 	view["notices"] = notices
@@ -219,7 +261,7 @@ func (c *VpnController) statusView(view map[string]any, settings vpnsvc.Settings
 			Text: "VPN установлен, но данные через него не проходят. Чаще всего это значит, что файл подключения рассчитан на канал с особыми настройками (например, с маскировкой трафика), которые эта версия панели не поддерживает. Запросите у поставщика обычную конфигурацию. Если файл наш — обратитесь в поддержку, это не поломка вашей сети."})
 	case settings.Mode == vpnsvc.ModeBlack && st.Mode != vpnsvc.ModeBlack:
 		notices = append(notices, notice{Level: "error",
-			Text: "Режим «весь офис через защищённый канал» выбран в настройках, но сейчас не действует. Нажмите «Применить» ещё раз; если не поможет — обратитесь в поддержку."})
+			Text: "Режим «" + tunnelModeName() + "» выбран в настройках, но сейчас не действует. Нажмите «Применить» ещё раз; если не поможет — обратитесь в поддержку."})
 	}
 
 	weak := vpnWeakCPUMbit
@@ -327,17 +369,24 @@ func (c *VpnController) tariffMbit() int {
 func (c *VpnController) Import(ctx contractshttp.Context) contractshttp.Response {
 	ip := ctx.Request().Ip()
 	name := strings.TrimSpace(ctx.Request().Input("name"))
+	if ctx.Request().Input("source") == "legacy" {
+		return c.importLegacy(ctx, ip, name)
+	}
+	file, err := ctx.Request().File("config")
+	if err != nil {
+		setFlash(ctx, flashError, "Файл подключения не выбран. Перетащите его в плитку загрузки или нажмите на неё и выберите файл, который выдал поставщик.")
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
+	}
+	if name == "" {
+
+		base := filepath.Base(file.GetClientOriginalName())
+		name = strings.TrimSpace(strings.TrimSuffix(base, filepath.Ext(base)))
+	}
 	if name == "" {
 		name = "Подключение"
 	}
 	if len([]rune(name)) > 60 {
 		name = string([]rune(name)[:60])
-	}
-
-	file, err := ctx.Request().File("config")
-	if err != nil {
-		setFlash(ctx, flashError, "Файл подключения не выбран. Нажмите «Выберите файл» и укажите файл, который выдал поставщик.")
-		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
 	}
 
 	path := file.File()
@@ -365,9 +414,39 @@ func (c *VpnController) Import(ctx contractshttp.Context) contractshttp.Response
 
 		msg += " Обратите внимание: " + strings.Join(res.Warnings, "; ") + "."
 	}
-	msg += " Выберите его и нажмите «Применить», чтобы включить."
+
+	next := "/vpn?added=" + url.QueryEscape(res.Slug)
+	if cur := c.service.Load(); cur.Mode == vpnsvc.ModeBlack && cur.ActiveSlug != "" {
+		msg += " Чтобы перейти на него, отметьте его карточку и нажмите «Переключить»."
+		next += "#vpn-profiles"
+	} else {
+		msg += " Следующий шаг — включить " + tunnelWord + " для всего офиса: кнопка в пошаговой помощи."
+		next += "#vpn-setup"
+	}
 	setFlash(ctx, flashCode, msg)
-	return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
+	if fromWizard(ctx) {
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
+	}
+	return ctx.Response().Redirect(contractshttp.StatusFound, next)
+}
+
+func (c *VpnController) importLegacy(ctx contractshttp.Context, ip, name string) contractshttp.Response {
+	if name == "" {
+		name = "Подключение старого шлюза"
+	}
+	res, ierr := c.service.ImportLegacy(name, ctx.Request().Input("protocol"))
+	if ierr != nil {
+		c.network.Audit("vpn_import_failed", ip, ierr.Error())
+		setFlash(ctx, flashError, network.ErrText(ierr))
+		return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn"))
+	}
+	c.network.Audit("vpn_import", ip, "профиль старого шлюза: "+res.Slug)
+	msg := "Подключение «" + name + "» взято у старого шлюза."
+	if len(res.Warnings) > 0 {
+		msg += " Обратите внимание: " + strings.Join(res.Warnings, "; ") + "."
+	}
+	setFlash(ctx, flashCode, msg)
+	return ctx.Response().Redirect(contractshttp.StatusFound, landing(ctx, "/vpn?added="+url.QueryEscape(res.Slug)))
 }
 
 func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response {
@@ -422,7 +501,7 @@ func (c *VpnController) Apply(ctx contractshttp.Context) contractshttp.Response 
 	case settings.Mode == vpnsvc.ModeWhite:
 		setFlash(ctx, flashCode, "Офис выходит в интернет напрямую. Оптимизация телефонии и защита шлюза продолжают работать.")
 	case changed:
-		setFlash(ctx, flashCode, "Весь офис выходит в интернет через защищённый канал. Если канал пропадёт, интернет в офисе прекратится — так трафик не уйдёт в обход.")
+		setFlash(ctx, flashCode, "Весь офис выходит в интернет через "+tunnelWord+". Если канал пропадёт, интернет в офисе прекратится — так трафик не уйдёт в обход.")
 	default:
 		setFlash(ctx, flashCode, "Изменений нет — защищённый канал уже работает с этими настройками.")
 	}
@@ -571,6 +650,9 @@ type checkViewModel struct {
 	Cores    int
 	Load     string
 	Notes    []string
+
+	Grade   ui.Tag
+	Summary ui.MetricGrid
 }
 
 func checkView(rep *vpncheck.Report, past bool) checkViewModel {
@@ -657,7 +739,48 @@ func checkView(rep *vpncheck.Report, past bool) checkViewModel {
 		load = rep.LoadEnd
 	}
 	vm.Load = fmt.Sprintf("%.2f", load)
+	vm.Grade, vm.Summary = checkSummary(rep)
 	return vm
+}
+
+func checkSummary(rep *vpncheck.Report) (ui.Tag, ui.MetricGrid) {
+	var g ui.MetricGrid
+	ms := func(v float64) string {
+		if v < 10 {
+			return strconv.FormatFloat(v, 'f', 1, 64)
+		}
+		return strconv.FormatFloat(v, 'f', 0, 64)
+	}
+	if t := rep.TunnelLeg; t.OK() {
+		note := "до сервера подключения"
+		if d := rep.DirectLeg; d.OK() {
+			note = "напрямую до сервера " + ms(d.Stats.AvgMs) + " мс"
+		}
+		g.Metrics = append(g.Metrics,
+			ui.Metric{Label: "Задержка внутри канала", Icon: "clock", Hue: "office", Value: ms(t.Stats.AvgMs), Unit: "мс", Note: note},
+			ui.Metric{Label: "Джиттер", Icon: "diagnostics", Hue: "gw", Value: strconv.FormatFloat(t.Stats.JitterMs, 'f', 1, 64), Unit: "мс", Note: "насколько ровно идут пакеты"},
+			ui.Metric{Label: "Потери", Icon: "check", Hue: "ok", Value: strings.Replace(strconv.FormatFloat(t.Stats.LossPct, 'f', 1, 64), ".", ",", 1), Unit: "%", Note: vpncheck.BurstNote(t.Stats)})
+	}
+	if sp := rep.Speed; sp != nil && sp.TunnelDownKbit > 0 {
+		m := ui.Metric{Label: "Скорость через канал", Icon: "download", Hue: "srv", Value: strconv.Itoa(sp.TunnelDownKbit / 1000), Unit: "Мбит/с", Note: "без канала сравнить не с чем"}
+		if sp.BaselineDownKbit > 0 {
+			m.Note = "без канала " + strconv.Itoa(sp.BaselineDownKbit/1000) + " Мбит/с"
+		}
+		g.Metrics = append(g.Metrics, m)
+	}
+	grade := ui.Tag{}
+	if d := rep.Data; d.OK() {
+		gr, _ := vpncheck.GradeProbe(d.Kind, d.Stats)
+		switch gr {
+		case vpncheck.GradeTarget:
+			grade = vpnTag("для разговоров: отлично", ui.OK)
+		case vpncheck.GradeOK:
+			grade = vpnTag("для разговоров: приемлемо", ui.OK)
+		case vpncheck.GradeBad:
+			grade = vpnTag("разговор рвётся", ui.Bad)
+		}
+	}
+	return grade, g
 }
 
 type pathRow struct {
@@ -741,5 +864,17 @@ func (c *VpnController) ProbeTarget(ctx contractshttp.Context) contractshttp.Res
 	}
 	c.service.Audit("vpn_probe_target", ctx.Request().Ip(), "цель пробы для "+slug+": "+what)
 	setFlash(ctx, flashCode, "Цель пробы сохранена: панель пересмотрит её при следующей сверке.")
+	return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+}
+
+func (c *VpnController) Reconnect(ctx contractshttp.Context) contractshttp.Response {
+	ip := ctx.Request().Ip()
+	if err := c.service.Reconnect(); err != nil {
+		c.network.Audit("vpn_reconnect_failed", ip, err.Error())
+		setFlash(ctx, flashError, network.ErrText(err))
+		return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
+	}
+	c.network.Audit("vpn_reconnect", ip, "попытка вне очереди")
+	setFlash(ctx, flashCode, "Пробуем подключиться. Результат появится вверху страницы в течение полуминуты; если канал не поднимется, панель продолжит пробовать сама.")
 	return ctx.Response().Redirect(contractshttp.StatusFound, "/vpn")
 }

@@ -21,6 +21,8 @@ type Entry struct {
 
 	Failure bool
 
+	Alarm bool
+
 	Break bool
 
 	Notice string
@@ -32,6 +34,7 @@ func critical(title string) Entry { return Entry{Title: title, Class: Critical} 
 func ordinary(title string) Entry { return Entry{Title: title, Class: Ordinary} }
 func system(title string) Entry   { return Entry{Title: title, Class: System} }
 func failed(title string) Entry   { return Entry{Title: title, Class: Critical, Failure: true} }
+func alarm(title string) Entry    { return Entry{Title: title, Class: System, Alarm: true} }
 
 func unattended(title, notice string) Entry {
 	return Entry{Title: title, Class: Critical, Failure: true, Notice: notice}
@@ -63,20 +66,59 @@ var catalog = map[string]Entry{
 		"Настройки из файла не были подтверждены в срок и откачены: действуют настройки до импорта. Если импорт нужен — повторите его на странице «Резервная копия» и подтвердите."),
 	"settings_import_broken": unattended("Импорт прерван обрывом питания",
 		"Импорт настроек прервался обрывом питания до начала изменений: действуют прежние настройки. Проверьте их и при необходимости повторите импорт на странице «Резервная копия»."),
-	"settings_export":           critical("Настройки выгружены в файл"),
-	"support_collected":         critical("Собраны сведения для поддержки"),
-	"firewall_apply":            critical("Раздача интернета и защита применены"),
-	"firewall_apply_failed":     failed("Раздача интернета и защита не применились"),
-	"dns_apply":                 critical("Разрешение имён настроено"),
-	"dns_apply_failed":          failed("Разрешение имён не настроилось"),
-	"dhcp_apply":                critical("Раздача адресов настроена"),
-	"dhcp_apply_failed":         failed("Раздача адресов не настроилась"),
-	"qos_apply":                 critical("QoS применён"),
-	"qos_apply_failed":          failed("QoS не применился"),
+	"settings_export":             critical("Настройки выгружены в файл"),
+	"support_collected":           critical("Собраны сведения для поддержки"),
+	"firewall_apply":              critical("Раздача интернета и защита применены"),
+	"firewall_apply_failed":       failed("Раздача интернета и защита не применились"),
+	"dns_apply":                   critical("Разрешение имён настроено"),
+	"dns_apply_failed":            failed("Разрешение имён не настроилось"),
+	"dhcp_apply":                  critical("Раздача адресов настроена"),
+	"dhcp_apply_failed":           failed("Раздача адресов не настроилась"),
+	"qos_apply":                   critical("QoS применён"),
+	"qos_apply_failed":            failed("QoS не применился"),
+	"host_reapply":                system("Настройки раздела обновлены под новые версии программ системы"),
+	"dhcp_waits_foreign":          alarm("Раздача адресов ждёт: на карте офиса работает другая служба"),
+	"network_waits_foreign":       alarm("Сеть не применена: на карте офиса раздаёт адреса другая служба"),
+	"network_waits_legacy":        alarm("Сеть не применена: старый скрипт vpn.sh меняет систему"),
+	"http_port_found":             alarm("Порт 80 на сервере занят другой программой"),
+	"http_port_cleared":           system("Порт 80 на сервере освободился"),
+	"tls_port_found":              alarm("Порт панели занят другой программой"),
+	"tls_port_cleared":            system("Порт панели освободился"),
+	"foreign_dhcp_found":          alarm("На сервере работает другая служба раздачи адресов"),
+	"foreign_dhcp_cleared":        system("Другая служба раздачи адресов больше не работает"),
+	"forward_boot_found":          alarm("Настройки системы включают пересылку раньше защиты"),
+	"forward_boot_cleared":        system("Настройки системы больше не включают пересылку раньше защиты"),
+	"lan_dhcp_found":              alarm("В сети офиса работает ещё один сервер раздачи адресов"),
+	"lan_dhcp_cleared":            system("Второй сервер раздачи адресов в сети офиса больше не отвечает"),
+	"forward_cut_found":           alarm("Чужие правила фаервола режут интернет офиса"),
+	"forward_cut_cleared":         system("Чужие правила фаервола больше не режут интернет офиса"),
+	"forward_off_found":           alarm("Другая программа выключила пересылку трафика"),
+	"forward_off_cleared":         system("Пересылку трафика больше никто не выключает"),
+	"own_table_found":             alarm("Другая программа стёрла правила шлюза"),
+	"own_table_cleared":           system("Правила шлюза больше никто не стирает"),
+	"legacy_found":                alarm("Найден шлюз старого скрипта vpn.sh"),
+	"legacy_cleared":              system("Шлюз старого скрипта vpn.sh больше не найден"),
+	"legacy_sudo_found":           alarm("Найдено: веб-сервер может выполнять любые команды администратора"),
+	"legacy_sudo_cleared":         system("Веб-сервер больше не может выполнять любые команды администратора"),
+	"legacy_root_service_found":   alarm("Найдена служба администратора в открытой папке"),
+	"legacy_root_service_cleared": system("Служба администратора в открытой папке больше не найдена"),
+	"legacy_terminal_found":       alarm("Найден терминал в браузере"),
+	"legacy_terminal_cleared":     system("Терминал в браузере выключен"),
+	"legacy_usb_found":            alarm("Найден автозапуск с флешки"),
+	"legacy_usb_cleared":          system("Автозапуск с флешки снят"),
+	"legacy_keys_found":           alarm("Файлы подключения VPN читаются не только системой"),
+	"legacy_keys_cleared":         system("Файлы подключения VPN снова закрыты"),
+	"legacy_pppoe_found":          alarm("Старый скрипт vpn.sh сам поднимает PPPoE"),
+	"legacy_pppoe_cleared":        system("Старый скрипт vpn.sh больше не поднимает PPPoE"),
+	"legacy_tunnel_found":         alarm("Работает канал старого скрипта vpn.sh"),
+	"legacy_tunnel_cleared":       system("Канал старого скрипта vpn.sh остановлен"),
+	"legacy_rerun": {Title: "Старый скрипт vpn.sh запускали поверх панели", Class: System, Alarm: true,
+		Notice: "Старый скрипт vpn.sh запускали поверх панели: он заменил её настройки сети своими. Откройте «Диагностику» — там видно, что найдено на сервере. Не запускайте старый скрипт поверх панели."},
 	"security_settings":         critical("Изменены настройки защиты"),
 	"auto_updates":              critical("Изменены автоматические обновления"),
 	"disk_change":               critical("Запрошена или отменена смена пароля диска"),
 	"panel_upgraded":            critical("Панель обновилась"),
+	"release_accept":            critical("Владелец оставил новую версию панели"),
 	"device_label_proposed":     ordinary("Сотрудник предложил подпись устройства"),
 	"device_label_throttled":    ordinary("Слишком частые предложения подписи"),
 	"device_label_accepted":     critical("Подпись устройства принята"),
@@ -105,6 +147,8 @@ var catalog = map[string]Entry{
 	"vpn_apply":             critical("Режим защищённого канала применён"),
 	"vpn_apply_failed":      failed("Режим защищённого канала не применился"),
 	"vpn_remove":            critical("Подключение удалено"),
+	"vpn_reconnect":         critical("Переподключение канала вручную"),
+	"vpn_reconnect_failed":  failed("Переподключение вручную не принято"),
 	"vpn_remove_failed":     failed("Подключение не удалось удалить"),
 	"vpn_mtu_probe":         critical("Подобран размер пакетов"),
 	"vpn_mtu_probe_failed":  failed("Подбор размера пакетов не удался"),

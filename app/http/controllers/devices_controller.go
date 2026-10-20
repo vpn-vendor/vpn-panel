@@ -35,14 +35,8 @@ type deviceView struct {
 	Quarantine bool
 	Revoked    bool
 	Current    bool
-}
-
-type eventView struct {
-	When    string
-	Event   string
-	IP      string
-	Details string
-	Repeats string
+	Icon       string
+	OS         string
 }
 
 func repeatsText(count int, last *time.Time) string {
@@ -120,6 +114,11 @@ func (c *DevicesController) Revoke(ctx contractshttp.Context) contractshttp.Resp
 	return ctx.Response().Redirect(contractshttp.StatusFound, "/devices")
 }
 
+const (
+	journalPage = 30
+	journalMax  = 300
+)
+
 func (c *DevicesController) render(ctx contractshttp.Context, freshCode, errMsg, done string) contractshttp.Response {
 	a := actor(ctx)
 	devices := c.service.Devices(a.UserID)
@@ -132,7 +131,7 @@ func (c *DevicesController) render(ctx contractshttp.Context, freshCode, errMsg,
 			dead++
 			continue
 		}
-		views = append(views, deviceView{
+		row := deviceView{
 			ID:         d.ID,
 			Label:      d.Label,
 			UserAgent:  shorten(d.UserAgent, 60),
@@ -143,21 +142,25 @@ func (c *DevicesController) render(ctx contractshttp.Context, freshCode, errMsg,
 			Quarantine: c.service.InQuarantine(&d),
 			Revoked:    d.RevokedAt != nil,
 			Current:    d.ID == a.ID,
-		})
+		}
+		row.Icon, row.OS = deviceKind(d.UserAgent)
+		views = append(views, row)
 	}
-	events := make([]eventView, 0, 30)
-	for _, e := range c.service.RecentEvents(30) {
-		events = append(events, eventView{
-			When:    e.OccurredAt.Format("02.01.2006 15:04:05"),
-			Event:   eventTitle(e.Event),
-			IP:      e.IP,
-			Details: e.Details,
-			Repeats: repeatsText(e.RepeatCount, e.LastAt),
-		})
+
+	shown := journalPage
+	if n, err := strconv.Atoi(ctx.Request().Query("events", "")); err == nil && n > shown {
+		shown = min(n, journalMax)
 	}
+	data := withCsrf(ctx, map[string]any{})
+	csrf, _ := data["csrf"].(string)
 	return ctx.Response().View().Make("devices.tmpl", page(ctx, "Устройства", "devices", map[string]any{
-		"devices":      views,
-		"events":       events,
+		"devices":     views,
+		"deviceCards": deviceCards(views, csrf),
+		"timeline":    journalTimeline(c.service.RecentEvents(shown), now),
+		"journalMore": shown + journalPage,
+		"journalFull": shown >= journalMax,
+		"pageAction": ui.ActionForm{Action: "/devices/code", CSRF: csrf,
+			Button: ui.Button{Icon: "plus", Label: "Подключить новое устройство", Disabled: c.service.InQuarantine(a)}},
 		"freshCode":    freshCode,
 		"error":        errMsg,
 		"done":         done,
@@ -167,6 +170,7 @@ func (c *DevicesController) render(ctx contractshttp.Context, freshCode, errMsg,
 		"absoluteDays": c.service.SettingInt(auth.SettingAbsoluteDays),
 		"deadCount":    dead,
 		"trustDays":    retention.Load().TrustDays,
+		"journalDays":  retention.Load().JournalDays,
 		"canSignOut":   a.EnrolledVia == auth.ViaConsole && !c.service.InQuarantine(a),
 		"aliveCount":   len(views),
 	}))

@@ -1,5 +1,14 @@
 [Unit]
 Description=VPN Panel system service
+# Нижний сторож (жгут, Уровень 3): если сам агент падает по кругу после
+# обновления, наблюдатель в нём работать не может — systemd зовёт юнит отката
+# на каждом падении, а тот действует только по исчерпанному пределу стартов.
+# Подкоманда `vpn-agent rollback` — другой путь кода, чем демон, и обычно
+# поднимается, даже когда демон нет.
+OnFailure=vpn-panel-rollback.service
+# Предел стартов — см. vpn-panel.service: те же числа, тот же класс.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -9,6 +18,8 @@ User=root
 Group=vpn-panel
 RuntimeDirectory=vpn-panel
 RuntimeDirectoryMode=0750
+# Паспорт хоста: пересчитываемые данные, им место в кэше.
+CacheDirectory=vpn-panel
 # Пределы ресурсов. Потолка процессора и порога торможения памяти нет
 # намеренно: служба применяет сетевые настройки с ограниченным окном
 # подтверждения, и ни замедлять, ни усыплять её нельзя.
@@ -17,7 +28,8 @@ LogRateLimitIntervalSec=30s
 LogRateLimitBurst=2000
 ProtectHome=yes
 PrivateTmp=yes
-Restart=on-failure
+# always: см. vpn-panel.service.
+Restart=always
 RestartSec=2
 
 [Install]

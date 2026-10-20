@@ -1,0 +1,11 @@
+# Паспорт хоста снимается заново, когда пакеты меняют эти программы. Пути в
+# обоих видах: при объединённом каталоге программ пакет мог положить её по
+# старому пути, и триггер на новом пути её бы не заметил.
+interest-noawait /usr/sbin/openvpn
+interest-noawait /sbin/openvpn
+interest-noawait /usr/sbin/kea-dhcp4
+interest-noawait /sbin/kea-dhcp4
+interest-noawait /usr/sbin/nft
+interest-noawait /sbin/nft
+interest-noawait /usr/sbin/netplan
+interest-noawait /sbin/netplan

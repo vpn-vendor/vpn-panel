@@ -30,7 +30,11 @@ const (
 	codeNetFwPlan   = 1006
 	codeNetFwRules  = 1007
 	codeNetFwApply  = 1008
+	codeNetTakeover = 1009
+	codeNetTakeBusy = 1010
 )
+
+const confirmBudget = 10 * time.Second
 
 const netplanFile = "/etc/netplan/99-vpn-panel.yaml"
 
@@ -49,6 +53,8 @@ type netplanApplier struct {
 	tryStdin  io.WriteCloser
 	tryOutput *bytes.Buffer
 	tryDone   chan struct{}
+
+	surround  *surroundings
 	confirmed bool
 
 	aborted  bool
@@ -57,6 +63,7 @@ type netplanApplier struct {
 	nmProfiles []string
 
 	fwRuleset  []byte
+	fwPlan     nftgen.FirewallPlan
 	fwPrev     []byte
 	fwPrevSeen bool
 
@@ -69,6 +76,44 @@ type netplanApplier struct {
 	onPathChanged func()
 
 	linkLocal *linkLocalHelper
+
+	takeover *takeoverRunner
+
+	caps hostCapsSource
+}
+
+func planCards(p netplangen.Plan) []string {
+	out := make([]string, 0, len(p.Interfaces))
+	for _, i := range p.Interfaces {
+		out = append(out, i.Name)
+	}
+	return out
+}
+
+func (a *netplanApplier) takeoverUndo() {
+	if a.takeover == nil {
+		return
+	}
+	if err := a.takeover.restoreAside(); err != nil {
+		log.Printf("takeover: aside files not restored: %v", err)
+	}
+	a.takeover.undoUnits()
+}
+
+func (a *netplanApplier) takeoverConfirmed() {
+	if a.takeover == nil {
+		return
+	}
+	if err := a.takeover.confirm(); err != nil {
+		log.Printf("takeover: confirm: %v", err)
+	}
+}
+
+func (a *netplanApplier) takeoverFinish() {
+	if a.takeover == nil {
+		return
+	}
+	a.takeover.sys.spawn(a.takeover.finishLogged)
 }
 
 func newNetplanApplier(firewall *firewallApplier) *netplanApplier {
@@ -153,6 +198,10 @@ type applyParams struct {
 	Firewall   *nftgen.FirewallPlan `json:"firewall,omitempty"`
 
 	PPPoEPassword string `json:"pppoe_password,omitempty"`
+
+	Takeover *takeoverConsent `json:"takeover,omitempty"`
+
+	PPPoEPasswordSource string `json:"pppoe_password_source,omitempty"`
 }
 
 func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.ErrorObject) {
@@ -180,8 +229,15 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 			Data: map[string]any{"recoverable": false}}
 	}
 
+	sel, rerr := p.Takeover.resolve(a.takeover, planLANs(p.Plan), planCards(p.Plan))
+	if rerr != nil {
+		return nil, rerr
+	}
+	grabbing := len(sel.Items) > 0
+
 	var ruleset []byte
 	var fwFacts *nftgen.FirewallPlan
+	var fwPlan nftgen.FirewallPlan
 	if p.Firewall != nil {
 		if rerr := a.firewall.sealedErr(); rerr != nil {
 			return nil, rerr
@@ -195,9 +251,9 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 			return nil, &agentrpc.ErrorObject{Code: codeNetFwPlan, Message: "защита: " + rerr.Message,
 				Data: map[string]any{"recoverable": false}}
 		}
-		ruleset = plan.Generate()
-		fwFacts = &facts
-		if err := a.firewall.dryRun(ruleset); err != nil {
+		fwFacts, fwPlan = &facts, plan
+		var err error
+		if ruleset, err = a.firewall.render(plan); err != nil {
 			return nil, &agentrpc.ErrorObject{Code: codeNetFwRules,
 				Message: "правила защиты не прошли проверку: " + err.Error(),
 				Data:    map[string]any{"recoverable": false}}
@@ -208,6 +264,12 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 	defIDs := currentDefinitionIDs()
 	yaml := p.Plan.Generate(renderer, defIDs)
 	hash := hashBytes(yaml)
+
+	if cur, err := os.ReadFile(netplanFile); err != nil || string(cur) != string(yaml) {
+		if rerr := a.surround.applyGuard(planLANs(p.Plan), sel.Doomed()...); rerr != nil {
+			return nil, rerr
+		}
+	}
 
 	a.mu.Lock()
 	defer a.mu.Unlock()
@@ -224,13 +286,20 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 			Data:    map[string]any{"recoverable": true}}
 	}
 
+	if grabbing && !p.Guard {
+		return nil, takeoverNoWindowErr()
+	}
+
 	if cur, err := os.ReadFile(netplanFile); err == nil && string(cur) == string(yaml) {
+		if grabbing {
+			return nil, takeoverNoWindowErr()
+		}
 		if perr := a.bringUpEffectiveWAN(p); perr != nil {
 			a.tearDownEffectiveWAN()
 			return nil, perr
 		}
 		clearPPPoEBackups()
-		fwChanged, ferr := a.applyFirewallDirect(ruleset)
+		fwChanged, ferr := a.applyFirewallDirect(ruleset, fwPlan)
 		if ferr != nil {
 			return nil, ferr
 		}
@@ -245,13 +314,22 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 		return nil, detailErr(errWriteConfig, err.Error(), true)
 	}
 
+	if grabbing {
+		if _, err := a.takeover.begin(sel.Plan); err != nil {
+			a.restoreBackup()
+			return nil, takeoverBusyErr(err)
+		}
+	}
+
 	netplanBin, err := findBinary([]string{"/usr/sbin/netplan", "/sbin/netplan"})
 	if err != nil {
+		a.takeoverUndo()
 		a.restoreBackup()
 		return nil, internalErr(errToolMissing, false)
 	}
 
 	if out, err := dryRunGenerate(netplanBin); err != nil {
+		a.takeoverUndo()
 		a.restoreBackup()
 		return nil, &agentrpc.ErrorObject{Code: codeNetConfig,
 			Message: "конфигурация не прошла проверку: " + firstLine(out),
@@ -273,7 +351,7 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 		}
 		a.finishApplied(hash)
 		clearPPPoEBackups()
-		if _, ferr := a.applyFirewallDirect(ruleset); ferr != nil {
+		if _, ferr := a.applyFirewallDirect(ruleset, fwPlan); ferr != nil {
 
 			return nil, ferr
 		}
@@ -291,10 +369,12 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 	cmd.Stdout, cmd.Stderr = output, output
 	stdin, err := cmd.StdinPipe()
 	if err != nil {
+		a.takeoverUndo()
 		a.restoreBackup()
 		return nil, detailErr("не удалось запустить проверку связи — попробуйте ещё раз", err.Error(), true)
 	}
 	if err := cmd.Start(); err != nil {
+		a.takeoverUndo()
 		a.restoreBackup()
 		return nil, detailErr("не удалось запустить проверку связи — попробуйте ещё раз", err.Error(), true)
 	}
@@ -309,6 +389,9 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 		a.firewall.mu.Lock()
 		a.fwPrev, a.fwPrevSeen = a.firewall.snapshot()
 		err := a.firewall.load(ruleset)
+		if err == nil {
+			a.firewall.notePlan(fwPlan)
+		}
 		a.firewall.mu.Unlock()
 		if err != nil {
 
@@ -319,7 +402,7 @@ func (a *netplanApplier) networkApply(raw json.RawMessage) (any, *agentrpc.Error
 				Message: "защита не применилась, сеть откачена: " + err.Error(),
 				Data:    map[string]any{"recoverable": true}}
 		}
-		a.fwRuleset = ruleset
+		a.fwRuleset, a.fwPlan = ruleset, fwPlan
 	}
 
 	if perr := a.bringUpEffectiveWAN(p); perr != nil {
@@ -349,9 +432,11 @@ func (a *netplanApplier) watchTry(cmd *exec.Cmd) {
 		}
 		log.Printf("netplan: try ended without confirmation (exit: %v): %s", waitErr, tail)
 	}
+	confirmed := false
 	if a.aborted {
 
 		a.tearDownEffectiveWAN()
+		a.takeoverUndo()
 		a.restoreBackup()
 		if netplanBin, err := findBinary([]string{"/usr/sbin/netplan", "/sbin/netplan"}); err == nil {
 			_, _ = exec.Command(netplanBin, "apply").CombinedOutput() //nolint:gosec
@@ -363,6 +448,8 @@ func (a *netplanApplier) watchTry(cmd *exec.Cmd) {
 		}
 		log.Printf("netplan: bring-up failed, previous network restored")
 	} else if a.confirmed {
+		confirmed = true
+		a.takeoverConfirmed()
 		a.finishApplied(a.planHash)
 		if a.fwRuleset != nil {
 
@@ -370,6 +457,7 @@ func (a *netplanApplier) watchTry(cmd *exec.Cmd) {
 			if _, err := a.firewall.loadAndPersist(a.fwRuleset); err != nil {
 				log.Printf("firewall: persist after confirm failed: %v", err)
 			} else {
+				a.firewall.notePlan(a.fwPlan)
 				a.firewall.captureUFW()
 			}
 			a.firewall.mu.Unlock()
@@ -378,6 +466,7 @@ func (a *netplanApplier) watchTry(cmd *exec.Cmd) {
 		a.commitFacts(a.pendingFacts)
 		log.Printf("netplan: configuration confirmed")
 	} else {
+		a.takeoverUndo()
 		a.restoreBackup()
 
 		a.tearDownEffectiveWAN()
@@ -391,6 +480,10 @@ func (a *netplanApplier) watchTry(cmd *exec.Cmd) {
 	a.fwRuleset, a.fwPrev, a.fwPrevSeen, a.aborted, a.pendingFacts = nil, nil, false, false, nil
 	close(a.tryDone)
 	a.tryCmd, a.tryStdin, a.tryDone, a.tryOutput = nil, nil, nil, nil
+	if confirmed {
+
+		a.takeoverFinish()
+	}
 }
 
 type limitedBuffer struct {
@@ -423,7 +516,7 @@ func lastLines(text string, n int) string {
 	return strings.Join(lines, " | ")
 }
 
-func (a *netplanApplier) applyFirewallDirect(ruleset []byte) (bool, *agentrpc.ErrorObject) {
+func (a *netplanApplier) applyFirewallDirect(ruleset []byte, plan nftgen.FirewallPlan) (bool, *agentrpc.ErrorObject) {
 	if ruleset == nil {
 		return false, nil
 	}
@@ -435,8 +528,17 @@ func (a *netplanApplier) applyFirewallDirect(ruleset []byte) (bool, *agentrpc.Er
 			Message: "защита не применилась: " + err.Error(),
 			Data:    map[string]any{"recoverable": true}}
 	}
+	a.firewall.notePlan(plan)
 	a.firewall.captureUFW()
 	return changed, nil
+}
+
+func (a *netplanApplier) awaitingConfirm() bool {
+	if !a.mu.TryLock() {
+		return true
+	}
+	defer a.mu.Unlock()
+	return a.tryDone != nil
 }
 
 func (a *netplanApplier) networkPending(json.RawMessage) (any, *agentrpc.ErrorObject) {
@@ -465,7 +567,7 @@ func (a *netplanApplier) networkConfirm(json.RawMessage) (any, *agentrpc.ErrorOb
 
 	select {
 	case <-done:
-	case <-time.After(10 * time.Second):
+	case <-time.After(confirmBudget):
 		return nil, internalErr("подтверждение не завершилось вовремя — обновите страницу и проверьте состояние сети", true)
 	}
 	return map[string]any{"state": "applied"}, nil

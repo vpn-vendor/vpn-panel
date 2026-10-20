@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	contractshttp "github.com/goravel/framework/contracts/http"
 
@@ -14,6 +15,7 @@ import (
 	qossvc "github.com/vpn-vendor/vpn-panel-core/app/services/qos"
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
 	"github.com/vpn-vendor/vpn-panel-core/internal/devmode"
+	"github.com/vpn-vendor/vpn-panel-core/internal/speedtest"
 )
 
 const qosWeakCPUMbit = 500
@@ -35,23 +37,19 @@ func (c *QosController) Index(ctx contractshttp.Context) contractshttp.Response 
 		"downMbit": plan.DownKbit / 1000,
 		"upMbit":   plan.UpKbit / 1000,
 
-		"fieldEnabled": ui.Toggle{
-			ID: "qos-enabled", Name: "enabled", Checked: plan.Enabled,
-			Label: "Включить приоритет разговоров",
-		},
 		"fieldDown": ui.Field{
 			ID: "qos-down", Name: "down_mbit", Type: "number",
-			Label: "Скорость тарифа на скачивание, Мбит/с",
+			Label: "Скачивание, Мбит/с",
 			Value: mbitValue(plan.DownKbit), Placeholder: "например, 100",
 			Min: "1", Max: "10000",
-			Hint: "Цифра из договора или из замера ниже",
+			Hint: "Цифра из договора или из замера",
 		},
 		"fieldUp": ui.Field{
 			ID: "qos-up", Name: "up_mbit", Type: "number",
-			Label: "Скорость тарифа на отдачу, Мбит/с",
+			Label: "Отдача, Мбит/с",
 			Value: mbitValue(plan.UpKbit), Placeholder: "например, 50",
 			Min: "1", Max: "10000",
-			Hint: "Почти всегда ниже скачивания — без замера легко ошибиться",
+			Hint: "Почти всегда ниже скачивания",
 		},
 		"buttonApply": ui.Button{Label: "Применить"},
 	}
@@ -83,7 +81,7 @@ func (c *QosController) Index(ctx contractshttp.Context) contractshttp.Response 
 
 		view["queueActive"] = st.Active
 		view["cores"] = st.Cores
-		view["load1"] = st.Load1
+		view["load1"] = strings.Replace(st.Load1, ".", ",", 1)
 		if st.LinkMbit > 0 {
 			view["linkMbit"] = st.LinkMbit
 		}
@@ -91,7 +89,12 @@ func (c *QosController) Index(ctx contractshttp.Context) contractshttp.Response 
 			view["appliedDown"] = plan.ShapedDownKbit() / 1000
 			view["appliedUp"] = plan.ShapedUpKbit() / 1000
 		}
-		if plan.Enabled && plan.WAN != "" && !st.Active && !devmode.Enabled {
+		if st.Suppressed {
+
+			notices = append(notices, notice{Level: "info",
+				Text: "Приоритет разговоров сейчас отключён политикой защиты — временная мера против известной неполадки. Он включится сам, когда ограничение снимут; делать ничего не нужно."})
+		}
+		if plan.Enabled && plan.WAN != "" && !st.Active && !st.Suppressed && !devmode.Enabled {
 			notices = append(notices, notice{Level: "error",
 				Text: "QoS включён в настройках, но очередь сейчас не работает. Нажмите «Применить» ещё раз; если не поможет — обратитесь в поддержку."})
 		}
@@ -113,6 +116,8 @@ func (c *QosController) Index(ctx contractshttp.Context) contractshttp.Response 
 		}
 	}
 
+	view["switchEnabled"] = qosSwitch(plan.Enabled)
+	view["hero"] = qosHero(view)
 	view["notices"] = notices
 	return ctx.Response().View().Make("qos.tmpl", page(ctx, "QoS", "qos", view))
 }
@@ -212,28 +217,58 @@ func addSpeedtestView(view map[string]any, st qossvc.SpeedtestState) {
 		view["measureError"] = st.Error
 	}
 	if st.Result == nil {
+
+		view["measureMetrics"] = ui.MetricGrid{Metrics: []ui.Metric{
+			{Label: "Скачивание", Value: "—", Note: "замера ещё не было"},
+			{Label: "Отдача", Value: "—", Note: "замера ещё не было"},
+		}}
 		return
 	}
-	rows := make([]measureRow, 0, len(st.Result.Down))
-	for _, r := range st.Result.Down {
-		rows = append(rows, measureRow{Name: r.Name, Speed: speedText(r.Kbit)})
+	view["measureDone"] = true
+	view["measureSources"] = measureSources(st.Result.Down, st.Result.Up)
+	if !st.Result.MeasuredAt.IsZero() {
+		at := st.Result.MeasuredAt.Local()
+		view["measureWhen"] = strings.ToLower(dayTitle(at, time.Now())) + ", " + at.Format("15:04")
 	}
-	upRows := make([]measureRow, 0, len(st.Result.Up))
-	for _, r := range st.Result.Up {
-		upRows = append(upRows, measureRow{Name: r.Name, Speed: speedText(r.Kbit)})
-	}
-	view["measureDownRows"] = rows
-	view["measureUpRows"] = upRows
 	view["measureDownMbit"] = st.Result.DownKbit / 1000
 	view["measureUpMbit"] = st.Result.UpKbit / 1000
 	view["measureDivergent"] = st.Result.Divergent
+	view["measureMetrics"] = ui.MetricGrid{Metrics: []ui.Metric{
+		{Label: "Скачивание", Value: strconv.Itoa(st.Result.DownKbit / 1000), Unit: "Мбит/с", Note: "медиана по источникам"},
+		{Label: "Отдача", Value: strconv.Itoa(st.Result.UpKbit / 1000), Unit: "Мбит/с", Note: "медиана по источникам"},
+	}}
 }
 
-func speedText(kbit int) string {
-	if kbit <= 0 {
+func measureSources(down, up []speedtest.SourceResult) []measureRow {
+	upBy := make(map[string]int, len(up))
+	for _, r := range up {
+		upBy[r.Name] = r.Kbit
+	}
+	seen := make(map[string]bool, len(down))
+	rows := make([]measureRow, 0, len(down))
+	for _, r := range down {
+		seen[r.Name] = true
+		rows = append(rows, measureRow{Name: r.Name, Speed: pairText(r.Kbit, upBy[r.Name])})
+	}
+	for _, r := range up {
+		if !seen[r.Name] {
+			rows = append(rows, measureRow{Name: r.Name, Speed: pairText(0, r.Kbit)})
+		}
+	}
+	return rows
+}
+
+func pairText(down, up int) string {
+	part := func(kbit int) string {
+		if kbit <= 0 {
+			return "—"
+		}
+		return strconv.Itoa(kbit / 1000)
+	}
+	if down <= 0 && up <= 0 {
 		return "недоступен"
 	}
-	return fmt.Sprintf("%d Мбит/с", kbit/1000)
+	return part(down) + " / " + part(up) + " Мбит/с"
 }
 
 func mbitValue(kbit int) string {

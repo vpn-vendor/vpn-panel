@@ -6,6 +6,7 @@ import (
 	"net"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -79,7 +80,22 @@ type PlanInterface struct {
 
 	VLAN   int `json:"vlan,omitempty"`
 	Metric int `json:"metric,omitempty"`
+
+	MAC string `json:"macaddress,omitempty"`
 }
+
+func ValidCloneMAC(s string) bool {
+	if !cloneMACRe.MatchString(s) {
+		return false
+	}
+	if s == "00:00:00:00:00:00" || s == "ff:ff:ff:ff:ff:ff" {
+		return false
+	}
+	first, err := strconv.ParseUint(s[:2], 16, 8)
+	return err == nil && first&1 == 0
+}
+
+var cloneMACRe = regexp.MustCompile(`^[0-9a-f]{2}(:[0-9a-f]{2}){5}$`)
 
 type Plan struct {
 	Interfaces []PlanInterface `json:"interfaces"`
@@ -138,6 +154,15 @@ func (p *Plan) Validate(knownNames map[string]bool) error {
 
 		if (i.Gateway != "" || len(i.DNS) > 0) && (i.Role != RoleWAN || i.Method != MethodStatic) {
 			return fmt.Errorf("%q: шлюз и серверы имён задаются только у подключения к интернету со статическим адресом", i.Name)
+		}
+
+		if i.MAC != "" {
+			if i.Role != RoleWAN {
+				return fmt.Errorf("%q: подменить адрес можно только у карты в интернет", i.Name)
+			}
+			if !ValidCloneMAC(i.MAC) {
+				return fmt.Errorf("%q: адрес %q для подмены не годится — нужен обычный адрес устройства вида a4:bb:6d:1f:22:90", i.Name, i.MAC)
+			}
 		}
 
 		if i.VLAN != 0 {
@@ -223,6 +248,9 @@ func (p *Plan) Generate(renderer string, defIDs map[string]string) []byte {
 	b.WriteString("  ethernets:\n")
 	for _, i := range ifaces {
 		b.WriteString("    " + key(i) + ":\n")
+		if i.MAC != "" && ValidCloneMAC(i.MAC) {
+			b.WriteString("      macaddress: \"" + i.MAC + "\"\n")
+		}
 		if i.VLAN > 0 {
 
 			renderLinkOnly(&b, i)

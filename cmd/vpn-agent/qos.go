@@ -13,6 +13,7 @@ import (
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netstatus"
+	"github.com/vpn-vendor/vpn-panel-core/internal/policy"
 	"github.com/vpn-vendor/vpn-panel-core/internal/qosgen"
 )
 
@@ -29,9 +30,39 @@ type qosApplier struct {
 	mu sync.Mutex
 
 	composer *modeComposer
+
+	policy policyReader
 }
 
 func newQosApplier() *qosApplier { return &qosApplier{} }
+
+func (q *qosApplier) suppressed() bool {
+	return q.policy != nil && q.policy.Flag(policy.FlagQoSOff)
+}
+
+func (q *qosApplier) onPolicyChange() {
+	plan, err := q.readState()
+	if err != nil || plan.WAN == "" {
+		return
+	}
+	q.mu.Lock()
+	defer q.mu.Unlock()
+	if !plan.Enabled || q.suppressed() {
+		if _, aerr := q.teardown(); aerr != nil {
+			log.Printf("qos: policy reconcile teardown: %s", aerr.Message)
+		}
+		return
+	}
+	if !ifaceExists(plan.WAN) {
+		return
+	}
+	if plan.Tunnel != "" && !ifaceExists(plan.Tunnel) {
+		plan.Tunnel = ""
+	}
+	if _, aerr := q.applyPlan(plan); aerr != nil {
+		log.Printf("qos: policy reconcile apply: %s", aerr.Message)
+	}
+}
 
 type qosParams struct {
 	Plan qosgen.Plan `json:"plan"`
@@ -40,6 +71,11 @@ type qosParams struct {
 func (q *qosApplier) RestoreOnStart() {
 	plan, err := q.readState()
 	if err != nil || !plan.Enabled {
+		return
+	}
+	if q.suppressed() {
+
+		log.Printf("qos: queue suppressed by policy, not restoring on start")
 		return
 	}
 
@@ -216,14 +252,15 @@ func (q *qosApplier) qosStatus(json.RawMessage) (any, *agentrpc.ErrorObject) {
 	}
 
 	return map[string]any{
-		"enabled":   plan.Enabled,
-		"active":    active,
-		"wan":       plan.WAN,
-		"down_kbit": plan.DownKbit,
-		"up_kbit":   plan.UpKbit,
-		"cores":     runtime.NumCPU(),
-		"load1":     load1,
-		"link_mbit": linkMbit,
+		"enabled":              plan.Enabled,
+		"active":               active,
+		"suppressed_by_policy": q.suppressed(),
+		"wan":                  plan.WAN,
+		"down_kbit":            plan.DownKbit,
+		"up_kbit":              plan.UpKbit,
+		"cores":                runtime.NumCPU(),
+		"load1":                load1,
+		"link_mbit":            linkMbit,
 	}, nil
 }
 
@@ -234,6 +271,10 @@ var (
 )
 
 func (q *qosApplier) applyPlan(plan qosgen.Plan) (bool, *agentrpc.ErrorObject) {
+
+	if q.suppressed() {
+		return false, nil
+	}
 	tc, err := findBinary(tcCandidates)
 	if err != nil {
 		return false, &agentrpc.ErrorObject{Code: codeQoSApply,

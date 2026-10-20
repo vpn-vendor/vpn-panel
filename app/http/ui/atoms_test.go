@@ -45,6 +45,10 @@ func TestAtomsCarryNoInlineAnything(t *testing.T) {
 			{Key: "a", Title: "Первый", State: "done", URL: "/setup/a"}, {Key: "b", Title: "Второй", State: "current"}}},
 		"components/choice": ui.Choice{Name: "card", Options: []ui.ChoiceOption{
 			{Value: "x", Label: "Икс", Checked: true, Facts: []string{"кабель воткнут"}}, {Value: "y", Label: "Игрек", Reveals: "y"}}},
+		"components/choice-card": ui.ChoiceCards{Name: "profile", Form: "f", Options: []ui.ChoiceCardOption{
+			{Value: "a", Label: "Основное", Meta: "WireGuard", Checked: true, Tags: []ui.Tag{{Text: "действует", Judged: ui.Judge(ui.OK, "тест")}}}, {Value: "b", Label: "Запасное"}}},
+		"components/hero-status": ui.HeroStatus{Title: "Канал поднят", Text: "подпись", Judged: ui.Judge(ui.OK, "тест"),
+			Metrics: []ui.Metric{{Label: "Задержка", Value: "24", Unit: "мс"}}},
 	}
 	for name, data := range cases {
 		out := render(t, name, data)
@@ -189,5 +193,110 @@ func TestChoiceAndStepperContracts(t *testing.T) {
 		{Key: "a", Title: "Первый", State: "done", URL: "/setup/a"}, {Key: "b", Title: "Второй", State: "current"}}})
 	if !strings.Contains(out, `href="/setup/a"`) || !strings.Contains(out, `aria-current="step"`) || !strings.Contains(out, "из 2") {
 		t.Fatalf("полоса шагов нарушила договор:\n%s", out)
+	}
+}
+
+func TestChoiceCardsContract(t *testing.T) {
+	out := render(t, "components/choice-card", ui.ChoiceCards{Name: "profile", Legend: "Подключение", Form: "vpn-apply",
+		Options: []ui.ChoiceCardOption{
+			{Value: "a", Label: "Основное", Meta: "WireGuard по UDP", Checked: true,
+				Tags: []ui.Tag{{Text: "действует", Judged: ui.Judge(ui.OK, "тест")}, {Text: "не весь трафик", Judged: ui.Judge(ui.Warn, "тест")}}},
+			{Value: "b", Label: "Запасное", Disabled: true}}})
+	for _, want := range []string{`for="profile-a"`, `id="profile-a"`, `form="vpn-apply"`, `aria-label="Подключение"`,
+		`class="tag tag-ok"`, `class="tag tag-warn"`, " disabled", "WireGuard по UDP"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("карточки-радио потеряли %q:\n%s", want, out)
+		}
+	}
+	if strings.Count(out, " checked") != 1 {
+		t.Fatalf("отмечен не ровно один вариант:\n%s", out)
+	}
+
+	if got := (ui.Tag{Text: "факт"}).Class(); got != "tag" {
+		t.Fatalf("метка без суждения получила класс %q", got)
+	}
+}
+
+func TestHeroStatusContract(t *testing.T) {
+	out := render(t, "components/hero-status", ui.HeroStatus{Title: "Канал поднят", Text: "Весь офис через канал.",
+		Judged: ui.Judge(ui.OK, "тест"), Metrics: []ui.Metric{{Label: "Задержка", Value: "24", Unit: "мс", Note: "годится для звонков"}}})
+	for _, want := range []string{`class="hero hero-ok"`, "Канал поднят", "Весь офис через канал.", `class="metric"`, "годится для звонков"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("герой состояния потерял %q:\n%s", want, out)
+		}
+	}
+	if got := (ui.HeroStatus{Title: "Неизвестно"}).Class(); got != "hero" {
+		t.Fatalf("герой без суждения получил класс %q", got)
+	}
+}
+
+func TestSwitchRowContract(t *testing.T) {
+	out := render(t, "components/switch-row", ui.SwitchRow{ID: "hidden-mode", Name: "hidden_mode", Label: "Скрытый режим",
+		Text: "что даёт", Checked: true, Tag: ui.Tag{Text: "расширенная"}})
+	for _, want := range []string{`type="checkbox"`, `id="hidden-mode"`, `for="hidden-mode"`, `name="hidden_mode"`, `value="1"`,
+		" checked", `aria-labelledby="hidden-mode-title"`, `aria-describedby="hidden-mode-text"`, "включено", "выключено", `class="tag"`} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("строка с переключателем потеряла %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(render(t, "components/switch-row", ui.SwitchRow{ID: "x", Name: "x", Label: "Икс"}), " checked") {
+		t.Fatal("выключенная строка отмечена")
+	}
+}
+
+func TestUsageBarContract(t *testing.T) {
+	out := render(t, "components/usage-bar", ui.UsageBar{Label: "Диск", Value: "27 ГБ", Of: "из 30 ГБ", Percent: 88,
+		Judged: ui.Judge(ui.Warn, "тест"), Note: "места мало"})
+	for _, want := range []string{`class="usage usage-warn"`, "pool-fill-90", `aria-label="Диск: 88 %"`, "из 30 ГБ", "места мало"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("полоса занятости потеряла %q:\n%s", want, out)
+		}
+	}
+	for pct, step := range map[int]int{-5: 0, 0: 0, 2: 0, 3: 5, 48: 50, 100: 100, 140: 100} {
+		if got := (ui.UsageBar{Percent: pct}).Step(); got != step {
+			t.Errorf("доля %d дала ступень %d, ждали %d", pct, got, step)
+		}
+	}
+}
+
+func TestItemCardAndTimelineContracts(t *testing.T) {
+	out := render(t, "components/item-grid", ui.ItemGrid{Items: []ui.ItemCard{{
+		Title: "Ноутбук", Tags: []ui.Tag{{Text: "главное", Judged: ui.Judge(ui.OK, "тест")}},
+		Meta: []string{"адрес 10.0.0.2"}, Note: "примечание",
+		Actions: []ui.ActionForm{{Action: "/devices/revoke", CSRF: "tok", Hidden: map[string]string{"device_id": "7"},
+			Button: ui.Button{Label: "Отозвать", Kind: "danger", Small: true}, Question: "Точно?"}},
+	}, {Title: "Старый", Muted: true}}})
+	for _, want := range []string{`class="item-card"`, `class="item-card item-muted"`, `class="tag tag-ok"`, "адрес 10.0.0.2", "примечание",
+		`action="/devices/revoke"`, `name="_csrf" value="tok"`, `name="device_id" value="7"`, `data-island="confirm-action"`, `data-question="Точно?"`,
+		`class="btn btn-danger btn-small"`} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("карточка сущности потеряла %q:\n%s", want, out)
+		}
+	}
+	tl := render(t, "components/timeline", ui.Timeline{Days: []ui.TimelineDay{{Title: "Сегодня", Events: []ui.TimelineEvent{
+		{Time: "09:41", Title: "Выдан код", Text: "адрес 10.0.0.2", Judged: ui.Judge(ui.OK, "тест")},
+		{Time: "03:12", Title: "Неверный код", Extra: "повторялось ещё 4 раз", Judged: ui.Judge(ui.Warn, "тест")},
+		{Time: "01:00", Title: "Факт"}}}}})
+	for _, want := range []string{`class="tl-day">Сегодня`, `class="tl-event tl-ok"`, `class="tl-event tl-warn"`, `class="tl-event">`,
+		"повторялось ещё 4 раз", `<time class="tl-time">09:41</time>`} {
+		if !strings.Contains(tl, want) {
+			t.Fatalf("лента потеряла %q:\n%s", want, tl)
+		}
+	}
+	if !strings.Contains(render(t, "components/timeline", ui.Timeline{Empty: "пусто"}), "пусто") {
+		t.Fatal("пустая лента молчит")
+	}
+}
+
+func TestItemCardCarriesUsageBar(t *testing.T) {
+	out := render(t, "components/item-card", ui.ItemCard{Title: "Офис",
+		Bar: &ui.UsageBar{Label: "Занято", Value: "44", Of: "из 151", Percent: 29, Judged: ui.Judge(ui.OK, "тест")}})
+	for _, want := range []string{`class="usage usage-ok"`, "pool-fill-30", "из 151"} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("карточка потеряла полосу %q:\n%s", want, out)
+		}
+	}
+	if strings.Contains(render(t, "components/item-card", ui.ItemCard{Title: "Без полосы"}), "usage") {
+		t.Fatal("карточка без полосы рисует полосу")
 	}
 }

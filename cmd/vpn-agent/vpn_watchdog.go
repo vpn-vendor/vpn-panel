@@ -243,6 +243,10 @@ func (v *vpnApplier) watchdogTick(ctx context.Context) {
 	}
 
 	in := v.collectFacts(st)
+
+	if v.firewall != nil && v.firewall.guardHolds(time.Duration(staleSec(in))*time.Second) {
+		return
+	}
 	v.noteLiveness(aliveByFacts(in))
 	r := chooseRemedy(in, v.ladder(ctx, &st))
 	if r == nil {

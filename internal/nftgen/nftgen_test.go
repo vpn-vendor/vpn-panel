@@ -17,7 +17,7 @@ func TestGenerateSingleWANLAN(t *testing.T) {
 	if err := p.Validate(known()); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	want := `table inet vpn_panel
 delete table inet vpn_panel
 table inet vpn_panel {
@@ -73,8 +73,10 @@ table inet vpn_panel {
 		iifname { "ens4" } oifname { "ens3" } udp dport { 500, 1194, 4500, 51820 } update @diag_own_vpn { ip saddr }
 		iifname { "ens4" } oifname { "ens3" } tcp dport 1194 update @diag_own_vpn { ip saddr }
 		iifname { "ens4" } oifname { "ens3" } tcp dport 7680 update @diag_updates_p2p { ip saddr }
-		iifname { "ens4" } udp dport 3544 update @diag_ipv6_tunnel { ip saddr } drop
-		iifname { "ens4" } meta l4proto 41 update @diag_ipv6_tunnel { ip saddr } drop
+		iifname { "ens4" } udp dport 3544 update @diag_ipv6_tunnel { ip saddr }
+		iifname { "ens4" } udp dport 3544 drop
+		iifname { "ens4" } meta l4proto 41 update @diag_ipv6_tunnel { ip saddr }
+		iifname { "ens4" } meta l4proto 41 drop
 		meta nfproto ipv6 drop
 		iifname { "ens4" } oifname { "ens3" } accept
 	}
@@ -87,7 +89,7 @@ table inet vpn_panel {
 
 func TestHiddenModeDropsEcho(t *testing.T) {
 	p := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}, HiddenMode: true}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	if strings.Contains(out, "echo-request limit") || !strings.Contains(out, `iifname { "ens3" } icmp type echo-request drop`) {
 		t.Fatalf("в скрытом режиме echo только drop:\n%s", out)
 	}
@@ -98,7 +100,7 @@ func TestHiddenModeDropsEcho(t *testing.T) {
 
 func TestIPv6EnabledKeepsRFC4890Minimum(t *testing.T) {
 	p := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}, IPv6: true}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	for _, want := range []string{
 		`iifname { "ens3" } udp sport 547 udp dport 546 accept`,
 		"icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, mld-listener-query, mld-listener-report, mld-listener-reduction } accept",
@@ -119,7 +121,7 @@ func TestIPv6EnabledKeepsRFC4890Minimum(t *testing.T) {
 	}
 
 	p.HiddenMode = true
-	hidden := string(p.Generate())
+	hidden := string(p.Generate(Caps{}))
 	if strings.Contains(hidden, "echo-request limit") || !strings.Contains(hidden, "nd-router-advert") {
 		t.Fatalf("скрытый режим + IPv6: echo нет, ND есть:\n%s", hidden)
 	}
@@ -134,17 +136,17 @@ func TestGenerateMultiWANLANDeterministic(t *testing.T) {
 		WANs: []string{"ens3", "enp5s0"},
 		LANs: a.LANs,
 	}
-	if string(a.Generate()) != string(b.Generate()) {
+	if string(a.Generate(Caps{})) != string(b.Generate(Caps{})) {
 		t.Fatal("output must not depend on input order")
 	}
-	if !strings.Contains(string(a.Generate()), `oifname { "enp5s0", "ens3" } masquerade`) {
-		t.Fatalf("want sorted wan set, got:\n%s", a.Generate())
+	if !strings.Contains(string(a.Generate(Caps{})), `oifname { "enp5s0", "ens3" } masquerade`) {
+		t.Fatalf("want sorted wan set, got:\n%s", a.Generate(Caps{}))
 	}
 }
 
 func TestRuleOrderEstablishedBeforeDrops(t *testing.T) {
 	p := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	input := out[strings.Index(out, "chain input"):strings.Index(out, "chain forward")]
 	echo := strings.Index(input, "icmp type echo-request limit")
 	echoDrop := strings.Index(input, "icmp type echo-request drop")
@@ -162,21 +164,63 @@ func TestRuleOrderEstablishedBeforeDrops(t *testing.T) {
 
 func TestDiagSetsAreBoundedAndCountOnly(t *testing.T) {
 	p := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	for _, name := range DiagSets {
 		if !strings.Contains(out, "set "+name+" {\n\t\ttype ipv4_addr\n\t\tsize 4096\n\t\tflags dynamic,timeout\n\t\ttimeout 1d\n\t\tcounter") {
 			t.Fatalf("набор %s без потолка/таймаута/счётчика:\n%s", name, out)
 		}
 	}
+	counted := 0
 	for _, line := range strings.Split(out, "\n") {
-		if strings.Contains(line, "update @diag_") && !strings.Contains(line, "diag_ipv6_tunnel") {
-			if strings.Contains(line, "accept") || strings.Contains(line, "drop") || strings.Contains(line, "reject") {
+		if strings.Contains(line, "update @diag_") {
+			counted++
+			if len(verdicts("\n\n"+line)) > 0 {
 				t.Fatalf("правило учёта не должно менять вердикт: %s", line)
 			}
 		}
 	}
+	if counted == 0 {
+		t.Fatalf("контроль не нашёл ни одного правила учёта:\n%s", out)
+	}
 	if !strings.Contains(out, "ip daddr != { 10.0.0.1 }") {
 		t.Fatal("запросы к резолверу шлюза не считаются чужим DNS")
+	}
+}
+
+func TestIPv6TunnelDropSurvivesFullSet(t *testing.T) {
+	for name, p := range witnessPlans() {
+		for _, c := range []Caps{{}, {Witness: true}} {
+			fwd := chainBody(t, string(p.Generate(c)), "forward")
+			lines := strings.Split(fwd, "\n")
+			allow := len(lines) - 1
+			var conds []string
+			for i, ln := range lines {
+				ln = strings.TrimSpace(ln)
+				if !strings.Contains(ln, "@"+SetIPv6Tunnel) {
+					continue
+				}
+				cond, ok := strings.CutSuffix(ln, " update @"+SetIPv6Tunnel+" { ip saddr }")
+				if !ok || len(verdicts("\n\n"+ln)) > 0 {
+					t.Errorf("%s: учёт туннеля решает судьбу пакета: %q", name, ln)
+					continue
+				}
+				conds = append(conds, cond)
+				drop := -1
+				for j := i + 1; j < len(lines); j++ {
+					if strings.TrimSpace(lines[j]) == cond+" drop" {
+						drop = j
+						break
+					}
+				}
+				if drop < 0 || drop >= allow {
+					t.Errorf("%s: нет отдельного drop %q после учёта и до разрешения:\n%s", name, cond, fwd)
+				}
+			}
+			joined := strings.Join(conds, "\n")
+			if len(conds) != 2 || !strings.Contains(joined, "udp dport 3544") || !strings.Contains(joined, "meta l4proto 41") {
+				t.Fatalf("%s: ждали учёт Teredo и протокола 41, нашли %q", name, conds)
+			}
+		}
 	}
 }
 
@@ -189,7 +233,7 @@ func TestGenerateBlackMode(t *testing.T) {
 	if err := p.Validate(known()); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	out := string(p.Generate())
+	out := string(p.Generate(Caps{}))
 	forward := out[strings.Index(out, "chain forward"):]
 
 	if !strings.Contains(forward, `iifname { "ens4" } oifname "wg-vpn0" accept`) {
@@ -221,7 +265,7 @@ func TestEchoCountersBlackModeOnly(t *testing.T) {
 	if err := black.Validate(known()); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	out := string(black.Generate())
+	out := string(black.Generate(Caps{}))
 	in := `iifname "ovpn-vpn0" icmp type echo-reply counter comment "` + EchoInComment + `"`
 	outRule := `oifname "ovpn-vpn0" icmp type echo-request counter comment "` + EchoOutComment + `"`
 	input := out[strings.Index(out, "chain input"):strings.Index(out, "chain forward")]
@@ -233,7 +277,7 @@ func TestEchoCountersBlackModeOnly(t *testing.T) {
 		t.Fatalf("счёт эха в канал отсутствует или стоит после разрешения:\n%s", output)
 	}
 	white := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "192.168.77.1/24"}}}
-	if w := string(white.Generate()); strings.Contains(w, EchoInComment) || strings.Contains(w, EchoOutComment) {
+	if w := string(white.Generate(Caps{})); strings.Contains(w, EchoInComment) || strings.Contains(w, EchoOutComment) {
 		t.Fatalf("в прямом режиме канала нет — и счёта эха тоже:\n%s", w)
 	}
 }
@@ -245,13 +289,13 @@ func TestModeSwitchIsFullRegeneration(t *testing.T) {
 	backToWhite := black
 	backToWhite.Tunnel = nil
 
-	if string(white.Generate()) != string(backToWhite.Generate()) {
+	if string(white.Generate(Caps{})) != string(backToWhite.Generate(Caps{})) {
 		t.Fatal("возврат в белый режим обязан давать ровно исходный рулсет")
 	}
-	if string(white.Generate()) == string(black.Generate()) {
+	if string(white.Generate(Caps{})) == string(black.Generate(Caps{})) {
 		t.Fatal("режимы обязаны различаться рулсетом, а не настройкой поверх него")
 	}
-	if strings.Contains(string(backToWhite.Generate()), "wg-vpn0") {
+	if strings.Contains(string(backToWhite.Generate(Caps{})), "wg-vpn0") {
 		t.Fatal("в белом рулсете не должно остаться следов канала")
 	}
 }
@@ -261,7 +305,7 @@ func TestMSSClampAlwaysFirstInForward(t *testing.T) {
 		{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}},
 		{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}, Tunnel: &FirewallTunnel{Iface: "wg-vpn0"}},
 	} {
-		out := string(p.Generate())
+		out := string(p.Generate(Caps{}))
 		forward := out[strings.Index(out, "chain forward"):]
 		clamp := strings.Index(forward, "tcp flags syn tcp option maxseg size set rt mtu")
 		est := strings.Index(forward, "ct state established,related")
@@ -317,7 +361,7 @@ func TestOutputChainFollowsTransport(t *testing.T) {
 		if err := p.Validate(known()); err != nil {
 			t.Fatalf("%q: validate: %v", c.proto, err)
 		}
-		out := string(p.Generate())
+		out := string(p.Generate(Caps{}))
 		output := out[strings.Index(out, "chain output"):]
 		if !strings.Contains(output, c.want) {
 			t.Fatalf("%q: нет правила %q:\n%s", c.proto, c.want, output)

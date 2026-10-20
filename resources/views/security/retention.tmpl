@@ -1,15 +1,20 @@
 {{ define "security/retention" }}
-<div class="card">
-    <h2>Хранение данных</h2>
-    <p class="muted">Панель сама следит, чтобы журнал и список устройств не
-    разрастались без предела и не заполнили диск сервера. Повторяющиеся
-    попытки с одного компьютера сводятся в одну запись со счётчиком.</p>
-    <form method="post" action="/security/retention">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/field" .fieldJournalDays }}
-        {{ template "components/field" .fieldForgetDays }}
-        {{ template "components/field" .fieldTrustDays }}
-        {{ template "components/button" .buttonRetention }}
-    </form>
-</div>
+
+<form method="post" action="/security/retention" data-unsaved>
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    {{ range .retentionRows }}
+    <div class="setting">
+        <div>
+            <label class="setting-title" for="{{ .ID }}">{{ .Label }}</label>
+            <p class="setting-text" id="{{ .ID }}-hint">{{ .Hint }}</p>
+        </div>
+        <div class="setting-ctl">
+            <input class="field-input input-days" id="{{ .ID }}" name="{{ .Name }}" type="number" value="{{ .Value }}"
+                   min="{{ .Min }}" max="{{ .Max }}" aria-describedby="{{ .ID }}-hint" required>
+            <span class="muted">дней</span>
+        </div>
+    </div>
+    {{ end }}
+    <div class="btn-row">{{ template "components/button" .buttonRetention }}</div>
+</form>
 {{ end }}

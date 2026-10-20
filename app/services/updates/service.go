@@ -16,12 +16,13 @@ import (
 const SettingSeenVersion = "updates.seen_version"
 
 type Status struct {
-	Enabled     bool   `json:"enabled"`
-	ToolPresent bool   `json:"tool_present"`
-	TimerActive bool   `json:"timer_active"`
-	Version     string `json:"version"`
-	LastRun     string `json:"last_run"`
-	LastResult  string `json:"last_result"`
+	Enabled        bool   `json:"enabled"`
+	ToolPresent    bool   `json:"tool_present"`
+	TimerActive    bool   `json:"timer_active"`
+	PausedByPolicy bool   `json:"paused_by_policy"`
+	Version        string `json:"version"`
+	LastRun        string `json:"last_run"`
+	LastResult     string `json:"last_result"`
 }
 
 type Service struct{}

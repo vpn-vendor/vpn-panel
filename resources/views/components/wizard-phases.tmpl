@@ -1,0 +1,13 @@
+{{ define "components/wizard-phases" }}
+<nav class="wz-phases" aria-label="Этапы настройки">
+    <ol class="wz-phase-list">
+        {{ range .Items }}
+        <li class="{{ .Class }}"{{ if eq .State "current" }} aria-current="step"{{ end }}>
+            <span class="wz-ph-mark" aria-hidden="true">{{ if eq .State "done" }}{{ template "components/icon" "check" }}{{ else }}{{ .Number }}{{ end }}</span>
+            <span class="wz-ph-title">{{ .Title }}</span>
+        </li>
+        {{ end }}
+    </ol>
+    <div class="wz-bar" aria-hidden="true">{{ range .Items }}<span class="wz-bar-{{ .State }}"></span>{{ end }}</div>
+</nav>
+{{ end }}

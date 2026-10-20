@@ -13,6 +13,7 @@ import (
 	"github.com/vpn-vendor/vpn-panel-core/app/models"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/metrics"
 	"github.com/vpn-vendor/vpn-panel-core/internal/pathprobe"
+	"github.com/vpn-vendor/vpn-panel-core/internal/voicescore"
 )
 
 type Kind string
@@ -67,8 +68,11 @@ type Snapshot struct {
 	RTT       time.Duration
 	LossPct   float64
 	LossKnown bool
-	Since     time.Time
-	Probes    uint64
+
+	JitterMs    float64
+	JitterKnown bool
+	Since       time.Time
+	Probes      uint64
 }
 
 type path struct {
@@ -76,6 +80,7 @@ type path struct {
 	k    int
 	hys  pathprobe.Hysteresis
 	win  pathprobe.Window
+	jit  pathprobe.Jitter
 	seq  uint16
 	last []bool
 
@@ -320,6 +325,7 @@ func (s *Service) loop(p *path) {
 			if err == nil {
 				rtt = d
 			}
+			p.jit.Add(idx, len(p.snap.Targets), rtt)
 		}
 		if p.seen < len(p.snap.Targets) {
 			p.seen++
@@ -331,6 +337,7 @@ func (s *Service) loop(p *path) {
 		p.snap.State, p.snap.Probes = st, p.snap.Probes+1
 		p.snap.RTT = rtt
 		p.snap.LossPct, p.snap.LossKnown = p.win.Loss()
+		p.snap.JitterMs, p.snap.JitterKnown = p.jit.Ms()
 		if changed {
 			p.snap.Since = s.d.Now()
 			if st == pathprobe.NoAnswer {
@@ -436,15 +443,33 @@ func (s *Service) Source() metrics.Source {
 }
 
 const (
-	RowTunnelRTT  = "path.tunnel.rtt"
-	RowTunnelLoss = "path.tunnel.loss"
-	RowBeyondRTT  = "path.beyond.rtt"
-	RowDirectRTT  = "path.direct.rtt"
-	RowDirectLoss = "path.direct.loss"
+	RowTunnelRTT    = "path.tunnel.rtt"
+	RowTunnelLoss   = "path.tunnel.loss"
+	RowTunnelJitter = "path.tunnel.jitter"
+	RowTunnelMOS    = "path.tunnel.mos"
+	RowBeyondRTT    = "path.beyond.rtt"
+	RowDirectRTT    = "path.direct.rtt"
+	RowDirectLoss   = "path.direct.loss"
+	RowDirectJitter = "path.direct.jitter"
+	RowDirectMOS    = "path.direct.mos"
 )
 
 func Rows() []string {
-	return []string{RowTunnelRTT, RowTunnelLoss, RowBeyondRTT, RowDirectRTT, RowDirectLoss}
+	return []string{RowTunnelRTT, RowTunnelLoss, RowTunnelJitter, RowTunnelMOS, RowBeyondRTT,
+		RowDirectRTT, RowDirectLoss, RowDirectJitter, RowDirectMOS}
+}
+
+func voiceRows(p Snapshot, rtt float64, out map[string]float64, rowLoss, rowJitter, rowMOS string) {
+	if p.LossKnown {
+		out[rowLoss] = p.LossPct
+	}
+	if p.JitterKnown {
+		out[rowJitter] = p.JitterMs
+	}
+
+	if !math.IsNaN(rtt) && p.LossKnown && p.JitterKnown {
+		out[rowMOS], _ = voicescore.Score(rtt, p.JitterMs, p.LossPct)
+	}
 }
 
 func (s *Service) Read() (map[string]float64, error) {
@@ -457,16 +482,12 @@ func (s *Service) Read() (map[string]float64, error) {
 		switch p.Kind {
 		case Tunnel:
 			out[RowTunnelRTT] = rtt
-			if p.LossKnown {
-				out[RowTunnelLoss] = p.LossPct
-			}
+			voiceRows(p, rtt, out, RowTunnelLoss, RowTunnelJitter, RowTunnelMOS)
 		case Beyond:
 			out[RowBeyondRTT] = rtt
 		case Direct:
 			out[RowDirectRTT] = rtt
-			if p.LossKnown {
-				out[RowDirectLoss] = p.LossPct
-			}
+			voiceRows(p, rtt, out, RowDirectLoss, RowDirectJitter, RowDirectMOS)
 		}
 	}
 	for k, v := range out {

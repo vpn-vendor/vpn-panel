@@ -10,9 +10,11 @@ CIPHER=xchacha12,aes-adiantum-plain64
 PROGRESS_SECONDS=30
 LOG="${VP_LOG:?}"
 out() { echo "vpn-panel: $*" | tee -a "$LOG"; }
-D="$(lsblk -pnro NAME,FSTYPE | awk '$2=="crypto_LUKS"{print $1; exit}')"
+D="$(cat /run/vp-luks-device 2>/dev/null || true)"
 [ -n "$D" ] || { out "VP-REENC: FAIL no LUKS volume"; exit 1; }
-NAME="$(dmsetup ls --target crypt | awk 'NR==1{print $1}')"
+# Открытое имя именно нашего тома, а не первое попавшееся.
+NAME="$(lsblk -nro NAME,TYPE "$D" | awk '$2=="crypt"{print $1; exit}')"
+[ -n "$NAME" ] || { out "VP-REENC: FAIL volume $D is not open"; exit 1; }
 out "VP-T1: $(cryptsetup luksDump "$D" | grep -E 'cipher:|Cipher key:|PBKDF:' | tr -s ' \t' ' ' | tr '\n' ';')"
 t0=$(date +%s)
 if grep -qw aes /proc/cpuinfo; then

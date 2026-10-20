@@ -55,7 +55,8 @@ DEB="$(abspath "$DEB")"
 LOCALE="$(sed -n 's/^[[:space:]]*locale:[[:space:]]*//p' "$PROFILE" | head -n 1)"
 [ -n "$LOCALE" ] || { echo "в профиле нет locale" >&2; exit 1; }
 menu() { # $1 — файл, $2 — параметры ядра, $3 — вставка loopback
-    sed "s|@AUTOINSTALL@|$2|g; s|@ISO_SCAN@|$3|g; s|@LOCALE@|$LOCALE|g" "$HERE/grub.cfg" | tr -s ' ' > "$1"
+    sed "s|@AUTOINSTALL@|$2|g; s|@ISO_SCAN@|$3|g; s|@LOCALE@|$LOCALE|g; s|@SELF@|/boot/grub/${1##*/}|g" \
+        "$HERE/grub.cfg" | tr -s ' ' > "$1"
 }
 [ -z "$KIT" ] || KIT="$(abspath "$KIT")"
 [ -z "$CIDATA" ] || CIDATA="$(abspath "$CIDATA")"
@@ -117,7 +118,9 @@ chown -R "$OWNER" /repo
 
 echo "== комплект"
 mkdir -p "$KITDIR/vpn-panel"
-install -m 0755 "$HERE/early.sh" "$HERE/late.sh" "$HERE/firstboot-key.sh" "$HERE/disk-cipher.sh" "$KITDIR/vpn-panel/"
+install -m 0755 "$HERE/early.sh" "$HERE/late.sh" "$HERE/firstboot-key.sh" "$HERE/disk-cipher.sh" \
+    "$HERE/initrd-check.sh" "$KITDIR/vpn-panel/"
+install -m 0644 "$HERE/reasons.sh" "$HERE/reasons.tsv" "$KITDIR/vpn-panel/"
 # Установка на уже стоящую Ubuntu без интернета: короткое имя — его набирают руками.
 install -m 0755 "$HERE/install-offline.sh" "$KITDIR/vpn-panel/install.sh"
 cp -a "$REPO" "$KITDIR/vpn-panel/repo"

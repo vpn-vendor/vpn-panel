@@ -42,11 +42,15 @@ func chooseRemedy(in watchdogInput, ladder []remedy) *remedy {
 	return nil
 }
 
-func aliveByFacts(in watchdogInput) bool {
-	stale := in.StaleSec
-	if stale <= 0 {
-		stale = 180
+func staleSec(in watchdogInput) int64 {
+	if in.StaleSec <= 0 {
+		return 180
 	}
+	return in.StaleSec
+}
+
+func aliveByFacts(in watchdogInput) bool {
+	stale := staleSec(in)
 
 	return (in.Present || in.SelfRetrying) && ((in.HandshakeOK && in.AgeSec <= stale) ||
 		(!in.HandshakeOK && in.UpForSec >= 0 && in.UpForSec < stale))

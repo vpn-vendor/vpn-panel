@@ -79,9 +79,9 @@ func TestPPPWaitFindsLinkInPeer(t *testing.T) {
 			t.Errorf("из пира карты %q сценарий извлечёт %v", nic, m)
 		}
 	}
-	dropin := readRepo(t, "debian/assets/ppp-vpn-panel.conf")
-	if !strings.Contains(dropin, "\nExecStartPre=/usr/libexec/vpn-panel/ppp-wait-link\n") {
-		t.Fatal("вставка ppp@ не ждёт карту перед pppd")
+	unit := readRepo(t, "debian/assets/vpn-panel-ppp@.service")
+	if !strings.Contains(unit, "\nExecStartPre=/usr/libexec/vpn-panel/ppp-wait-link %I\n") {
+		t.Fatal("юнит PPPoE не ждёт карту перед pppd")
 	}
 	if out, err := exec.Command("sh", "-n", filepath.Join("..", "..", "debian/assets/vpn-panel-ppp-wait-link")).CombinedOutput(); err != nil { //nolint:gosec
 		t.Fatalf("сценарий ожидания не разбирается оболочкой: %s", out)

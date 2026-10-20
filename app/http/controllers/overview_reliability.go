@@ -40,7 +40,7 @@ func tunnelLiveUp(f overviewFacts) bool {
 
 func reliabilityFacts(f overviewFacts) ui.Facts {
 	s := f.Reliability
-	out := ui.Facts{Title: "Надёжность"}
+	out := ui.Facts{Title: "Надёжность", Tiles: true}
 	if s.Observed.IsZero() {
 		out.Items = []ui.Fact{{Label: "Наблюдение", Note: "Журнал запусков панели ещё не записан: счётчики появятся после первого запуска службы."}}
 		return out

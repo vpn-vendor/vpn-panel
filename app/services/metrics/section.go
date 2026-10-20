@@ -20,7 +20,7 @@ func RegisterSourceName(name string) { registered[name] = true }
 
 func SourceNames() []string {
 	var out []string
-	for _, s := range Sources(&LinkSource{}, &QoSSource{}) {
+	for _, s := range Sources("", &LinkSource{}, &QoSSource{}) {
 		out = append(out, s.Name)
 	}
 	for n := range registered {

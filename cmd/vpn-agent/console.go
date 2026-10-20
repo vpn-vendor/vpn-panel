@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -40,8 +41,14 @@ type panelApplier struct {
 	limiter *ratelimit.Limiter
 }
 
-func newPanelApplier() *panelApplier {
-	return &panelApplier{limiter: ratelimit.New(3, 1, time.Minute)}
+func newPanelApplier(units *unitOps) *panelApplier {
+	burst, period := 3, time.Minute
+	if units != nil {
+		if st, err := units.state(panelUnit); err == nil && st.Burst > 1 && st.Window > 0 {
+			burst, period = st.Burst-1, st.Window
+		}
+	}
+	return &panelApplier{limiter: ratelimit.New(burst, 1, period)}
 }
 
 func (p *panelApplier) panelRestart(json.RawMessage) (any, *agentrpc.ErrorObject) {
@@ -103,6 +110,8 @@ type gatewayFacts struct {
 	Network        netstatus.Status
 	PanelActive    bool
 	PanelAnswers   bool
+
+	PanelPortTaken string
 }
 
 var levelOf = map[vpndiag.Level]console.Level{
@@ -129,10 +138,16 @@ func gatewayStatus(f gatewayFacts, restart int) console.Status {
 	switch {
 	case !f.PanelActive:
 		panel.Level, panel.Text = console.Bad, "остановлена"
+	case f.PanelPortTaken != "":
+		panel.Level, panel.Text = console.Bad, "порт занят программой "+f.PanelPortTaken
 	case !f.PanelAnswers:
 		panel.Level, panel.Text = console.Bad, "не отвечает"
 	}
-	if panel.Level == console.Bad {
+	if f.PanelPortTaken != "" {
+
+		worse(console.Bad, "Панель управления не открывается: её порт занят",
+			"Что делать: выключите программу «"+f.PanelPortTaken+"» — она заняла порт панели. Перезапуск панели не поможет.")
+	} else if panel.Level == console.Bad {
 		worse(console.Bad, "Панель управления не открывается", "Что делать: нажмите "+fmt.Sprint(restart)+" — перезапуск панели. Интернет в офисе при этом не прервётся.")
 		st.Suggest = restart
 	}
@@ -212,26 +227,15 @@ func (g *gateway) call(method string, into any) bool {
 func (g *gateway) facts() gatewayFacts {
 	f := gatewayFacts{PanelActive: unitActive(panelUnit)}
 	f.ServiceAnswers = g.call("vpn.status", &f.Channel) && g.call("network.status", &f.Network)
-	f.PanelAnswers = f.PanelActive && panelAnswers()
+	f.PanelPortTaken = panelPortTaken()
+	f.PanelAnswers = f.PanelActive && f.PanelPortTaken == "" && panelAnswers()
 	return f
 }
 
 func panelAnswers() bool {
-	port := ""
-	data, err := os.ReadFile(panelEnv)
-	if err != nil {
-		return false
-	}
-	for _, line := range strings.Split(string(data), "\n") {
-		if v, ok := strings.CutPrefix(strings.TrimSpace(line), "APP_TLS_PORT="); ok {
-			port = strings.TrimSpace(v)
-		}
-	}
-	if port == "" {
-		return false
-	}
+	_, port := panelPorts("/")
 
-	conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", port), time.Second)
+	conn, err := net.DialTimeout("tcp", net.JoinHostPort("127.0.0.1", strconv.Itoa(port)), time.Second)
 	if err != nil {
 		return false
 	}

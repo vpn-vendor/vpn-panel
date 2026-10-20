@@ -1,0 +1,53 @@
+{{ define "components/setup-scene" }}
+{{ if eq . "done" }}
+<div class="sc-done"><svg viewBox="0 0 24 24" fill="none" focusable="false"><path class="sc-done-check" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+{{ else }}
+<svg class="sc sc-focus-{{ . }}" viewBox="0 0 500 440" focusable="false">
+    <defs>
+        <linearGradient id="sc-front" x1="0" y1="0" x2="1" y2="1"><stop offset="0" class="g-case-hi"/><stop offset="1" class="g-case-lo"/></linearGradient>
+        <linearGradient id="sc-side" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-side-hi"/><stop offset="1" class="g-side-lo"/></linearGradient>
+        <linearGradient id="sc-roof" x1="0" y1="0" x2="1" y2="0"><stop offset="0" class="g-roof-hi"/><stop offset="1" class="g-roof-lo"/></linearGradient>
+        <radialGradient id="sc-shadow" cx=".5" cy=".5" r=".5"><stop offset="0" class="g-shadow-in"/><stop offset="1" class="g-shadow-out"/></radialGradient>
+        <radialGradient id="sc-glow" cx=".5" cy=".5" r=".5"><stop offset="0" class="g-glow-in"/><stop offset="1" class="g-glow-out"/></radialGradient>
+        <radialGradient id="sc-globe" cx=".35" cy=".3" r=".8"><stop offset="0" class="g-globe-hi"/><stop offset="1" class="g-globe-lo"/></radialGradient>
+    </defs>
+    <ellipse cx="258" cy="346" rx="96" ry="12" fill="url(#sc-shadow)"/>
+    <ellipse cx="56" cy="244" rx="40" ry="6" fill="url(#sc-shadow)"/>
+    <ellipse cx="442" cy="276" rx="50" ry="6" fill="url(#sc-shadow)"/>
+    <path class="sc-cable sc-cable-wan" d="M96 196 C 150 196, 160 150, 222 150"/>
+    <path class="sc-cable sc-cable-lan" d="M300 170 C 360 170, 360 250, 404 250"/>
+    <g class="sc-net">
+        <circle class="sc-globe" cx="56" cy="196" r="40" fill="url(#sc-globe)"/>
+        <g class="sc-line"><circle cx="56" cy="196" r="26"/><ellipse cx="56" cy="196" rx="11" ry="26"/><path d="M30 196h52M34 183h44M34 209h44"/></g>
+        <text font-size="13" class="sc-title" x="56" y="258">Интернет</text>
+        <text font-size="11.5" class="sc-sub" x="56" y="276">провайдер</text>
+    </g>
+    <g class="sc-pc">
+        <polygon points="222,92 250,74 330,74 302,92" fill="url(#sc-roof)"/>
+        <polygon points="302,92 330,74 330,318 302,336" fill="url(#sc-side)"/>
+        <g class="sc-vent"><polygon points="308,120 324,110 324,116 308,126"/><polygon points="308,134 324,124 324,130 308,140"/><polygon points="308,148 324,138 324,144 308,154"/><polygon points="308,162 324,152 324,158 308,168"/><polygon points="308,176 324,166 324,172 308,182"/><polygon points="308,190 324,180 324,186 308,196"/><polygon points="308,204 324,194 324,200 308,210"/><polygon points="308,218 324,208 324,214 308,224"/></g>
+        <rect x="190" y="92" width="112" height="244" rx="6" fill="url(#sc-front)"/>
+        <path class="sc-edge" d="M191 335 V93 H301"/>
+        <circle cx="246" cy="120" r="18" fill="url(#sc-glow)"/>
+        <circle class="sc-btn" cx="246" cy="120" r="12"/>
+        <circle class="sc-led" cx="246" cy="120" r="7"/><path class="sc-led" d="M246 113v6"/>
+        <rect class="sc-port" x="206" y="144" width="12" height="6" rx="1"/><rect class="sc-port" x="222" y="144" width="12" height="6" rx="1"/>
+        <circle class="sc-jack-g" cx="262" cy="147" r="3"/><circle class="sc-jack-p" cx="274" cy="147" r="3"/>
+        <g class="sc-mesh"><rect x="204" y="166" width="5" height="140" rx="2"/><rect x="214" y="166" width="5" height="140" rx="2"/><rect x="224" y="166" width="5" height="140" rx="2"/><rect x="234" y="166" width="5" height="140" rx="2"/><rect x="244" y="166" width="5" height="140" rx="2"/><rect x="254" y="166" width="5" height="140" rx="2"/><rect x="264" y="166" width="5" height="140" rx="2"/><rect x="274" y="166" width="5" height="140" rx="2"/><rect x="284" y="166" width="5" height="140" rx="2"/></g>
+        <circle class="sc-power" cx="208" cy="320" r="3"/>
+        <rect class="sc-foot" x="196" y="336" width="24" height="7" rx="2"/><rect class="sc-foot" x="272" y="336" width="24" height="7" rx="2"/>
+        <text font-size="15" class="sc-title sc-title-big" x="250" y="372">Ваш ПК-шлюз</text>
+        <text font-size="11.5" class="sc-sub" x="250" y="392">обычный компьютер с двумя сетевыми картами</text>
+    </g>
+    <g class="sc-office">
+        <g class="sc-line"><rect class="sc-plate" x="402" y="214" width="56" height="38" rx="4"/><path d="M422 262h16M430 252v10"/><rect class="sc-plate-2" x="440" y="232" width="44" height="30" rx="3"/><path d="M452 270h20M462 262v8"/></g>
+        <text font-size="13" class="sc-title" x="442" y="296">Офис</text>
+        <text font-size="11.5" class="sc-sub" x="442" y="314">компьютеры офиса</text>
+    </g>
+    <g class="sc-shield">
+        <path class="sc-shield-body" d="M250 20 l26 10 v18 c0 15 -11 24 -26 28 c-15 -4 -26 -13 -26 -28 v-18 z"/>
+        <path class="sc-shield-check" d="M240 48 l7 7 l13 -14"/>
+    </g>
+</svg>
+{{ end }}
+{{ end }}

@@ -29,6 +29,7 @@ func (r *Runner) Run() error {
 	tick := time.NewTicker(every)
 	defer tick.Stop()
 	for {
+		NewOrchestrator().RetryWaitingDHCP()
 		if reverted, err := s.Reconcile(); err != nil {
 			log.Printf("vpn-panel: настройки сети не приведены к действующим, повтор на следующем такте: %v", err)
 		} else if reverted {

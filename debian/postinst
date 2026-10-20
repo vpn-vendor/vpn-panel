@@ -33,6 +33,15 @@ if [ "$1" = "configure" ]; then
     systemd-sysusers /usr/lib/sysusers.d/vpn-panel.conf 2>/dev/null || systemd-sysusers || true
     systemctl daemon-reload 2>/dev/null || true
 
+    # Подключение PPPoE переезжает с родного шаблона ppp@ на свой: включение
+    # переносится, живой линк не трогаем — его перехватит следующее
+    # применение или перезагрузка. Сначала включить новый, потом выключить
+    # старый: при обрыве между ними включены оба, а не ни одного.
+    if [ -f /etc/ppp/peers/vpn_panel_wan ] && systemctl is-enabled ppp@vpn_panel_wan.service >/dev/null 2>&1; then
+        systemctl enable vpn-panel-ppp@vpn_panel_wan.service >/dev/null 2>&1 || true
+        systemctl disable ppp@vpn_panel_wan.service >/dev/null 2>&1 || true
+    fi
+
     DB=/var/lib/vpn-panel/panel.sqlite
     install -d -o vpn-admin -g vpn-panel -m 0750 /var/lib/vpn-panel
 
@@ -68,10 +77,20 @@ if [ "$1" = "configure" ]; then
     # initramfs пересобирается только когда тема или настройка раскладки
     # действительно изменились: на слабом железе это долгая операция, и
     # гонять её при каждом обновлении пакета нельзя.
+    #
+    # Тема нужна только шлюзу, диск которого зашифровал установщик с флешки,
+    # или там, где она уже стоит. На сервере, куда пакет поставили поверх
+    # готовой системы, загрузку не трогаем: на 22.04 тема ломала сборку
+    # initramfs, а пароля диска там всё равно никто не спрашивает.
     THEME=/usr/share/plymouth/themes/vpn-panel/vpn-panel.plymouth
     STAMP=/var/lib/vpn-panel/boot-theme.sha256
-    if [ -f "$THEME" ]; then
-        NOW="$(cat /usr/share/plymouth/themes/vpn-panel/* /usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-keymap.conf /usr/lib/dracut/modules.d/99vpn-panel-keymap/module-setup.sh 2>/dev/null | sha256sum | cut -d' ' -f1)"
+    NEED_THEME=""
+    if [ -f /etc/dracut.conf.d/90-vpn-panel-disk-cipher.conf ] ||
+        update-alternatives --query default.plymouth 2>/dev/null | grep -qx "Alternative: $THEME"; then
+        NEED_THEME=1
+    fi
+    if [ -f "$THEME" ] && [ -n "$NEED_THEME" ]; then
+        NOW="$(cat /usr/share/plymouth/themes/vpn-panel/* /usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-keymap.conf /usr/lib/dracut/modules.d/99vpn-panel-keymap/module-setup.sh /usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-text.conf /usr/lib/dracut/modules.d/99vpn-panel-unlock/* 2>/dev/null | sha256sum | cut -d' ' -f1)"
         if [ "$(cat "$STAMP" 2>/dev/null)" != "$NOW" ]; then
             update-alternatives --install /usr/share/plymouth/themes/default.plymouth default.plymouth "$THEME" 200
             update-alternatives --set default.plymouth "$THEME"
@@ -83,21 +102,16 @@ if [ "$1" = "configure" ]; then
         fi
     fi
 
-    # Источник обновлений. Ставится и при первой установке, и при
-    # обновлении поставленного вручную пакета — так система переходит на
-    # проверяемые обновления сама, без действий администратора.
-    #
-    # Файл источника НЕ является conffile: администратор вправе его удалить,
-    # если не хочет автоматических источников, и обновление пакета не
-    # вернёт его назад молча.
-    SRC=/etc/apt/sources.list.d/vpn-panel.sources
-    SHIPPED=/usr/share/vpn-panel/vpn-panel.sources
-    if [ -f "$SHIPPED" ] && [ -f /usr/share/keyrings/vpn-panel.asc ]; then
-        if [ ! -f "$SRC" ] && [ ! -f "$SRC.disabled" ]; then
-            cp -a "$SHIPPED" "$SRC"
-            echo "vpn-panel: источник обновлений подключён" >&2
-        fi
-    fi
+    # Источник обновлений под выпуск системы и автообновления по умолчанию
+    # ставит агент при каждом старте: так источник чинится и после
+    # обновления самой Ubuntu.
+fi
+
+# Обновились программы, по которым снят паспорт хоста: агент снимет его
+# заново. Ошибка здесь не ломает установку других пакетов: при старте
+# агент сверит паспорт и сам.
+if [ "$1" = "triggered" ]; then
+    /usr/libexec/vpn-panel/vpn-agent host-refresh >/dev/null 2>&1 || true
 fi
 
 #DEBHELPER#

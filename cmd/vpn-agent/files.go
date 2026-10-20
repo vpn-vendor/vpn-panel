@@ -49,9 +49,31 @@ var managedFiles = []managedFile{
 	{Path: linkLocalNetworkdDir + "/10-netplan-*.network.d/" + linkLocalDropInName},
 	{Path: linkLocalNetworkdDir + "/" + linkLocalOwnPrefix + "*.network"},
 	{Path: updatesConfPath},
+	{Path: updatesPauseConfPath},
+	{Path: updatesChoiceFile},
+	{Path: aptSourcePath},
+	{Path: policyStatePath},
+	{Path: releaseGoodFile},
+	{Path: probationFile},
+	{Path: hostCacheFile},
+	{Path: rollbackIntentFile},
+	{Path: rollbackOutcomeFile},
+	{Path: heldDebDir + "/vpn-panel_*.deb"},
+	{Path: panelDBPath},
+	{Path: panelDBPath + "-wal"},
+	{Path: panelDBPath + "-shm"},
 	{Path: tempKeyPath, Keep: "ключ первой загрузки: снимается шагом первой загрузки, до него без ключа диск не откроется"},
 	{Path: tempKeyConf, Keep: "настройка первой загрузки: снимается вместе с ключом"},
+	{Path: takeoverJournalFile},
+	{Path: pppoeFailFile, Keep: "файл в памяти: счёт неудач PPPoE исчезает с перезагрузкой"},
+	{Path: takeoverAsideDir + "/*"},
 }
+
+const (
+	takeoverJournalFile = "/var/lib/vpn-panel/takeover.json"
+	takeoverAsideDir    = "/var/lib/vpn-panel/takeover-aside"
+	takeoverBackupRoot  = "/var/backups/vpn-panel"
+)
 
 func managedDirs() []string {
 	seen := map[string]bool{}

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 	"testing"
+
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 )
 
 func known() map[string]bool { return map[string]bool{"ens4": true, "ens5": true} }
@@ -56,12 +58,12 @@ func TestGenerateDeterministicAndComplete(t *testing.T) {
 	if err := a.Validate(known()); err != nil {
 		t.Fatalf("validate: %v", err)
 	}
-	out, err := a.Generate()
+	out, err := a.Generate(Caps{SocketRetry: true})
 	if err != nil {
 		t.Fatalf("generate: %v", err)
 	}
 	b := Plan{LANs: []LAN{a.LANs[1], a.LANs[0]}}
-	out2, _ := b.Generate()
+	out2, _ := b.Generate(Caps{SocketRetry: true})
 	if string(out) != string(out2) {
 		t.Fatal("output must not depend on input order")
 	}
@@ -190,7 +192,7 @@ func TestGenerateWithReservations(t *testing.T) {
 			{MAC: "a4:bb:6d:1f:22:90", IP: "192.168.77.50"},
 		},
 	}}}
-	out, err := p.Generate()
+	out, err := p.Generate(Caps{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,7 +203,7 @@ func TestGenerateWithReservations(t *testing.T) {
 
 	p2 := Plan{LANs: []LAN{{Name: "ens4", CIDR: "192.168.77.1/24",
 		Reservations: []Reservation{p.LANs[0].Reservations[1], p.LANs[0].Reservations[0]}}}}
-	out2, _ := p2.Generate()
+	out2, _ := p2.Generate(Caps{})
 	if string(out) != string(out2) {
 		t.Fatal("порядок резерваций не должен влиять на результат")
 	}
@@ -209,14 +211,67 @@ func TestGenerateWithReservations(t *testing.T) {
 
 func TestClientDNSSwitch(t *testing.T) {
 	base := Plan{LANs: []LAN{{Name: "ens4", CIDR: "192.168.77.1/24"}}}
-	pub, _ := base.Generate()
+	pub, _ := base.Generate(Caps{})
 	if !strings.Contains(string(pub), `"data": "9.9.9.9, 149.112.112.112"`) {
 		t.Fatalf("до проверки резолвера клиентам раздаются публичные адреса:\n%s", pub)
 	}
 	local := Plan{LANs: base.LANs, UseLocalDNS: true}
-	out, _ := local.Generate()
+	out, _ := local.Generate(Caps{})
 	if !strings.Contains(string(out), `"name": "domain-name-servers"`) ||
 		!strings.Contains(string(out), `"data": "192.168.77.1"`) {
 		t.Fatalf("после проверки клиентам раздаётся адрес шлюза:\n%s", out)
+	}
+}
+
+func TestSocketRetryOnlyByCaps(t *testing.T) {
+	p := Plan{LANs: []LAN{{Name: "ens4", CIDR: "192.168.77.1/24"}}}
+	without, err := p.Generate(Caps{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(without), "service-sockets") {
+		t.Fatalf("без возможности ключи повтора не пишутся:\n%s", without)
+	}
+	with, _ := p.Generate(Caps{SocketRetry: true})
+	for _, want := range []string{`"service-sockets-max-retries": 20`, `"service-sockets-retry-wait-time": 5000`} {
+		if !strings.Contains(string(with), want) {
+			t.Fatalf("с возможностью нет %q:\n%s", want, with)
+		}
+	}
+}
+
+func TestProbePlanCoversGenerator(t *testing.T) {
+	p := ProbePlan()
+	if zero := hostcaps.ZeroFields(p); len(zero) > 0 {
+		t.Fatalf("пробный план не задействует поля %v", zero)
+	}
+	if err := p.Validate(nil); err != nil {
+		t.Fatalf("пробный план не проходит проверку: %v", err)
+	}
+	for _, o := range Options {
+		var c Caps
+		o.Enable(&c)
+		if c == (Caps{}) {
+			t.Errorf("возможность %s ничего не включает", o.ID)
+		}
+	}
+	if zero := hostcaps.ZeroFields(allCaps()); len(zero) > 0 {
+		t.Fatalf("флаги %v не объявлены возможностями", zero)
+	}
+}
+
+func allCaps() Caps {
+	var c Caps
+	for _, o := range Options {
+		o.Enable(&c)
+	}
+	return c
+}
+
+func TestOptionsHaveTexts(t *testing.T) {
+	for _, o := range Options {
+		if o.Title == "" || o.Missing == "" {
+			t.Errorf("у возможности %s нет текста", o.ID)
+		}
 	}
 }

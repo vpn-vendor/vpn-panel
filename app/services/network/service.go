@@ -60,6 +60,21 @@ func (s *Service) Status() (*netstatus.Status, error) {
 	return &st, nil
 }
 
+func (s *Service) Neighbors() ([]netstatus.Neighbor, error) {
+	resp, err := s.client().Call("network.neighbors", map[string]any{})
+	if err != nil {
+		return nil, err
+	}
+	if resp.Error != nil {
+		return nil, resp.Error
+	}
+	var list []netstatus.Neighbor
+	if err := json.Unmarshal(resp.Result, &list); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
 func (s *Service) Roles() map[string]models.Interface {
 	var rows []models.Interface
 	_ = facades.Orm().Query().Find(&rows)
@@ -80,6 +95,9 @@ type RoleInput struct {
 	PPPoEUsername string
 
 	VLAN string
+
+	CloneMAC string
+	CloneSet bool
 }
 
 func (s *Service) OwnInterfaces() map[string]bool {
@@ -190,6 +208,15 @@ func (s *Service) ConfirmTimeout() int {
 
 type ApplySecrets struct {
 	PPPoEPassword string
+
+	Takeover *TakeoverConsent
+
+	PPPoESource string
+}
+
+type TakeoverConsent struct {
+	Digest string   `json:"digest"`
+	IDs    []string `json:"ids"`
 }
 
 type ApplyResult struct {
@@ -207,6 +234,12 @@ func (s *Service) Apply(plan netplangen.Plan, guard bool, firewall *nftgen.Firew
 
 	if sec.PPPoEPassword != "" {
 		params["pppoe_password"] = sec.PPPoEPassword
+	}
+	if sec.Takeover != nil && len(sec.Takeover.IDs) > 0 {
+		params["takeover"] = sec.Takeover
+	}
+	if sec.PPPoEPassword == "" && sec.PPPoESource != "" {
+		params["pppoe_password_source"] = sec.PPPoESource
 	}
 	resp, err := s.client().CallWithin("network.apply", params, applyResponseTimeout)
 	if err != nil {

@@ -62,7 +62,7 @@ func TestOverviewAsksOnlyDeclaredRows(t *testing.T) {
 	roles := func() metrics.Roles { return metrics.Roles{} }
 	links := metrics.NewLinkSource(roles, func() ([]rtnl.Link, error) { return nil, nil })
 	qos := metrics.NewQoSSource(roles, func() ([]rtnl.Qdisc, error) { return nil, nil }, func() ([]rtnl.Link, error) { return nil, nil })
-	for _, s := range metrics.Sources(links, qos) {
+	for _, s := range metrics.Sources("", links, qos) {
 		for _, r := range s.Rows {
 			declared[r] = true
 		}
@@ -90,7 +90,7 @@ func TestOverviewAsksOnlyDeclaredRows(t *testing.T) {
 func TestOverviewIsMeaningfulWithoutScript(t *testing.T) {
 	direct := renderOverview(t, sampleFacts(false))
 	for _, want := range []string{"Интернет работает", "Звонки в норме", "Сервер не перегружен", "2,5 мс",
-		"прямой доступ", "Устройств в сети сейчас", "14", "v0.3.0", `data-rows="net.wan.rx,net.wan.tx"`, `data-norm="5"`,
+		"прямой доступ", "Устройств в сети сейчас", "14", "0.3.0", `data-rows="net.wan.rx,net.wan.tx"`, `data-norm="5"`,
 		`data-warn="70"`, `data-bad="85"`, `src="/public/js/dashboard.js" defer`, `class="link-card-go"`} {
 		if !strings.Contains(direct, want) {
 			t.Errorf("прямой доступ: на странице нет %q", want)
@@ -104,8 +104,8 @@ func TestOverviewIsMeaningfulWithoutScript(t *testing.T) {
 		}
 	}
 
-	if n := strings.Count(direct, "<canvas"); n != 8 {
-		t.Errorf("полотен на странице %d, ждали 8 — семь карточек и панель", n)
+	if n := strings.Count(direct, "<canvas"); n != 9 {
+		t.Errorf("полотен на странице %d, ждали 9 — восемь карточек и панель", n)
 	}
 	if n := strings.Count(direct, "<dialog"); n != 1 {
 		t.Errorf("развёрнутых панелей %d, должна быть одна", n)

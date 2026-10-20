@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/ovpngen"
 	"github.com/vpn-vendor/vpn-panel-core/internal/vpndriver"
 )
@@ -46,9 +48,13 @@ type ovpnDriver struct {
 
 	peerIPv4 string
 	sess     *mgmtSession
+
+	caps hostCapsSource
 }
 
 func newOvpnDriver() *ovpnDriver { return &ovpnDriver{} }
+
+func (d *ovpnDriver) useHostCaps(src hostCapsSource) { d.caps = src }
 
 func (d *ovpnDriver) protocol() vpndriver.Protocol { return ovpngen.ID }
 func (d *ovpnDriver) journal() []string            { return []string{"-u", ovpnUnit} }
@@ -166,11 +172,18 @@ func (d *ovpnDriver) up(req upRequest) (upResult, *agentrpc.ErrorObject) {
 	if mtu == 0 {
 		mtu = autoTunnelMTU(res.EndpointIP, req.Mark, profile.Overhead(false))
 	}
-	live := profile.Generate(ovpngen.Render{
+	render := ovpngen.Render{
 		Iface: d.iface(), Mark: req.Mark, MTU: mtu, Remotes: remotes, Management: ovpnMgmtSock,
-	})
+	}
+	snap := capsOf(d.caps)
+	render.Caps = hostcaps.Caps(snap, ovpngen.Options)
+	live := profile.Generate(render)
 	if cur, err := os.ReadFile(ovpnLivePath()); err == nil && string(cur) == string(live) && d.unitRunning() { //nolint:gosec
 		return res, nil
+	}
+	live, aerr := d.checkLive(profile, render, snap, live)
+	if aerr != nil {
+		return upResult{}, aerr
 	}
 
 	ensureNMDropIn()
@@ -616,4 +629,89 @@ func autoTunnelMTU(endpointIP string, mark, overhead int) int {
 		log.Printf("vpn: packet size: %s (tun-mtu %d)", note, mtu)
 	}
 	return mtu
+}
+
+const codeVPNRejected = 1609
+
+func (d *ovpnDriver) checkLive(p *ovpngen.Profile, r ovpngen.Render, snap hostcaps.Snapshot,
+	live []byte) ([]byte, *agentrpc.ErrorObject) {
+	for attempt := 0; ; attempt++ {
+		ctx, cancel := context.WithTimeout(context.Background(), hostCheckTimeout)
+		err := checkOpenVPN(ctx, live)
+		cancel()
+		var rejected *hostcaps.Rejected
+		switch {
+		case err == nil:
+			return live, nil
+		case !errors.As(err, &rejected):
+			log.Printf("vpn: live file not checked by the daemon: %v", err)
+			return live, nil
+		case attempt == 0 && d.caps != nil && d.caps.recheck(snap.Digest):
+			snap = d.caps.current()
+			r.Caps = hostcaps.Caps(snap, ovpngen.Options)
+			live = p.Generate(r)
+		default:
+			msg := "OpenVPN этой системы не принимает файл подключения: в файле есть настройка, " +
+				"которую эта версия не понимает. Попросите у поставщика файл для этой версии OpenVPN"
+			if v := upstreamVersion(snap.Versions["openvpn"]); v != "" {
+				msg = "OpenVPN этой системы (версия " + v + ") не принимает файл подключения: в файле есть " +
+					"настройка, которую эта версия не понимает. Попросите у поставщика файл для OpenVPN " + v
+			}
+			return nil, &agentrpc.ErrorObject{Code: codeVPNRejected, Message: msg,
+				Data: map[string]any{"recoverable": false, "detail": rejected.Detail}}
+		}
+	}
+}
+
+func upstreamVersion(v string) string {
+	if _, rest, ok := strings.Cut(v, ":"); ok {
+		v = rest
+	}
+	v, _, _ = strings.Cut(v, "-")
+	return v
+}
+
+var openvpnCandidates = []string{"/usr/sbin/openvpn", "/sbin/openvpn"}
+
+func (d *ovpnDriver) hostProbes() []hostProbe {
+	return []hostProbe{
+		{ids: hostcaps.IDs(ovpngen.Options), packages: []string{"openvpn"}, run: probeOpenVPN},
+		kernelProbe("kernel.tun", hostcaps.ClassGuard, []string{"vpn"}, "Устройство туннеля в ядре",
+			"Ядро не даёт создать туннель: канал OpenVPN не поднимется. Проверьте, что система работает не в "+
+				"контейнере, или поставьте шлюз с флешки.", "tun"),
+	}
+}
+
+func probeOpenVPN(ctx context.Context) []hostcaps.Fact {
+	profile, perr := ovpngen.ProbeProfile()
+	return hostcaps.Probe(hostcaps.Program[ovpngen.Caps]{
+		Render: func(c ovpngen.Caps) ([]byte, error) {
+			if perr != nil {
+				return nil, perr
+			}
+			r := ovpngen.ProbeRender()
+			r.Caps = c
+			return profile.Generate(r), nil
+		},
+		Check:   func(b []byte) error { return checkOpenVPN(ctx, b) },
+		Spoil:   appendLine("vp-probe-unknown-option"),
+		Options: ovpngen.Options,
+	})
+}
+
+func checkOpenVPN(ctx context.Context, cfg []byte) error {
+	bin, err := findBinary(openvpnCandidates)
+	if err != nil {
+		return err
+	}
+	if err := durable.MkdirAll(ovpnDir, 0o700); err != nil {
+		return err
+	}
+	staged, err := durable.Stage(ovpnLivePath(), cfg, 0o600)
+	if err != nil {
+		return err
+	}
+	defer staged.Abort()
+	out, err := exec.CommandContext(ctx, bin, "--config", staged.Path(), "--show-ciphers").CombinedOutput() //nolint:gosec
+	return verdict(ctx, out, err)
 }

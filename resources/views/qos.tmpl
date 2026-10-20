@@ -4,50 +4,55 @@
 {{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
 {{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
 
-<div class="card">
-    <h2>Оптимизация для IP-телефонии</h2>
-    <p class="muted">Умная очередь держит канал чуть ниже скорости тарифа и
-    пропускает звонки вперёд закачек: голос остаётся чистым, даже когда кто-то
-    в офисе скачивает большие файлы. Настройки телефонии на сервере уже
-    оптимизированы автоматически; здесь включается защита от перегрузки
-    канала.</p>
-    {{ if .queueActive }}
-    <p><strong>QoS работает.</strong> Скорость ограничена
-    {{ .appliedDown }} Мбит/с на скачивание и {{ .appliedUp }} Мбит/с на
-    отдачу — немного ниже тарифа, чтобы очередь копилась на сервере, а не у
-    провайдера.</p>
-    {{ end }}
-    <form method="post" action="/qos/apply" data-island="qos-form">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/toggle" .fieldEnabled }}
-        {{ template "components/field" .fieldDown }}
-        {{ template "components/field" .fieldUp }}
-        <p class="muted"><strong>Откуда брать цифры.</strong> Лучший источник —
-        кнопка «Запустить замер» ниже: она покажет настоящие скорости. В
-        договоре с провайдером обычно указана одна цифра — это скачивание;
-        отдача почти всегда ниже, и без замера её легко указать неверно. Если
-        сомневаетесь — укажите чуть меньше: запас в меньшую сторону безвреден,
-        завышенное значение выключает защиту.</p>
-        {{ template "components/button" .buttonApply }}
-    </form>
-</div>
+<section class="card hero-card">
+    {{ template "components/hero-status" .hero }}
+</section>
 
+<div class="cols">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Скорость тарифа</h2>
+            <p class="muted card-sub">Очередь держит канал чуть ниже тарифа, чтобы очередь копилась на шлюзе, а не у провайдера.</p>
+        </div>
+    </div>
+    <form method="post" action="/qos/apply" data-island="qos-form" data-unsaved>
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        {{ template "components/switch-row" .switchEnabled }}
+        <div class="flow-fields">
+            {{ template "components/field" .fieldDown }}
+            {{ template "components/field" .fieldUp }}
+        </div>
+        <details class="fold">
+            <summary>{{ template "components/icon" "chevron" }}Откуда брать цифры</summary>
+            <div class="fold-body">
+                <p class="muted">Лучший источник — замер справа: он покажет настоящие скорости. В договоре
+                обычно одна цифра — это скачивание; отдача почти всегда ниже, и без замера её легко указать
+                неверно. Сомневаетесь — укажите чуть меньше: запас в меньшую сторону безвреден, завышенное значение
+                выключает защиту.</p>
+            </div>
+        </details>
+        <div class="btn-row btn-row-end">{{ template "components/button" .buttonApply }}</div>
+    </form>
+</section>
+</div>
+<div class="col">
 {{ template "speedtest-card" . }}
 
-<div class="card">
-    <h2>Возможности сервера</h2>
-    <table>
-        <tbody>
-            <tr><td>Ядер процессора</td><td>{{ if .cores }}{{ .cores }}{{ else }}—{{ end }}</td></tr>
-            <tr><td>Нагрузка (за минуту)</td><td>{{ if .load1 }}{{ .load1 }}{{ else }}—{{ end }}</td></tr>
-            <tr><td>Скорость сетевой карты</td>
-                <td>{{ if .linkMbit }}{{ .linkMbit }} Мбит/с{{ else }}определить не удалось{{ end }}</td></tr>
-        </tbody>
-    </table>
-    <p class="muted">Обработка очереди выполняется процессором сервера. Панель
-    предупредит вверху страницы, если выбранная скорость рискует оказаться ему
-    не по силам — в этом случае звонки могут пострадать вместо того, чтобы
-    улучшиться.</p>
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Возможности сервера</h2>
+            <p class="muted card-sub">Очередь обрабатывает процессор. Если скорость тарифа ему не по силам, панель
+            предупредит вверху страницы.</p>
+        </div>
+    </div>
+    <div class="setting setting-pair"><div><div class="setting-title">Ядер процессора</div></div><div class="setting-ctl"><span class="tag">{{ if .cores }}{{ .cores }}{{ else }}—{{ end }}</span></div></div>
+    <div class="setting setting-pair"><div><div class="setting-title">Нагрузка за минуту</div></div><div class="setting-ctl"><span class="tag">{{ if .load1 }}{{ .load1 }}{{ else }}—{{ end }}</span></div></div>
+    <div class="setting setting-pair"><div><div class="setting-title">Скорость сетевой карты</div></div><div class="setting-ctl"><span class="tag">{{ if .linkMbit }}{{ .linkMbit }} Мбит/с{{ else }}определить не удалось{{ end }}</span></div></div>
+</section>
+</div>
 </div>
 
 <script src="{{ .static }}/js/qos.js" defer></script>

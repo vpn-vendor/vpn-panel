@@ -4,18 +4,26 @@
 <p>Подключение <strong>«{{ .profileName }}»</strong> загружено. Включить защищённый
 канал: весь офис будет выходить в интернет через него, а при обрыве канала
 интернет в офисе прекратится — так трафик не уйдёт в обход.</p>
-<form method="post" action="/vpn/apply">
+<form method="post" action="/vpn/apply" id="step-form">
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="wizard" value="1">
     <input type="hidden" name="profile" value="{{ .profileSlug }}">
     <input type="hidden" name="mode" value="black">
-    <div class="wizard-actions">
-        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
-        {{ template "components/button" .enableBtn }}
-    </div>
 </form>
 {{ else }}
-<form method="post" action="/vpn/import" enctype="multipart/form-data">
+{{ with .legacyVPN }}
+<form method="post" action="/vpn/import" id="legacy-form" class="card">
+    <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+    <input type="hidden" name="wizard" value="1">
+    <input type="hidden" name="source" value="legacy">
+    <input type="hidden" name="protocol" value="{{ .protocol }}">
+    <input type="hidden" name="name" value="Подключение старого шлюза">
+    <h2>У старого шлюза есть подключение {{ .word }}</h2>
+    <p class="muted card-sub">{{ if .endpoint }}Сервер {{ .endpoint }}. {{ end }}Файл останется на сервере, панель проверит его так же, как загруженный.</p>
+    <button type="submit" class="btn btn-secondary" form="legacy-form">Взять подключение старого шлюза</button>
+</form>
+{{ end }}
+<form method="post" action="/vpn/import" enctype="multipart/form-data" id="step-form">
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="wizard" value="1">
     {{ template "components/field" .nameField }}
@@ -23,17 +31,12 @@
     <p class="muted">Принимаются файлы {{ range .upload.Kinds }}{{ .Sep }}{{ .Label }} (<code>{{ .Ext }}</code>){{ end }}
     со всеми сертификатами внутри. Секретный ключ остаётся на сервере и нигде
     не показывается.</p>
-    <div class="wizard-actions">
-        {{ if .back }}<a class="btn btn-secondary" href="{{ .back }}">Назад</a>{{ end }}
-        {{ template "components/button" .uploadBtn }}
-    </div>
 </form>
 {{ end }}
-<form method="post" action="/setup/answer" class="wizard-actions">
+<form method="post" action="/setup/answer" id="skip-form" hidden>
     <input type="hidden" name="_csrf" value="{{ .csrf }}">
     <input type="hidden" name="step" value="channel">
     <input type="hidden" name="action" value="skip">
-    {{ template "components/button" .skipBtn }}
 </form>
 {{ template "wizard-bottom" . }}
 {{ end }}

@@ -1,0 +1,10 @@
+{{ define "components/wizard-foot" }}
+<footer class="wz-foot">
+    <span class="wz-where">{{ .Where }}</span>
+    <span class="wz-foot-gap"></span>
+    {{ with .Extra }}<a class="btn btn-ghost" href="{{ .URL }}">{{ .Label }}</a>{{ end }}
+    {{ with .Skip }}<button type="submit" class="btn btn-ghost" form="{{ .Form }}">{{ .Label }}</button>{{ end }}
+    {{ if .Back }}<a class="btn btn-secondary" href="{{ .Back }}">Назад</a>{{ end }}
+    {{ with .Primary }}{{ if .Form }}<button type="submit" class="btn wz-primary" form="{{ .Form }}">{{ .Label }}</button>{{ else if .URL }}<a class="btn wz-primary" href="{{ .URL }}">{{ .Label }}</a>{{ end }}{{ end }}
+</footer>
+{{ end }}

@@ -1,0 +1,8 @@
+{{ define "components/timeline-filters" }}
+
+{{ if and .ID .Filters }}
+<div class="chips tl-filters" data-filter-for="{{ .ID }}" role="group" aria-label="Показать события" hidden>
+    {{ range $i, $f := .Filters }}<button type="button" class="chip" data-filter="{{ $f.Kind }}" aria-pressed="{{ if eq $i 0 }}true{{ else }}false{{ end }}">{{ $f.Label }}</button>{{ end }}
+</div>
+{{ end }}
+{{ end }}

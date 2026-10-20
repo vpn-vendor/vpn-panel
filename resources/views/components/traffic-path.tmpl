@@ -1,0 +1,17 @@
+{{ define "components/traffic-path" }}
+<div class="tp-wrap">
+<div class="tp" role="img" aria-label="{{ .Aria }}">
+    <div class="tp-node tp-office"><span class="tp-ic" aria-hidden="true">{{ template "components/icon" "devices" }}</span><span class="tp-name">Офис</span><span class="tp-sub">компьютеры и телефоны сотрудников</span></div>
+    <span class="tp-link tp-link-office" aria-hidden="true"></span>
+    <div class="{{ .Gateway.Class }} tp-gw"><span class="tp-ic" aria-hidden="true">{{ template "components/icon" "shield" }}{{ with .Gateway.Mark }}<span class="tp-mark tp-mark-{{ . }}">{{ template "components/icon" $.Gateway.MarkIcon }}</span>{{ end }}</span><span class="tp-name">Шлюз</span><span class="tp-sub">{{ .Gateway.Sub }}</span></div>
+    <div class="tp-tunnel">
+        <span class="{{ .PipeClass }}" aria-hidden="true"><span class="tp-lock">{{ template "components/icon" .PipeIcon }}</span></span>
+        <span class="{{ .LinkTag.Class }}">{{ .LinkTag.Text }}</span>
+        <span class="tp-isp{{ if .ProviderWarn }} tp-isp-warn{{ end }}{{ if eq .Link "ok" }} tp-isp-ok{{ end }}">{{ template "components/icon" "eye" }}<span>Провайдер видит: <strong>{{ .Provider }}</strong></span></span>
+    </div>
+    <div class="{{ .Server.Class }} tp-srv"><span class="tp-ic" aria-hidden="true">{{ template "components/icon" "server" }}{{ with .Server.Mark }}<span class="tp-mark tp-mark-{{ . }}">{{ template "components/icon" $.Server.MarkIcon }}</span>{{ end }}</span><span class="tp-name">Сервер<span class="tp-name-more"> VPN</span></span><span class="tp-sub">{{ .Server.Sub }}</span></div>
+    <span class="tp-link{{ if eq .Link "ok" }} tp-link-net{{ else }} tp-link-dim{{ end }}" aria-hidden="true"></span>
+    <div class="tp-node tp-net{{ if eq .Link "broken" }} tp-dim{{ end }}"><span class="tp-ic" aria-hidden="true">{{ template "components/icon" "dns" }}</span><span class="tp-name">Интернет</span><span class="tp-sub">{{ .Exit }}</span></div>
+</div>
+</div>
+{{ end }}

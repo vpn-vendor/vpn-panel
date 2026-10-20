@@ -15,33 +15,46 @@ import (
 )
 
 var written = map[string]string{
-	"vpnStateFile":         vpnStateFile,
-	"watchdogMemoryFile":   watchdogMemoryFile,
-	"lockdownFile":         lockdownFile,
-	"nftFile":              nftFile,
-	"sysctlFile":           sysctlFile,
-	"qosStateFile":         qosStateFile,
-	"checkpointFile":       checkpointFile,
-	"supportKeyFile":       supportKeyFile,
-	"diskChangeRequest":    diskChangeRequest,
-	"diskChangeLast":       diskChangeLast,
-	"netplanFile":          netplanFile,
-	"netplanBackup":        netplanBackup,
-	"keaConfigFile":        keaConfigFile,
-	"keaDropInFile":        keaDropInFile,
-	"unboundFile":          unboundFile,
-	"resolvedDropIn":       resolvedDropIn,
-	"pppoePeerPath":        pppoePeerPath,
-	"nmConnFile":           nmConnFile,
-	"nmDropInFile":         nmDropInFile,
-	"linkLocalNMFile":      linkLocalNMFile,
-	"linklocal.go: dropIn": linkLocalNetworkdDir + "/10-netplan-ens4.network.d/" + linkLocalDropInName,
-	"linklocal.go: path":   linkLocalNetworkdDir + "/" + linkLocalOwnPrefix + "ens4.network",
-	"updatesConfPath":      updatesConfPath,
-	"tempKeyPath":          tempKeyPath,
-	"tempKeyConf":          tempKeyConf,
-	"livePath()":           livePath(),
-	"ovpnLivePath()":       ovpnLivePath(),
+	"vpnStateFile":           vpnStateFile,
+	"watchdogMemoryFile":     watchdogMemoryFile,
+	"lockdownFile":           lockdownFile,
+	"nftFile":                nftFile,
+	"sysctlFile":             sysctlFile,
+	"qosStateFile":           qosStateFile,
+	"checkpointFile":         checkpointFile,
+	"supportKeyFile":         supportKeyFile,
+	"diskChangeRequest":      diskChangeRequest,
+	"diskChangeLast":         diskChangeLast,
+	"netplanFile":            netplanFile,
+	"netplanBackup":          netplanBackup,
+	"keaConfigFile":          keaConfigFile,
+	"keaDropInFile":          keaDropInFile,
+	"unboundFile":            unboundFile,
+	"resolvedDropIn":         resolvedDropIn,
+	"pppoePeerPath":          pppoePeerPath,
+	"nmConnFile":             nmConnFile,
+	"nmDropInFile":           nmDropInFile,
+	"linkLocalNMFile":        linkLocalNMFile,
+	"linklocal.go: dropIn":   linkLocalNetworkdDir + "/10-netplan-ens4.network.d/" + linkLocalDropInName,
+	"linklocal.go: path":     linkLocalNetworkdDir + "/" + linkLocalOwnPrefix + "ens4.network",
+	"updatesConfPath":        updatesConfPath,
+	"updatesPauseConfPath":   updatesPauseConfPath,
+	"updatesChoiceFile":      updatesChoiceFile,
+	"aptSourcePath":          aptSourcePath,
+	"policyStatePath":        policyStatePath,
+	"releaseGoodFile":        releaseGoodFile,
+	"probationFile":          probationFile,
+	"hostCacheFile":          hostCacheFile,
+	"rollbackIntentFile":     rollbackIntentFile,
+	"rollbackOutcomeFile":    rollbackOutcomeFile,
+	"panelDBPath":            panelDBPath,
+	"panelDBPath + \"-wal\"": panelDBPath + "-wal",
+	"panelDBPath + \"-shm\"": panelDBPath + "-shm",
+	"probation.go: dst":      heldDebDir + "/vpn-panel_0.3.3.deb",
+	"tempKeyPath":            tempKeyPath,
+	"tempKeyConf":            tempKeyConf,
+	"livePath()":             livePath(),
+	"ovpnLivePath()":         ovpnLivePath(),
 
 	"compose.go: c.path":                   netFactsFile,
 	"support.go: p":                        supportDir + "/" + supportPrefix + "20261003-120000.txt",
@@ -52,6 +65,21 @@ var written = map[string]string{
 	"pppoe.go: path":                       pppoeChapSecret,
 	"pppoe.go: f.path":                     pppoePapSecret,
 	"pppoe.go: f.path + pppoeBackupSuffix": pppoeChapSecret + pppoeBackupSuffix,
+	"pppoeFailFile":                        pppoeFailFile,
+
+	"takeover.go: journal":    takeoverJournalFile,
+	"takeover.go: saved":      takeoverAsideDir + "/x",
+	"takeover_exec.go: saved": takeoverAsideDir + "/x",
+}
+
+var foreignWritten = map[string]string{
+	"takeover.go: path":          "возврат на место файла, ушедшего в сторону на время окна: чужой файл Netplan",
+	"takeover_exec.go: path":     "чужой файл по плану журнала: уходит в сторону или в копию, правится построчно (crontab, sudoers, sysctl, юниты, Netplan, udev, сценарии)",
+	"takeover_exec.go: src":      "удаление чужого файла после копии: оригинал или его копия в стороне",
+	"takeover_exec.go: dup":      "резервная копия старого шлюза: остаётся навсегда, удаление пакета её не трогает намеренно",
+	"takeover_exec.go: manifest": "опись резервной копии старого шлюза рядом с файлами",
+	"takeover_home.go: dup":      "копия vpn.sh в резервной копии старого шлюза",
+	"takeover_home.go: path":     "заглушка на месте vpn.sh в домашнем каталоге",
 }
 
 func TestEveryWrittenFileIsInRegistry(t *testing.T) {
@@ -94,7 +122,9 @@ func TestEveryWrittenFileIsInRegistry(t *testing.T) {
 			if _, ok := written[key]; !ok {
 				key = name + ": " + expr
 			}
-			if _, ok := written[key]; !ok {
+			_, own := written[key]
+			_, foreign := foreignWritten[key]
+			if !own && !foreign {
 				t.Errorf("%s: надёжная запись по пути %q не описана — добавьте файл в реестр и в таблицу теста", name, expr)
 				return true
 			}
@@ -109,6 +139,17 @@ func TestEveryWrittenFileIsInRegistry(t *testing.T) {
 		}
 		if !managed(sample) {
 			t.Errorf("путь %s (%s) не в реестре файлов службы", sample, key)
+		}
+	}
+	for key, reason := range foreignWritten {
+		if !seen[key] {
+			stale = append(stale, key)
+		}
+		if strings.TrimSpace(reason) == "" {
+			t.Errorf("запись в чужой файл %s без причины", key)
+		}
+		if _, dup := written[key]; dup {
+			t.Errorf("%s и в своих, и в чужих записях", key)
 		}
 	}
 	sort.Strings(stale)

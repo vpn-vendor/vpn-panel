@@ -17,7 +17,8 @@ ALLOW=""
 
 # Допустимые адреса: имена служб, служебные адреса хостинга кода и примеры.
 # Свои — из списка рядом со сценарием, если он есть.
-MAIL_OK='@vpn-panel\.service|@N\.service|@github\.com|@users\.noreply\.github\.com|example\.'
+# Экземпляр службы systemd (имя@экземпляр.service) — не адрес почты.
+MAIL_OK='@[[:alnum:]_-]+\.service|@github\.com|@users\.noreply\.github\.com|example\.'
 [ -f scripts/check-leaks.mail ] && MAIL_OK="$MAIL_OK|$(grep -vE '^[[:space:]]*(#|$)' scripts/check-leaks.mail | paste -sd'|')"
 
 scan() { # $1 — категория; со stdin читает вывод grep -n, пишет "  файл:строка [категория]"

@@ -30,10 +30,14 @@ override_dh_auto_install: $(INSTALL_PARTS)
 execute_after_dh_install:
 	dh_installsysusers
 
-# Пять systemd-юнитов одного пакета: dh_installsystemd вызывается по имени.
+# Шесть systemd-юнитов одного пакета: dh_installsystemd вызывается по имени.
+# Юнит отката ставит пакет сам, поэтому пакет его не трогает: без -r debhelper
+# кладёт в preinst остановку юнита при обновлении, и откат убивал бы сам себя
+# посреди dpkg.
 override_dh_installsystemd:
 	dh_installsystemd --name=vpn-panel-firewall
 	dh_installsystemd --name=vpn-panel-disk-setup --no-start
 	dh_installsystemd --name=vpn-panel-disk-change --no-start
+	dh_installsystemd --name=vpn-panel-rollback --no-start --no-stop-on-upgrade
 	dh_installsystemd --name=vpn-agent
 	dh_installsystemd --name=vpn-panel

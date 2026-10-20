@@ -1,0 +1,25 @@
+{{ define "components/takeover-list" }}
+
+<div class="choice" role="group" aria-label="Что выключит панель">
+    {{ $l := . }}
+    {{ range .Items }}
+    {{ if .Locked }}
+    <div class="choice-item choice-item-locked">
+        <span class="choice-input choice-lock" aria-hidden="true">{{ template "components/icon" "lock" }}</span>
+        <span class="choice-body">
+            <span class="choice-label">{{ .Title }} <span class="tag">остаётся</span></span>
+            <span class="choice-hint">{{ .Found }}</span>
+        </span>
+    </div>
+    {{ else }}
+    <label class="choice-item" for="{{ $l.Field . }}">
+        <input class="choice-input" type="checkbox" id="{{ $l.Field . }}" name="{{ $l.Field . }}" value="1"{{ if .Checked }} checked{{ end }}>
+        <span class="choice-body">
+            <span class="choice-label">{{ .Title }}</span>
+            <span class="choice-hint">{{ .Found }}</span>
+        </span>
+    </label>
+    {{ end }}
+    {{ end }}
+</div>
+{{ end }}

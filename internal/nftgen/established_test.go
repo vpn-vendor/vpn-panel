@@ -35,14 +35,14 @@ func TestEstablishedBoundToPath(t *testing.T) {
 		"защищённый": {blackPlan(), `oifname { "ens4", "wg-vpn0" }`},
 		"прямой":     {white, `oifname { "ens3", "ens4" }`},
 	} {
-		out := string(c.plan.Generate())
+		out := string(c.plan.Generate(Caps{}))
 		fwd := establishedLines(chainBody(t, out, "forward"))
 		if len(fwd) != 1 || !strings.Contains(fwd[0], c.allowed) {
 			t.Errorf("%s: продолжение транзита не по разрешённому пути: %q", name, fwd)
 		}
 	}
 	black := blackPlan()
-	out := string(black.Generate())
+	out := string(black.Generate(Caps{}))
 	for _, ln := range establishedLines(chainBody(t, out, "forward")) {
 		if strings.Contains(ln, `"ens3"`) {
 			t.Errorf("защищённый режим: продолжение транзита к провайдеру: %s", ln)

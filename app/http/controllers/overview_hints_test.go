@@ -49,8 +49,19 @@ func TestOverviewEveryIndicatorExplained(t *testing.T) {
 				t.Errorf("%s: у светофора «%s» есть фраза «не отвечает», но нет совета к ней", name, l.Text)
 			}
 		}
-		for _, grid := range []string{"bands", "sparks"} {
-			for _, c := range data[grid].(ui.ChartGrid).Cards {
+		charts := append([]ui.ChartCard{}, data["traffic"].(ui.ChartGrid).Cards...)
+		charts = append(charts, data["work"].(ui.PultWork).Tiles.Cards...)
+		charts = append(charts, data["trio"].(ui.PultTrio).LAN)
+		for _, g := range data["gauges"].(ui.GaugeGrid).Gauges {
+			if strings.TrimSpace(g.Note) == "" && strings.TrimSpace(g.Empty) == "" {
+				t.Errorf("%s: у кольца «%s» нет пояснения", name, g.Title)
+			}
+		}
+		if sc := data["trio"].(ui.PultTrio).Score; strings.TrimSpace(sc.Note) == "" || strings.TrimSpace(sc.Empty) == "" {
+			t.Errorf("%s: у оценки звонков нет пояснения", name)
+		}
+		for range []int{0} {
+			for _, c := range charts {
 				if strings.TrimSpace(c.Note) == "" {
 					t.Errorf("%s: у графика «%s» нет пояснения", name, c.Title)
 				}

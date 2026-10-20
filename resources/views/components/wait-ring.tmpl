@@ -1,0 +1,12 @@
+{{ define "components/wait-ring" }}
+<div class="wr wr-{{ .Tone }}" data-wait-ring>
+    <svg class="wr-svg" viewBox="0 0 120 120" aria-hidden="true" focusable="false">
+        <circle class="wr-track" cx="60" cy="60" r="52"/>
+        <circle class="wr-bar" cx="60" cy="60" r="52" pathLength="100" stroke-dasharray="{{ .Dash }} 100" transform="rotate(-90 60 60)" data-wait-bar/>
+    </svg>
+    <div class="wr-text" role="timer" aria-live="off">
+        <span class="wr-big" data-wait-big>{{ .Big }}</span>
+        <span class="wr-small" data-wait-small>{{ .Small }}</span>
+    </div>
+</div>
+{{ end }}

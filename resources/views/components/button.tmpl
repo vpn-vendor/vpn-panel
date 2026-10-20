@@ -2,5 +2,5 @@
 <button class="{{ .Class }}" type="{{ .ButtonType }}"
         {{ if .Name }}name="{{ .Name }}"{{ end }}
         {{ if .Value }}value="{{ .Value }}"{{ end }}
-        {{ if .Disabled }}disabled{{ end }}>{{ .Label }}</button>
+        {{ if .Disabled }}disabled{{ end }}>{{ if .Icon }}{{ template "components/icon" .Icon }}{{ end }}{{ .Label }}</button>
 {{ end }}

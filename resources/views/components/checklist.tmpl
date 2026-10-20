@@ -1,0 +1,43 @@
+{{ define "components/checklist" }}
+
+<section class="card checklist" id="{{ .ID }}" data-checklist="{{ .ID }}" data-cl-view="{{ .View }}">
+    <div class="cl-full">
+        <div class="card-head">
+            <div>
+                <h2>{{ .Title }} <span class="tag">сделано {{ .DoneCount }} из {{ len .Steps }}</span></h2>
+                {{ if .Text }}<p class="muted card-sub">{{ .Text }}</p>{{ end }}
+            </div>
+            <div class="cl-tools">
+                <button type="button" class="nav-tool" data-cl-set="bar" aria-label="Свернуть помощь" title="Свернуть" hidden>{{ template "components/icon" "chevron" }}</button>
+                <button type="button" class="nav-tool" data-cl-set="hidden" aria-label="Скрыть помощь" title="Скрыть: вернуть можно кнопкой «Показать»" hidden>{{ template "components/icon" "close" }}</button>
+            </div>
+        </div>
+        <ol class="cl">
+            {{ range .Steps }}
+            <li class="{{ .Class }}"{{ if .Current }} aria-current="step"{{ end }}>
+                <span class="cl-mark" aria-hidden="true">{{ if eq .State "done" }}{{ template "components/icon" "check" }}{{ end }}</span>
+                <div class="cl-body">
+                    <p class="cl-title">{{ .Title }}{{ if eq .State "done" }} <span class="visually-hidden">— сделано</span>{{ end }}</p>
+                    {{ if .Text }}<p class="cl-text">{{ .Text }}</p>{{ end }}
+                    {{ if .Current }}{{ if or .Link .Action }}<div class="cl-act">
+                        {{ with .Link }}<a class="btn btn-small" href="{{ .URL }}">{{ if .Icon }}{{ template "components/icon" .Icon }}{{ end }}{{ .Label }}</a>{{ end }}
+                        {{ with .Action }}{{ template "components/action-form" . }}{{ end }}
+                    </div>{{ end }}{{ end }}
+                </div>
+            </li>
+            {{ end }}
+        </ol>
+    </div>
+    {{ $cur := .CurrentStep }}
+    <div class="cl-bar" role="group" aria-label="{{ .Title }}, строкой">
+        <strong class="cl-bar-title">{{ .Title }}</strong>
+        <span class="cl-segs" aria-hidden="true">{{ range .Steps }}<span class="cl-seg cl-seg-{{ .State }}"></span>{{ end }}</span>
+        <span class="cl-now">сделано {{ .DoneCount }} из {{ len .Steps }} · сейчас: <strong>{{ $cur.Title }}</strong></span>
+        {{ with $cur.Link }}<a class="btn btn-small" href="{{ .URL }}">{{ .Label }}</a>{{ end }}
+        {{ with $cur.Action }}{{ template "components/action-form" . }}{{ end }}
+        <button type="button" class="nav-tool" data-cl-set="full" aria-label="Развернуть помощь" title="Развернуть" hidden>{{ template "components/icon" "chevron" }}</button>
+        <button type="button" class="nav-tool" data-cl-set="hidden" aria-label="Скрыть помощь" title="Скрыть" hidden>{{ template "components/icon" "close" }}</button>
+    </div>
+    <button type="button" class="cl-pill" data-cl-set="full">{{ template "components/icon" "help" }}{{ .Title }} · сделано {{ .DoneCount }} из {{ len .Steps }} — показать</button>
+</section>
+{{ end }}

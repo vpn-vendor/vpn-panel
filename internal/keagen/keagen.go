@@ -8,6 +8,8 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 )
 
 const (
@@ -44,6 +46,25 @@ type LAN struct {
 	Name         string        `json:"name"`
 	CIDR         string        `json:"cidr"`
 	Reservations []Reservation `json:"reservations,omitempty"`
+}
+
+type Caps struct {
+	SocketRetry bool
+}
+
+var Options = []hostcaps.Option[Caps]{
+	{ID: "kea.socket_retry", Consumers: []string{"dhcp"}, Enable: func(c *Caps) { c.SocketRetry = true },
+		Title:   "Повтор открытия сокетов в службе DHCP",
+		Missing: "Служба DHCP этой версии не повторяет открытие сокетов сама. Если кабель локальной сети подключат позже, панель перезапустит службу. Делать ничего не нужно."},
+}
+
+func ProbePlan() Plan {
+	return Plan{
+		LANs: []LAN{{Name: "vp-probe0", CIDR: "192.0.2.1/24",
+			Reservations: []Reservation{{MAC: "02:00:00:00:00:01", IP: "192.0.2.50"}}}},
+		ValidLifetime: DefaultValidLifetime,
+		UseLocalDNS:   true,
+	}
 }
 
 type Plan struct {
@@ -158,8 +179,8 @@ type subnet struct {
 
 type interfacesConfig struct {
 	Interfaces           []string `json:"interfaces"`
-	SocketsMaxRetries    int      `json:"service-sockets-max-retries"`
-	SocketsRetryWaitTime int      `json:"service-sockets-retry-wait-time"`
+	SocketsMaxRetries    int      `json:"service-sockets-max-retries,omitempty"`
+	SocketsRetryWaitTime int      `json:"service-sockets-retry-wait-time,omitempty"`
 }
 
 type leaseDatabase struct {
@@ -194,7 +215,7 @@ type keaConfig struct {
 	Dhcp4 dhcp4 `json:"Dhcp4"`
 }
 
-func (p *Plan) Generate() ([]byte, error) {
+func (p *Plan) Generate(c Caps) ([]byte, error) {
 	lans := make([]LAN, len(p.LANs))
 	copy(lans, p.LANs)
 	sort.Slice(lans, func(a, b int) bool { return lans[a].Name < lans[b].Name })
@@ -253,8 +274,10 @@ func (p *Plan) Generate() ([]byte, error) {
 		})
 	}
 
-	cfg.Dhcp4.InterfacesConfig.SocketsMaxRetries = 20
-	cfg.Dhcp4.InterfacesConfig.SocketsRetryWaitTime = 5000
+	if c.SocketRetry {
+		cfg.Dhcp4.InterfacesConfig.SocketsMaxRetries = 20
+		cfg.Dhcp4.InterfacesConfig.SocketsRetryWaitTime = 5000
+	}
 
 	out, err := json.MarshalIndent(cfg, "", "  ")
 	if err != nil {

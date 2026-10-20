@@ -250,13 +250,75 @@ func Run(in Input) Report {
 			report.Level = byMAC[mac].Level
 		}
 	}
-	sort.SliceStable(report.Devices, func(i, j int) bool {
-		if ri, rj := levelRank(report.Devices[i].Level), levelRank(report.Devices[j].Level); ri != rj {
+	sortDevices(report.Devices)
+	return report
+}
+
+func sortDevices(ds []Device) {
+	sort.SliceStable(ds, func(i, j int) bool {
+		if ri, rj := levelRank(ds[i].Level), levelRank(ds[j].Level); ri != rj {
 			return ri > rj
 		}
-		return ipLess(report.Devices[i].IP, report.Devices[j].IP)
+		return ipLess(ds[i].IP, ds[j].IP)
 	})
-	return report
+}
+
+func ForeignDHCP(r Report, servers []string) Report {
+	known := map[string]bool{}
+	var list []string
+	for _, s := range servers {
+		ip := net.ParseIP(strings.TrimSpace(s))
+		if ip == nil || known[ip.String()] {
+			continue
+		}
+		known[ip.String()] = true
+		list = append(list, ip.String())
+	}
+	if len(list) == 0 {
+		return r
+	}
+	addrs := strings.Join(list, ", ")
+	devices := make([]Device, 0, len(r.Devices))
+	for _, d := range r.Devices {
+		var out []Diagnosis
+		ip := net.ParseIP(d.IP)
+		server := ip != nil && known[ip.String()]
+		if server {
+			out = append(out, Diagnosis{Code: "dhcp_server", Level: LevelWarn, Confidence: "высокая",
+				Title:  "Это устройство раздаёт адреса в сети офиса рядом со шлюзом.",
+				Advice: "Выключите на нём DHCP: адреса в офисе раздаёт шлюз."})
+		}
+		for _, x := range d.Diagnoses {
+			switch {
+			case server && (x.Code == "static_ip" || x.Code == "unknown_lease"):
+
+				continue
+			case x.Code == "unknown_lease":
+				x.Level, x.Confidence = LevelWarn, "средняя"
+				x.Title = "Адрес из диапазона шлюза, но шлюз его не выдавал. В сети офиса работает ещё один сервер DHCP (" + addrs +
+					"): скорее всего, адрес выдал он, и устройство может выходить в интернет мимо шлюза."
+				x.Advice = "Выключите DHCP на роутере или точке доступа " + addrs +
+					", потом переподключите кабель устройства или перезагрузите его."
+			case x.Code == "static_ip":
+				x.Title += " Возможно, адрес выдал второй сервер DHCP в сети офиса (" + addrs + ")."
+			case x.Code == "foreign_dns":
+				x.Title += " Возможно, этот DNS устройству выдал второй сервер DHCP в сети офиса (" + addrs + ")."
+			}
+			out = append(out, x)
+		}
+		d.Diagnoses = out
+		d.Level = maxLevel(out)
+		devices = append(devices, d)
+	}
+	sortDevices(devices)
+	r.Devices = devices
+	r.Level = maxLevel(r.Network)
+	for _, d := range devices {
+		if levelRank(d.Level) > levelRank(r.Level) {
+			r.Level = d.Level
+		}
+	}
+	return r
 }
 
 func (d *Device) add(x Diagnosis) { d.Diagnoses = append(d.Diagnoses, x) }

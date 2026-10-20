@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type Status struct {
@@ -14,12 +15,17 @@ type Status struct {
 }
 
 type Interface struct {
-	Name      string   `json:"name"`
-	MAC       string   `json:"mac,omitempty"`
+	Name string `json:"name"`
+
+	MAC string `json:"mac,omitempty"`
+
+	Presented string   `json:"presented_mac,omitempty"`
 	State     string   `json:"state"`
 	MTU       int      `json:"mtu"`
 	Loopback  bool     `json:"loopback"`
 	Addresses []string `json:"addresses"`
+
+	DHCPServer string `json:"dhcp_server,omitempty"`
 }
 
 type Route struct {
@@ -62,6 +68,7 @@ type ipAddr struct {
 	MTU       int      `json:"mtu"`
 	Operstate string   `json:"operstate"`
 	Address   string   `json:"address"`
+	PermAddr  string   `json:"permaddr"`
 	AddrInfo  []struct {
 		Family    string `json:"family"`
 		Local     string `json:"local"`
@@ -101,6 +108,9 @@ func Parse(addrJSON, routeJSON []byte) (*Status, error) {
 		}
 		if !iface.Loopback {
 			iface.MAC = a.Address
+			if a.PermAddr != "" && a.PermAddr != a.Address {
+				iface.MAC, iface.Presented = a.PermAddr, a.Address
+			}
 		}
 		for _, ai := range a.AddrInfo {
 			iface.Addresses = append(iface.Addresses,
@@ -117,4 +127,44 @@ func Parse(addrJSON, routeJSON []byte) (*Status, error) {
 		})
 	}
 	return status, nil
+}
+
+type Neighbor struct {
+	IP  string `json:"ip"`
+	Dev string `json:"dev"`
+	MAC string `json:"mac"`
+}
+
+type ipNeigh struct {
+	Dst    string `json:"dst"`
+	Dev    string `json:"dev"`
+	LLAddr string `json:"lladdr"`
+}
+
+func CollectNeighbors() ([]Neighbor, error) {
+	ipBin, err := findIPBinary()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := exec.Command(ipBin, "-json", "neigh", "show").Output() //nolint:gosec
+	if err != nil {
+		return nil, fmt.Errorf("ip neigh show: %w", err)
+	}
+	return ParseNeighbors(out)
+}
+
+func ParseNeighbors(raw []byte) ([]Neighbor, error) {
+	var rows []ipNeigh
+	if err := json.Unmarshal(raw, &rows); err != nil {
+		return nil, fmt.Errorf("parse ip neigh json: %w", err)
+	}
+	out := []Neighbor{}
+	for _, r := range rows {
+		if r.LLAddr == "" {
+			continue
+		}
+		out = append(out, Neighbor{IP: r.Dst, Dev: r.Dev, MAC: strings.ToLower(r.LLAddr)})
+	}
+	return out, nil
 }

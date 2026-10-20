@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/vpndriver"
 )
 
@@ -209,6 +210,7 @@ func TestGenerateStructuralGuards(t *testing.T) {
 	out := string(p.Generate(Render{
 		Iface: TunnelIface, Mark: vpndriver.Mark, MTU: 1448,
 		Remotes: []Remote{{Host: "192.0.2.10", Port: 1194}}, Management: "/run/x/mgmt.sock",
+		Caps: Caps{DNSUpdown: true},
 	}))
 	for _, want := range []string{
 		"dev ovpn-vpn0\n", "dev-type tun\n", "remote 192.0.2.10 1194 udp\n",
@@ -396,5 +398,59 @@ func TestMetaPortFromSeparateLine(t *testing.T) {
 	src = strings.Replace(vendorFile(), "remote vpn.example.net 1194\n", "remote vpn.example.net\n", 1)
 	if p, _, err = Parse(src); err != nil || p.Meta().EndpointPort != DefaultPort {
 		t.Fatalf("без порта — умолчание %d: %v %v", DefaultPort, err, p.Meta().EndpointPort)
+	}
+}
+
+func TestDNSUpdownOnlyByCaps(t *testing.T) {
+	p, _, err := Parse(vendorFile())
+	if err != nil {
+		t.Fatal(err)
+	}
+	r := Render{Iface: TunnelIface, Mark: vpndriver.Mark, MTU: 1448}
+	without := string(p.Generate(r))
+	r.Caps = Caps{DNSUpdown: true}
+	with := string(p.Generate(r))
+	if strings.Contains(without, "dns-updown") {
+		t.Fatalf("без возможности строки быть не должно:\n%s", without)
+	}
+	if strings.Replace(with, "dns-updown disable\n", "", 1) != without {
+		t.Fatal("флаг обязан менять ровно одну строку")
+	}
+	for _, guard := range []string{"route-noexec\n", "route-nopull\n", `pull-filter ignore ""`} {
+		if !strings.Contains(without, guard) {
+			t.Errorf("без возможности пропала граница %q", guard)
+		}
+	}
+}
+
+func TestProbeCoversRender(t *testing.T) {
+	p, err := ProbeProfile()
+	if err != nil {
+		t.Fatalf("пробный профиль не разбирается: %v", err)
+	}
+	if zero := hostcaps.ZeroFields(ProbeRender(), "Caps"); len(zero) > 0 {
+		t.Fatalf("пробная сборка не задействует поля %v", zero)
+	}
+	var all Caps
+	for _, o := range Options {
+		before := all
+		o.Enable(&all)
+		if all == before {
+			t.Errorf("возможность %s ничего не включает", o.ID)
+		}
+	}
+	if zero := hostcaps.ZeroFields(all); len(zero) > 0 {
+		t.Fatalf("флаги %v не объявлены возможностями", zero)
+	}
+	if out := string(p.Generate(ProbeRender())); !strings.Contains(out, "<key>") || !strings.Contains(out, "management ") {
+		t.Fatalf("пробный файл неполный:\n%s", out)
+	}
+}
+
+func TestOptionsHaveTexts(t *testing.T) {
+	for _, o := range Options {
+		if o.Title == "" || o.Missing == "" {
+			t.Errorf("у возможности %s нет текста", o.ID)
+		}
 	}
 }

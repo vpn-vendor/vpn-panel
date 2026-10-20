@@ -1,0 +1,32 @@
+{{ define "security/policy" }}
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Политика защиты</h2>
+            <p class="muted card-sub">Что работает и что временно отключено аварийной мерой. Жёлтое вернётся само.</p>
+        </div>
+    </div>
+    {{ template "security/metrics" . }}
+    {{ template "security/access" . }}
+    {{ if .policyKnown }}
+        {{ if .policyAdvisory }}
+        <div class="setting tile">
+            <div><div class="setting-title">Сообщение площадки</div><p class="setting-text">{{ .policyAdvisory }}</p></div>
+            <div class="setting-ctl"><span class="tag tag-warn">к сведению</span></div>
+        </div>
+        {{ end }}
+        {{ range .policyActive }}
+        <div class="setting tile">
+            <div><div class="setting-title">{{ .Why }}</div><p class="setting-text">Аварийная мера против известной неполадки. Приходит подписанной с нашей площадки и снимается так же; вернётся само.</p></div>
+            <div class="setting-ctl"><span class="tag tag-warn">отключено</span></div>
+        </div>
+        {{ end }}
+        {{ if .policyAllClear }}
+        <div class="setting tile">
+            <div><div class="setting-title">Ограничения политики</div><p class="setting-text">Ничего не отключено — панель работает в обычном режиме.</p></div>
+            <div class="setting-ctl"><span class="tag tag-ok">нет</span></div>
+        </div>
+        {{ end }}
+    {{ end }}
+</section>
+{{ end }}

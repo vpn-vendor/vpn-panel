@@ -4,40 +4,60 @@
 {{ if .error }}<div class="alert alert-error">{{ .error }}</div>{{ end }}
 {{ if .ok }}<div class="alert alert-code">{{ .ok }}</div>{{ end }}
 
-<div class="card">
-    <h2>Имя панели в локальной сети</h2>
-    {{ if .ready }}
-    <p>Панель открывается по адресу <strong>https://{{ .domain }}</strong> с любого
-    устройства офиса — запоминать числовой адрес не нужно.</p>
-    {{ else }}
-    <p class="muted">Имя <code>{{ .domain }}</code> заработает после того, как
-    разрешение имён будет настроено и проверено.</p>
-    {{ end }}
+<div class="cols cols-main">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Имя панели в локальной сети</h2>
+            <p class="muted card-sub">С любого устройства офиса панель открывается по имени — числовой адрес запоминать не нужно.</p>
+        </div>
+        {{ if .ready }}<span class="tag tag-ok">работает</span>{{ else }}<span class="tag tag-warn">ещё не настроено</span>{{ end }}
+    </div>
+    <div class="code-box name-box">
+        <div class="code-big" id="panel-name">https://{{ .domain }}</div>
+        <button type="button" class="btn btn-secondary btn-small" data-copy="panel-name" hidden>{{ template "components/icon" "copy" }}<span data-copy-label>Скопировать адрес</span></button>
+    </div>
+    {{ if not .ready }}<p class="muted">Имя заработает, когда разрешение имён будет настроено и проверено.</p>{{ end }}
     {{ if .segments }}
-    <table>
-        <thead><tr><th>Сегмент</th><th>Адрес панели в нём</th></tr></thead>
-        <tbody>
-            {{ range .segments }}
-            <tr><td>{{ .Name }}</td><td><code>{{ .CIDR }}</code></td></tr>
-            {{ end }}
-        </tbody>
-    </table>
+    <h3>Адрес панели в каждом сегменте</h3>
+    <div class="item-grid item-grid-tight">
+        {{ range .segments }}
+        <div class="item-card"><div class="item-body"><span class="item-meta">{{ .Name }}</span><div class="item-title mono">{{ .CIDR }}</div></div></div>
+        {{ end }}
+    </div>
     {{ end }}
+</section>
 </div>
-
-<div class="card">
-    <h2>Как работают имена</h2>
-    <p class="muted">Запросы устройств офиса обрабатывает сам шлюз: ответы
-    кэшируются, поэтому страницы и звонки устанавливаются быстрее, а имена
-    продолжают работать при кратковременных сбоях у провайдера.</p>
+<div class="col">
+<section class="card">
+    <div class="card-head"><div><h2>Как работают имена</h2></div></div>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Ответы запоминаются</div>
+            <p class="setting-text">Запросы устройств офиса обрабатывает сам шлюз и кэширует ответы: страницы и звонки
+            устанавливаются быстрее, а имена работают при коротких сбоях у провайдера.</p>
+        </div>
+    </div>
     {{ if .addresses }}
-    <p class="muted">Служба отвечает только на адресах локальной сети и самого
-    сервера: {{ range .addresses }}<code>{{ . }}</code> {{ end }} — из интернета
-    она недоступна.</p>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Только для офиса</div>
+            <p class="setting-text">Служба отвечает на адресах локальной сети и самого сервера; из интернета она недоступна.</p>
+            <div class="choice-facts">{{ range .addresses }}<span class="tag mono">{{ . }}</span>{{ end }}</div>
+        </div>
+    </div>
     {{ end }}
-    <p class="muted">Внешние имена уточняются у публичных серверов
-    {{ range .upstream }}<code>{{ . }}</code> {{ end }}, а не у оборудования
-    провайдера — так запросы офиса не попадают к посторонним.</p>
+    <div class="setting setting-wide">
+        <div>
+            <div class="setting-title">Мимо провайдера</div>
+            <p class="setting-text">Внешние имена уточняются у публичных серверов, а не у оборудования провайдера —
+            запросы офиса не попадают к посторонним.</p>
+            <div class="choice-facts">{{ range .upstream }}<span class="tag mono">{{ . }}</span>{{ end }}</div>
+        </div>
+    </div>
+</section>
+</div>
 </div>
 
 {{ template "app-bottom" . }}

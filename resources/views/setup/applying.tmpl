@@ -1,0 +1,22 @@
+{{ define "setup/applying" }}
+{{ template "wizard-top" . }}
+<div data-island="applying" data-status="/setup/applying/status" data-state="{{ .wait.State }}">
+    <div class="wz-art-inline">{{ template "components/wait-ring" .wait }}</div>
+    <ol class="wz-checks" aria-label="Проверки">
+        {{ range .wait.Checks }}
+        <li class="wz-check wz-check-{{ .State }}" data-check="{{ .Key }}">
+            <span class="wz-check-mark" aria-hidden="true">{{ .Mark }}</span>
+            <span><strong data-check-title>{{ .Title }}</strong><span data-check-desc>{{ .Desc }}</span></span>
+        </li>
+        {{ end }}
+    </ol>
+    {{ if eq .wait.State "waiting" }}
+    <form method="post" action="/setup/applying/keep" id="keep-form">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    </form>
+    <p class="muted wz-keep-note">Провайдер подключит позже? Кнопка «Оставить настройки всё равно» закрепит их без ожидания адреса.
+    <a href="/setup/applying">Обновить страницу</a></p>
+    {{ end }}
+</div>
+{{ template "wizard-bottom" . }}
+{{ end }}

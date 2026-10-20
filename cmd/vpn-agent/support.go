@@ -158,6 +158,7 @@ var supportCollectors = map[string]func(c *supportRun){
 	},
 	"firewall": func(c *supportRun) {
 		c.cmd("правила", "nft", "list", "table", "inet", "vpn_panel")
+		c.cmd("наблюдение за раздачей адресов", "nft", "list", "table", "inet", "vpn_panel_dhcp")
 	},
 	"services": func(c *supportRun) {
 		c.cmd("службы", "systemctl", "--no-pager", "--plain", "list-units", "--type=service", "--all")

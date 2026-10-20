@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"github.com/vpn-vendor/vpn-panel-core/internal/durable"
 	"log"
@@ -43,6 +44,17 @@ type firewallApplier struct {
 	composer *modeComposer
 
 	intentBroken func() bool
+
+	caps hostCapsSource
+
+	awaiting func() bool
+
+	held heldState
+
+	guard tableGuard
+
+	dhcpBuilt *nftgen.DHCPWatch
+	dhcpReset bool
 }
 
 func newFirewallApplier() *firewallApplier { return &firewallApplier{} }
@@ -59,10 +71,13 @@ func (f *firewallApplier) restoreOnStart() {
 		log.Printf("firewall: nft not found, ruleset not restored")
 		return
 	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	if out, err := runStdin(nft, data, "-f", "-"); err != nil {
 		log.Printf("firewall: restore failed: %s", firstLine(out))
 		return
 	}
+	f.noteLoad(data)
 	f.applySysctl()
 	log.Printf("firewall: ruleset restored")
 }
@@ -260,12 +275,12 @@ func (f *firewallApplier) applyPlanDirect(plan nftgen.FirewallPlan) (bool, *agen
 	if rerr := validateFirewallPlan(&plan); rerr != nil {
 		return false, rerr
 	}
-	ruleset := plan.Generate()
 
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
-	if err := f.dryRun(ruleset); err != nil {
+	ruleset, err := f.render(plan)
+	if err != nil {
 		return false, &agentrpc.ErrorObject{Code: codeFwRules,
 			Message: "правила не прошли проверку: " + err.Error(),
 			Data:    map[string]any{"recoverable": false}}
@@ -274,6 +289,7 @@ func (f *firewallApplier) applyPlanDirect(plan nftgen.FirewallPlan) (bool, *agen
 	if err != nil {
 		return false, detailErr("не удалось применить правила защиты — попробуйте ещё раз; если повторяется, обратитесь в поддержку", err.Error(), true)
 	}
+	f.notePlan(plan)
 	return changed, nil
 }
 
@@ -296,6 +312,7 @@ func (f *firewallApplier) load(ruleset []byte) error {
 	if out, err := runStdin(nft, ruleset, "-f", "-"); err != nil {
 		return &textError{"nft load: " + firstLine(out)}
 	}
+	f.noteLoad(ruleset)
 	return nil
 }
 
@@ -335,7 +352,10 @@ func (f *firewallApplier) rollback(prev []byte, existed bool) {
 	if err != nil {
 		return
 	}
-	_ = exec.Command(nft, "delete", "table", "inet", "vpn_panel").Run() //nolint:gosec
+	_, _ = runStdin(nft, nil, "delete", "table", "inet", "vpn_panel")
+
+	f.held = heldState{gen: f.held.gen + 1}
+	f.guard.shape, f.guard.emergency = tableShape{}, false
 	log.Printf("firewall: table removed (no previous ruleset)")
 }
 
@@ -345,11 +365,15 @@ func (f *firewallApplier) firewallStatus(json.RawMessage) (any, *agentrpc.ErrorO
 		return nil, internalErr(errToolMissing, false)
 	}
 	leaked, watched := f.leakWatch()
+	g := f.guardView()
+
+	guard := map[string]any{"erased": g.erasures, "returned": g.returns, "emergency": g.emergency,
+		"forward_returned": g.fwdReturns}
 	out, err := exec.Command(nft, "list", "chain", "inet", "vpn_panel", "input").Output() //nolint:gosec
 	if err != nil {
 
 		return map[string]any{"input_filtered": false, "ping_answered": true, "ipv6_closed": false,
-			"leak_watch": false, "leaked_outbound": 0, "intent_broken": f.intentLost()}, nil
+			"leak_watch": false, "leaked_outbound": 0, "intent_broken": f.intentLost(), "guard": guard}, nil
 	}
 	text := string(out)
 	return map[string]any{
@@ -359,6 +383,7 @@ func (f *firewallApplier) firewallStatus(json.RawMessage) (any, *agentrpc.ErrorO
 		"leak_watch":      watched,
 		"leaked_outbound": leaked,
 		"intent_broken":   f.intentLost(),
+		"guard":           guard,
 	}, nil
 }
 
@@ -373,6 +398,7 @@ func (f *firewallApplier) applySysctl() {
 	if _, err := durable.WriteIfChanged(sysctlFile, []byte(sysctlContent), 0o644); err != nil {
 		log.Printf("firewall: sysctl file not saved: %v", err)
 	}
+	f.held.forward = true
 	if sysctl, err := findBinary([]string{"/usr/sbin/sysctl", "/sbin/sysctl"}); err == nil {
 		_ = exec.Command(sysctl, "-w", "net.ipv4.ip_forward=1").Run() //nolint:gosec
 
@@ -390,8 +416,11 @@ func (f *firewallApplier) captureUFW() string {
 	if strings.TrimSpace(string(state)) == "masked" {
 		return "masked"
 	}
-	if ufw, err := findBinary([]string{"/usr/sbin/ufw", "/sbin/ufw"}); err == nil {
-		_ = exec.Command(ufw, "disable").Run() //nolint:gosec
+
+	if ufwEnabled("/") {
+		if ufw, err := findBinary([]string{"/usr/sbin/ufw", "/sbin/ufw"}); err == nil {
+			_ = exec.Command(ufw, "disable").Run() //nolint:gosec
+		}
 	}
 	if err := exec.Command(systemctl, "mask", "ufw").Run(); err != nil { //nolint:gosec
 		log.Printf("firewall: mask ufw failed: %v", err)
@@ -427,6 +456,18 @@ func (e *textError) Error() string { return e.text }
 
 func runStdin(bin string, stdin []byte, args ...string) ([]byte, error) {
 	cmd := exec.Command(bin, args...) //nolint:gosec
-	cmd.Stdin = strings.NewReader(string(stdin))
-	return cmd.CombinedOutput()
+	cmd.Stdin = bytes.NewReader(stdin)
+	var out bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &out, &out
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+	noteChild(cmd.Process.Pid)
+	err := cmd.Wait()
+	return out.Bytes(), err
+}
+
+func ufwEnabled(root string) bool {
+	v := shellVarWords(filepath.Join(root, "etc/ufw/ufw.conf"), "ENABLED")
+	return len(v) == 1 && strings.EqualFold(v[0], "yes")
 }

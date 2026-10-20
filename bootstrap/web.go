@@ -1,6 +1,7 @@
 package bootstrap
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -24,6 +25,7 @@ import (
 	"github.com/vpn-vendor/vpn-panel-core/app/services/security"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/securitylog"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/settings"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/system"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/vpn"
 	"github.com/vpn-vendor/vpn-panel-core/internal/backupfile"
 	"github.com/vpn-vendor/vpn-panel-core/internal/devmode"
@@ -109,7 +111,19 @@ func Runners() []foundation.Runner {
 		restore.NewRunner(),
 
 		network.NewRunner(),
+
+		system.NewRunner(system.NewReconciler(map[settings.Section]system.Reapply{
+			settings.SectionDHCP: reapplyDHCP,
+		}), system.NewSurroundSync()),
 	}
+}
+
+func reapplyDHCP() error {
+	err := network.NewOrchestrator().ReapplyDHCP()
+	if errors.Is(err, network.ErrChangeInProgress) {
+		return system.ErrNotNow
+	}
+	return err
 }
 
 func requestTimeout() time.Duration {

@@ -1,29 +1,40 @@
 (function () {
     "use strict";
 
-    document.querySelectorAll("tr[data-iface] .js-role").forEach(function (sel) {
-        var row = sel.closest("tr");
+    document.querySelectorAll("[data-iface-row]").forEach(function (row) {
+        var radios = row.querySelectorAll(".js-role");
+        var lanBox = row.querySelector("[data-lan-cidr]");
         var lanCidr = row.querySelector(".js-lan-cidr");
         var wanNote = row.querySelector(".js-wan-note");
-        var name = "cidr_" + sel.getAttribute("data-iface");
+        var name = "cidr_" + row.getAttribute("data-iface-row");
+        function role() {
+            var v = "";
+            radios.forEach(function (r) { if (r.checked) { v = r.value; } });
+            return v;
+        }
         function sync() {
-            var isLan = sel.value === "lan";
-            var isWan = sel.value === "wan";
+            var isLan = role() === "lan";
+            var isWan = role() === "wan";
+            if (lanBox) { lanBox.hidden = !isLan; }
             if (lanCidr) {
-                lanCidr.hidden = !isLan;
 
                 lanCidr.name = isLan ? name : "";
             }
             if (wanNote) { wanNote.hidden = !isWan; }
         }
-        sel.addEventListener("change", sync);
+        radios.forEach(function (r) { r.addEventListener("change", sync); });
         sync();
     });
 
     var wan = document.querySelector(".wan-config");
     if (!wan) { return; }
 
-    var method = wan.querySelector(".js-wanmethod");
+    var methods = wan.querySelectorAll('input[name^="wanmethod_"]');
+    function methodValue() {
+        var v = "";
+        methods.forEach(function (r) { if (r.checked) { v = r.value; } });
+        return v;
+    }
     var stat = wan.querySelector(".js-static-fields");
     var pppoe = wan.querySelector(".js-pppoe-fields");
     var ip = wan.querySelector(".js-ip");
@@ -61,10 +72,10 @@
     }
 
     function syncMethod() {
-        stat.hidden = method.value !== "static";
-        if (pppoe) { pppoe.hidden = method.value !== "pppoe"; }
+        stat.hidden = methodValue() !== "static";
+        if (pppoe) { pppoe.hidden = methodValue() !== "pppoe"; }
     }
-    method.addEventListener("change", syncMethod);
+    methods.forEach(function (r) { r.addEventListener("change", syncMethod); });
     syncMethod();
 
     function prefixFromMask(v) {
@@ -117,7 +128,7 @@
     var form = wan.closest("form");
     if (form) {
         form.addEventListener("submit", function () {
-            if (method.value !== "static") { return; }
+            if (methodValue() !== "static") { return; }
             var v = ip.value.trim();
             if (v && v.indexOf("/") === -1) {
                 var p = prefixFromMask(mask.value);

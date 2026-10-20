@@ -28,6 +28,7 @@ func Boot() contractsfoundation.Application {
 				&commands.BackupConfirm{},
 				&commands.BackupRollback{},
 				&commands.BackupStatus{},
+				&commands.DBCheck{},
 			}
 		}).
 		WithRouting(func() {

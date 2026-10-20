@@ -18,7 +18,7 @@ func rulesWith(chain, suffix string) []string {
 
 func TestLeakWatchMirrorsOutput(t *testing.T) {
 	black := blackPlan()
-	out := string(black.Generate())
+	out := string(black.Generate(Caps{}))
 	allowed := rulesWith(chainBody(t, out, "output"), "accept")
 	exempt := rulesWith(chainBody(t, out, "leak_watch"), "return")
 	if len(allowed) < 4 || strings.Join(allowed, "\n") != strings.Join(exempt, "\n") {
@@ -42,7 +42,7 @@ func TestLeakWatchMirrorsOutput(t *testing.T) {
 
 func TestMarkKeptOnReplies(t *testing.T) {
 	black := blackPlan()
-	out := string(black.Generate())
+	out := string(black.Generate(Caps{}))
 	if !strings.Contains(chainBody(t, out, "mark_save"), "meta mark 0xca6c ct mark set meta mark") {
 		t.Error("метка исходящего не сохраняется в соединении")
 	}
@@ -51,7 +51,7 @@ func TestMarkKeptOnReplies(t *testing.T) {
 	}
 	white := blackPlan()
 	white.Tunnel = nil
-	wout := string(white.Generate())
+	wout := string(white.Generate(Caps{}))
 	for _, name := range []string{"leak_watch", "mark_save", "mark_restore"} {
 		if strings.Contains(wout, "chain "+name+" {") {
 			t.Errorf("в прямом режиме цепочки %s быть не должно", name)

@@ -2,6 +2,15 @@
 Description=VPN Panel web interface
 Wants=vpn-agent.service
 After=vpn-agent.service network.target
+# Нижний сторож (жгут, Уровень 3): systemd зовёт юнит отката на каждом падении,
+# а тот сам смотрит, исчерпан ли предел стартов. Тупой стабильный пол на
+# случай, когда наблюдатель в агенте работать не может.
+OnFailure=vpn-panel-rollback.service
+# Предел стартов — единственное место этих чисел: агент читает их из systemd.
+# Класс: поведение человека (столько падений подряд он назовёт циклом) и
+# время. Штатные 5 за 10 с с паузой 2 с недостижимы арифметически.
+StartLimitIntervalSec=10min
+StartLimitBurst=5
 
 [Service]
 Type=simple
@@ -34,7 +43,9 @@ NoNewPrivileges=yes
 ProtectSystem=strict
 ProtectHome=yes
 PrivateTmp=yes
-Restart=on-failure
+# always: демон сам не выходит; чистый выход после обновления — такая же
+# поломка, как падение. Явный stop systemd не перезапускает.
+Restart=always
 RestartSec=2
 
 [Install]

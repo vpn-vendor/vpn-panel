@@ -12,268 +12,288 @@
 </div>
 {{ end }}
 
-<div class="card">
-    <h2>Сеть офиса со стороны сервера</h2>
-    {{ if .network }}
+<section class="card hero-card hero-row">
+    {{ template "components/hero-status" .hero }}
+    <div class="hero-actions">
+        <form method="post" action="/diagnostics/probe" class="inline-form">
+            <input type="hidden" name="_csrf" value="{{ .csrf }}">
+            <button type="submit" class="btn" {{ if or (not .activeProbes) .probeRunning }}disabled{{ end }}>Проверить сеть офиса</button>
+        </form>
+        {{ if .probeRunning }}<span class="tag tag-warn" data-probe-running>идёт проверка — страница обновится сама</span>{{ end }}
+    </div>
     {{ range .network }}
-    <div class="alert alert-{{ if eq .Level "error" }}error{{ else }}warn{{ end }}">
-        <strong>{{ .Title }}</strong> {{ .Advice }}
-        <span class="muted">Достоверность: {{ .Confidence }}.</span>
+    <div class="finding finding-{{ .Level }}">
+        <div class="finding-title">{{ .Title }}</div>
+        <p>{{ .Advice }}</p>
+        <p class="finding-action">Достоверность: {{ .Confidence }}.</p>
     </div>
     {{ end }}
-    {{ else }}
-    <p><span class="state-up">Карта локальной сети сервера работает без ошибок.</span></p>
-    {{ end }}
-    <p class="muted">Скорость и очереди на пути до каждого компьютера меряются
-    <strong>с самого компьютера</strong>: откройте на нём адрес
-    <code>pc/</code> и нажмите «Проверить скорость до сервера». Результат
-    появится в строке устройства ниже.</p>
+</section>
+
+<div class="cols cols-main">
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Проверки</h2>
+            <p class="muted card-sub">Что разрешено проверять и когда. У каждой проверки — чего она стоит офису.</p>
+        </div>
+    </div>
+    <form method="post" action="/diagnostics/settings" data-autosubmit>
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <div class="tile-stack">
+            {{ template "components/switch-row" .switchProbes }}
+            {{ template "components/switch-row" .switchSelfLabel }}
+        </div>
+        <div class="btn-row" data-nojs><button type="submit" class="btn btn-secondary btn-small">Сохранить</button></div>
+    </form>
+
+    <div class="setting tile setting-wide">
+        <div>
+            <div class="setting-title">Окно проверок скорости
+                {{ if .windowOpen }}<span class="tag tag-ok">открыто до {{ .windowUntil }}</span>{{ else }}<span class="tag">закрыто</span>{{ end }}
+                <span class="tag tag-warn">забивает канал</span>
+            </div>
+            {{ if .windowOpen }}
+            <p class="setting-text">Осталось {{ .windowLeft }}{{ if .windowFull }}, полный замер разрешён{{ end }}.
+            {{ $.roleJunior.Plural }} могут запускать проверку со своих компьютеров; срок считается от открытия и запросами не продлевается.</p>
+            {{ else }}
+            <p class="setting-text">Проверки скорости {{ $.roleJunior.PluralDat }} выключены — это состояние по умолчанию. Откройте окно на срок, когда нужна
+            диагностика: внутри него действуют все предохранители — быстрый режим, перерыв между проверками на весь офис,
+            отказ при занятом сервере, запись в журнал при старте.</p>
+            {{ end }}
+        </div>
+        <details class="fold">
+            <summary>{{ template "components/icon" "chevron" }}{{ if .windowOpen }}Продлить или закрыть{{ else }}Открыть окно{{ end }}</summary>
+            <div class="fold-body">
+                {{ if .windowOpen }}
+                <form method="post" action="/diagnostics/window">
+                    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                    {{ template "components/select" .selectWindowExtend }}
+                    <div class="btn-row">{{ template "components/button" .buttonWindowExtend }}{{ template "components/button" .buttonWindowClose }}</div>
+                </form>
+                {{ else }}
+                <form method="post" action="/diagnostics/window">
+                    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                    {{ template "components/select" .selectWindowOpen }}
+                    {{ template "components/toggle" .toggleWindowFull }}
+                    {{ template "components/button" .buttonWindowOpen }}
+                </form>
+                {{ end }}
+                <form method="post" action="/diagnostics/window" data-unsaved>
+                    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                    <input type="hidden" name="action" value="max">
+                    {{ template "components/field" .fieldWindowMax }}
+                    {{ template "components/button" .buttonWindowMax }}
+                </form>
+            </div>
+        </details>
+    </div>
+
+    <div class="setting tile setting-wide">
+        <div>
+            <div class="setting-title">Полная проверка сети
+                {{ if .fullCheck }}<span class="tag tag-error">идёт до {{ .fullCheckUntil }}</span>{{ end }}
+                <span class="tag tag-error">звонки не гарантируются</span>
+            </div>
+            {{ if .fullCheck }}
+            <p class="setting-text">Осталось {{ .fullCheckLeft }}. Сняты все пределы проверки скорости; пределы вернутся сами по сроку.
+            {{ if .fullLoadKnown }}Нагрузка сервера сейчас: процессор {{ .fullLoadCPU }} %, ожидание процессора {{ .fullLoadPSI }} %, порт LAN {{ .fullLoadLAN }} Мбит/с.{{ end }}</p>
+            {{ else }}
+            <p class="setting-text">Когда обычных пределов не хватает: на выбранный срок снимаются <strong>все</strong> пределы проверки скорости.
+            Остаются только срок с автоматическим возвратом, «Остановить» и журнал. На слабом сервере проверка может упереться
+            в процессор или порт — это тоже находка.
+            {{ if .fullLoadKnown }}Нагрузка сейчас: процессор {{ .fullLoadCPU }} %, ожидание {{ .fullLoadPSI }} %, порт LAN {{ .fullLoadLAN }} Мбит/с.{{ else }}Датчики защиты без свежих данных — нагрузка неизвестна.{{ end }}</p>
+            {{ end }}
+        </div>
+        {{ if .fullCheck }}
+        <form method="post" action="/diagnostics/fullcheck" class="btn-row">
+            <input type="hidden" name="_csrf" value="{{ .csrf }}">
+            {{ template "components/button" .buttonFullStop }}
+        </form>
+        {{ else }}
+        <details class="fold">
+            <summary>{{ template "components/icon" "chevron" }}Начать полную проверку</summary>
+            <form method="post" action="/diagnostics/fullcheck" class="fold-body">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                {{ template "components/select" .selectFullCheck }}
+                {{ template "components/toggle" .toggleFullConsent }}
+                {{ template "components/button" .buttonFullStart }}
+            </form>
+        </details>
+        {{ end }}
+    </div>
+    <p class="muted">Скорость и очереди на пути до каждого компьютера меряются <strong>с самого компьютера</strong>:
+    откройте на нём адрес <code>pc/</code> и нажмите «Проверить скорость до сервера». Результат появится в строке устройства.</p>
+</section>
 </div>
 
-<div class="card">
-    <h2>Устройства</h2>
-    <form method="post" action="/diagnostics/probe">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <button type="submit" class="btn" {{ if or (not .activeProbes) .probeRunning }}disabled{{ end }}>Проверить сеть офиса</button>
-        {{ if .probeRunning }}<span class="alert alert-warn" data-probe-running>Идёт проверка — страница обновится сама.</span>{{ end }}
-        <span class="muted">Проба потерь и задержки до каждого известного устройства
-        (несколько секунд, незаметно для звонков).{{ if .probedAt }} Последняя проверка: {{ .probedAt }}.{{ end }}</span>
-    </form>
+<div class="col">
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Устройства {{ if .devices }}<span class="tag">{{ len .devices }}</span>{{ end }}</h2>
+            <p class="muted card-sub">Потери и задержка до каждого устройства с точки зрения сервера. Раскройте строку —
+            там диагнозы и подпись устройства.</p>
+        </div>
+    </div>
     {{ if .devices }}
-    <table>
-        <thead><tr><th></th><th>Устройство</th><th>Адрес</th><th>Аппаратный адрес</th><th>Выдача</th><th>Проверка</th><th>Скорость до сервера</th></tr></thead>
-        <tbody>
-            {{ range .devices }}
-            <tr>
-                <td><span class="light light-{{ .Level }}" title="{{ .Level }}"></span></td>
-                <td>
-                    <details>
-                        <summary>
-                            {{ if .Label }}<strong>{{ .Label }}</strong>{{ else }}<strong>{{ if .Hostname }}{{ .Hostname }}{{ else }}без имени{{ end }}</strong>{{ end }}
-                            {{ if .Location }}<span class="muted">· {{ .Location }}</span>{{ end }}
-                            {{ if .Owner }}<span class="muted">· {{ .Owner }}</span>{{ end }}
-                            {{ if .HasProposal }}<span class="tag">есть предложение</span>{{ end }}
-                        </summary>
-                        <p class="muted">Имя компьютера: <code>{{ if .Hostname }}{{ .Hostname }}{{ else }}—{{ end }}</code>
-                        {{ if .Vendor }}· производитель: {{ .Vendor }}{{ end }}
-                        · впервые {{ .FirstSeen }}, последний раз {{ .LastSeen }}
-                        {{ if not .Online }}· <span class="state-down">сейчас не в сети</span>{{ end }}</p>
-                        {{ if .Diagnoses }}
-                        {{ range .Diagnoses }}
-                        <div class="notice notice-{{ .Level }}">
-                            <strong>{{ .Title }}</strong> {{ .Advice }}
-                            <span class="muted">Достоверность: {{ .Confidence }}.</span>
-                        </div>
-                        {{ end }}
-                        {{ else }}
-                        <p><span class="state-up">Со стороны сети признаков проблем нет.</span></p>
-                        {{ end }}
-                        {{ if .Note }}<p class="muted">Заметка: {{ .Note }}</p>{{ end }}
-                        <p class="muted">{{ template "components/icon" "eye" }} Сотрудник увидит:
-                        {{ if .Preview }}<strong>{{ .Preview }}</strong>{{ else }}только номер устройства{{ end }}{{ if .Legacy }}
-                        <span class="tag">прежняя подпись — пересмотрите</span>{{ end }}</p>
-                        <form method="post" action="/diagnostics/label" class="inline-form">
-                            <input type="hidden" name="_csrf" value="{{ $.csrf }}">
-                            <input type="hidden" name="mac" value="{{ .MAC }}">
-                            <label>{{ template "components/icon" "eye" }} Видно сотруднику <input name="public_label" value="{{ .PublicLabel }}" maxlength="120" placeholder="ПК Ирины, бухгалтерия"></label>
-                            <label>{{ template "components/icon" "lock" }} Название <input name="label" value="{{ .Label }}" maxlength="40" placeholder="ПК Ирины"></label>
-                            <label>{{ template "components/icon" "lock" }} Где стоит <input name="location" value="{{ .Location }}" maxlength="60" placeholder="бухгалтерия, правый угол"></label>
-                            <label>{{ template "components/icon" "lock" }} Кому принадлежит <input name="owner" value="{{ .Owner }}" maxlength="40" placeholder="Ирина"></label>
-                            <label>{{ template "components/icon" "lock" }} Заметка <input name="note" value="{{ .Note }}" maxlength="120"></label>
-                            <button type="submit" class="btn btn-small">Сохранить подпись</button>
-                        </form>
-                        <p class="muted">Поле со значком глаза видит сотрудник на странице «Это я»; поля с замком — только администратор здесь.</p>
-                    </details>
-                </td>
-                <td><code>{{ .IP }}</code></td>
-                <td><code>{{ .MAC }}</code>{{ if .RandomMAC }} <span class="tag">случайный</span>{{ end }}</td>
-                <td>{{ if .Managed }}автоматически{{ else }}<span class="state-down">вручную</span>{{ end }}</td>
-                <td>{{ if .ProbeText }}{{ .ProbeText }}{{ else }}—{{ end }}</td>
-                <td>{{ if .LanText }}{{ .LanText }}{{ else }}—{{ end }}</td>
-            </tr>
-            {{ end }}
-        </tbody>
-    </table>
+    <div class="dev-list">
+        {{ range .devices }}
+        <details class="dev-row">
+            <summary>
+                <span class="light light-{{ .Level }}" aria-hidden="true"></span>
+                <span class="dev-main">
+                    <span class="dev-name">{{ if .Label }}{{ .Label }}{{ else if .Hostname }}{{ .Hostname }}{{ else }}без имени{{ end }}
+                        {{ if .HasProposal }}<span class="tag tag-warn">есть предложение</span>{{ end }}
+                        {{ if not .Managed }}<span class="tag tag-warn">адрес вручную</span>{{ end }}</span>
+                    <span class="dev-meta">{{ .IP }} · {{ .MAC }}{{ if .RandomMAC }} · случайный адрес{{ end }}{{ if not .Online }} · не в сети с {{ .LastSeen }}{{ end }}</span>
+                </span>
+                <span class="dev-probe">{{ if .ProbeText }}{{ .ProbeText }}{{ else }}—{{ end }}</span>
+            </summary>
+            <div class="dev-body">
+                <p class="muted">Имя компьютера: <code>{{ if .Hostname }}{{ .Hostname }}{{ else }}—{{ end }}</code>
+                {{ if .Vendor }}· {{ .Vendor }}{{ end }} · впервые {{ .FirstSeen }}, последний раз {{ .LastSeen }}
+                {{ if .LanText }}· скорость до сервера {{ .LanText }}{{ end }}</p>
+                {{ range .Diagnoses }}
+                <div class="finding finding-{{ .Level }}">
+                    <div class="finding-title">{{ .Title }}</div>
+                    <p>{{ .Advice }}</p>
+                    <p class="finding-action">Достоверность: {{ .Confidence }}.</p>
+                </div>
+                {{ else }}
+                <p><span class="tag tag-ok">со стороны сети признаков проблем нет</span></p>
+                {{ end }}
+                {{ if .Note }}<p class="muted">Заметка: {{ .Note }}</p>{{ end }}
+                <p class="muted">{{ template "components/icon" "eye" }} {{ $.roleJunior.Nom }} увидит:
+                {{ if .Preview }}<strong>{{ .Preview }}</strong>{{ else }}только номер устройства{{ end }}{{ if .Legacy }}
+                <span class="tag tag-warn">прежняя подпись — пересмотрите</span>{{ end }}</p>
+                <form method="post" action="/diagnostics/label">
+                    <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+                    <input type="hidden" name="mac" value="{{ .MAC }}">
+                    <div class="flow-fields">
+                        <label>{{ template "components/icon" "eye" }} Видно {{ $.roleJunior.Dat }} <input name="public_label" value="{{ .PublicLabel }}" maxlength="120" placeholder="ПК Ирины, бухгалтерия"></label>
+                        <label>{{ template "components/icon" "lock" }} Название <input name="label" value="{{ .Label }}" maxlength="40" placeholder="ПК Ирины"></label>
+                        <label>{{ template "components/icon" "lock" }} Где стоит <input name="location" value="{{ .Location }}" maxlength="60" placeholder="бухгалтерия, правый угол"></label>
+                        <label>{{ template "components/icon" "lock" }} Кому принадлежит <input name="owner" value="{{ .Owner }}" maxlength="40" placeholder="Ирина"></label>
+                        <label>{{ template "components/icon" "lock" }} Заметка <input name="note" value="{{ .Note }}" maxlength="120"></label>
+                    </div>
+                    <div class="btn-row">
+                        <button type="submit" class="btn btn-small">Сохранить подпись</button>
+                        <span class="muted">Поле со значком глаза видит {{ $.roleJunior.Nom }} на странице «Это я»; поля с замком — только {{ $.roleMain.Nom }}.</span>
+                    </div>
+                </form>
+            </div>
+        </details>
+        {{ end }}
+    </div>
+    <p class="muted">Чего сервер не видит: часы компьютера, «оптимизаторы» сетевого стека, DNS внутри
+    браузера, зависания самого компьютера — если звонок рвётся, а сеть чистая, проблема на ПК.
+    Производители по реестру IEEE от {{ .ouiUpdated }}.</p>
     {{ else if not .agentDown }}
     <p class="muted">Устройств пока не видно: они появятся, как только получат адрес от сервера или обменяются с ним данными.</p>
     {{ end }}
-    <p class="muted">Светофор: красный — факт, который ломает звонок или защиту; жёлтый —
-    панель не управляет устройством или оно не отвечало; зелёный — признаков проблем нет.
-    Чего сервер не видит: часы компьютера, «оптимизаторы» сетевого стека, DNS внутри
-    браузера, зависания самого компьютера — если звонок рвётся, а сеть чистая, проблема
-    на ПК. Производители по реестру IEEE от {{ .ouiUpdated }}.</p>
-</div>
+</section>
 
-<div class="card">
-    <h2>Сообщения «это мой компьютер»</h2>
-    {{ if .identifyRequests }}
-    <p class="muted">Сотрудник нажал «Сообщить администратору» на странице «Это я».
-    Все факты — со стороны сервера, с браузера ничего не собирается.</p>
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Сообщения «это мой компьютер» {{ if .identifyRequests }}<span class="tag tag-warn">{{ len .identifyRequests }} ждут</span>{{ end }}</h2>
+            <p class="muted card-sub">{{ $.roleJunior.Nom }} нажал «Сообщить {{ $.roleMain.Dat }}» на странице «Это я».
+            Все факты — со стороны сервера, с браузера ничего не собирается.</p>
+        </div>
+    </div>
     {{ range .identifyRequests }}
-    <div class="notice notice-info">
-        <p><strong>{{ if .Hostname }}{{ .Hostname }}{{ else }}без имени{{ end }}</strong>
-        · запрос {{ .When }} · сообщений от этого компьютера: {{ .Count }}{{ if .Note }} · «{{ .Note }}»{{ end }}</p>
-        <p class="muted">Адрес <code>{{ .IP }}</code>, аппаратный адрес <code>{{ .MAC }}</code>{{ if .RandomMAC }} <span class="tag">случайный</span>{{ end }}{{ if .Vendor }}, {{ .Vendor }}{{ end }}{{ if .Segment }}, сегмент <code>{{ .Segment }}</code>{{ end }}
-        · впервые {{ .FirstSeen }}, последний раз {{ .LastSeen }}{{ if .LeaseUntil }} · аренда до {{ .LeaseUntil }}{{ end }}
-        · {{ if .Online }}<span class="state-up">сейчас в сети</span>{{ else }}<span class="state-down">сейчас не в сети</span>{{ end }}
-        {{ if .Label }}· подпись сейчас: {{ .Label }}{{ end }}{{ if .Proposal }} · предложение: {{ .Proposal }}{{ end }}</p>
-        <form method="post" action="/diagnostics/identify" class="inline-form">
+    <div class="setting tile setting-wide">
+        <div>
+            <div class="setting-title">{{ if .Hostname }}{{ .Hostname }}{{ else }}без имени{{ end }}
+                {{ if .Online }}<span class="tag tag-ok">в сети</span>{{ else }}<span class="tag">не в сети</span>{{ end }}</div>
+            <p class="setting-text">{{ .IP }} · {{ .MAC }}{{ if .Vendor }} · {{ .Vendor }}{{ end }} · запрос {{ .When }}{{ if .Note }} · «{{ .Note }}»{{ end }}.
+            {{ if .Label }}Подпись сейчас: {{ .Label }}.{{ end }}{{ if .Proposal }} Предложение: {{ .Proposal }}.{{ end }}</p>
+        </div>
+        <form method="post" action="/diagnostics/identify">
             <input type="hidden" name="_csrf" value="{{ $.csrf }}">
             <input type="hidden" name="mac" value="{{ .MAC }}">
-            <label>{{ template "components/icon" "eye" }} Видно сотруднику <input name="public_label" value="{{ .Note }}" maxlength="120" placeholder="ПК Ирины, бухгалтерия"></label>
-            <label>{{ template "components/icon" "lock" }} Кому принадлежит <input name="owner" value="{{ .Owner }}" maxlength="40" placeholder="Ирина"></label>
-            <label>{{ template "components/icon" "lock" }} Где стоит <input name="location" value="{{ .Location }}" maxlength="60"></label>
-            <button type="submit" name="action" value="sign" class="btn btn-small">Подписать и закрыть</button>
-            <button type="submit" name="action" value="close" class="btn btn-danger">Закрыть без подписи</button>
+            <div class="flow-fields">
+                <label>{{ template "components/icon" "eye" }} Видно {{ $.roleJunior.Dat }} <input name="public_label" value="{{ .Note }}" maxlength="120" placeholder="ПК Ирины, бухгалтерия"></label>
+                <label>{{ template "components/icon" "lock" }} Кому принадлежит <input name="owner" value="{{ .Owner }}" maxlength="40" placeholder="Ирина"></label>
+                <label>{{ template "components/icon" "lock" }} Где стоит <input name="location" value="{{ .Location }}" maxlength="60"></label>
+            </div>
+            <div class="btn-row btn-row-end">
+                <button type="submit" name="action" value="close" class="btn btn-secondary btn-small">Закрыть без подписи</button>
+                <button type="submit" name="action" value="sign" class="btn btn-small">Подписать и закрыть</button>
+            </div>
         </form>
     </div>
-    {{ end }}
     {{ else }}
-    <p class="muted">Открытых сообщений нет. Кнопка «Сообщить администратору» есть
-    у сотрудников на странице <code>pc/</code>.</p>
+    <p class="muted">Открытых сообщений нет. Кнопка «Сообщить {{ $.roleMain.Dat }}» есть у {{ $.roleJunior.PluralGen }} на странице <code>pc/</code>.</p>
     {{ end }}
-</div>
+</section>
 
-<div class="card">
-    <h2>Предложения подписей</h2>
-    {{ if .proposals }}
-    <table>
-        <thead><tr><th>Компьютер</th><th>Предложено</th><th>Когда</th><th></th></tr></thead>
-        <tbody>
-            {{ range .proposals }}
-            <tr>
-                <td><code>{{ if .Hostname }}{{ .Hostname }}{{ else }}{{ .MAC }}{{ end }}</code> <span class="muted">{{ .IP }}</span></td>
-                <td>{{ .Text }}</td>
-                <td>{{ .When }}</td>
-                <td>
-                    <form method="post" action="/diagnostics/proposal" class="inline-form">
-                        <input type="hidden" name="_csrf" value="{{ $.csrf }}">
-                        <input type="hidden" name="mac" value="{{ .MAC }}">
-                        <button type="submit" name="action" value="accept" class="btn btn-small">Принять</button>
-                        <button type="submit" name="action" value="reject" class="btn btn-danger">Отклонить</button>
-                    </form>
-                </td>
-            </tr>
+<section class="card">
+    <div class="card-head">
+        <div>
+            <h2>Предложения подписей {{ if .proposals }}<span class="tag tag-warn">{{ len .proposals }} ждут</span>{{ end }}</h2>
+            <p class="muted card-sub">{{ $.roleJunior.Nom }} подписал своё устройство на странице «Это я». Примите — и имя появится везде.</p>
+        </div>
+    </div>
+    {{ range .proposals }}
+    <div class="setting tile">
+        <div>
+            <div class="setting-title">{{ .Text }}</div>
+            <p class="setting-text">{{ if .Hostname }}{{ .Hostname }}{{ else }}{{ .MAC }}{{ end }} · {{ .IP }} · предложено {{ .When }}</p>
+        </div>
+        <form method="post" action="/diagnostics/proposal" class="setting-ctl">
+            <input type="hidden" name="_csrf" value="{{ $.csrf }}">
+            <input type="hidden" name="mac" value="{{ .MAC }}">
+            <button type="submit" name="action" value="reject" class="btn btn-secondary btn-small">Отклонить</button>
+            <button type="submit" name="action" value="accept" class="btn btn-small">Принять</button>
+        </form>
+    </div>
+    {{ else }}
+    <p class="muted">Попросите {{ $.roleJunior.PluralGen }} открыть на своих компьютерах адрес <code>pc/</code> (с косой чертой)
+    и подписать, чей это компьютер и где он стоит — подписи появятся здесь на проверку.</p>
+    {{ end }}
+    {{ if gt (len .proposals) 1 }}
+    <form method="post" action="/diagnostics/proposal" class="btn-row btn-row-end">
+        <input type="hidden" name="_csrf" value="{{ .csrf }}">
+        <button type="submit" name="action" value="accept_all" class="btn btn-secondary">Принять все</button>
+    </form>
+    {{ end }}
+</section>
+
+<section class="card" id="support">
+    <div class="setting setting-flat">
+        <div>
+            <h2>Сведения для поддержки {{ if .supportRunning }}<span class="tag tag-warn">собираются</span>{{ else if .supportReady }}<span class="tag tag-ok">готов {{ .supportAt }}</span>{{ end }}</h2>
+            <p class="setting-text">Один файл с состоянием шлюза без паролей и ключей; адреса и имена устройств
+            заменены условными. Панель никуда его не отправляет — файл передаёте вы.
+            {{ if .supportFailed }}Прошлый сбор не удался — попробуйте ещё раз.{{ end }}</p>
+        </div>
+        <div class="setting-ctl">
+            {{ if .supportRunning }}
+            <span class="muted">Обновите страницу через минуту.</span>
+            {{ else }}
+            {{ if .supportReady }}<a class="btn btn-secondary btn-small" href="/diagnostics/support/file">Скачать ({{ .supportSize }})</a>{{ end }}
+            <form method="post" action="/diagnostics/support" class="inline-form">
+                <input type="hidden" name="_csrf" value="{{ .csrf }}">
+                <button type="submit" class="btn btn-secondary btn-small">Собрать сведения</button>
+            </form>
             {{ end }}
-        </tbody>
-    </table>
-    <form method="post" action="/diagnostics/proposal">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <button type="submit" name="action" value="accept_all" class="btn">Принять все</button>
-    </form>
-    {{ else }}
-    <p class="muted">Пока предложений нет. Попросите сотрудников открыть на своих
-    компьютерах адрес <code>pc/</code> (с косой чертой) и подписать, чей это
-    компьютер и где он стоит — подписи появятся здесь на проверку.</p>
-    {{ end }}
-</div>
+        </div>
+    </div>
+    <p class="muted">Поддержка называет устройство условным именем? <a href="/diagnostics/support/names">Таблица соответствия</a> покажет, какое это.</p>
+</section>
 
-<div class="card">
-    <h2>Окно проверок скорости</h2>
-    {{ if .windowOpen }}
-    <p><span class="state-up">Открыто</span> до {{ .windowUntil }} (осталось {{ .windowLeft }}){{ if .windowFull }}, полный замер разрешён{{ end }}.
-    Сотрудники могут запускать проверку со своих компьютеров; срок считается от
-    открытия и запросами не продлевается.</p>
-    <form method="post" action="/diagnostics/window">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/select" .selectWindowExtend }}
-        {{ template "components/button" .buttonWindowExtend }}
-        {{ template "components/button" .buttonWindowClose }}
-    </form>
-    {{ else }}
-    <p><span class="state-down">Закрыто.</span> Проверки скорости сотрудникам
-    выключены — это состояние по умолчанию. Откройте окно на срок, когда нужна
-    диагностика: внутри него действуют все предохранители (быстрый режим, перерыв
-    между проверками на весь офис, отказ при занятом сервере, запись в журнал при
-    старте).</p>
-    <form method="post" action="/diagnostics/window">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/select" .selectWindowOpen }}
-        {{ template "components/toggle" .toggleWindowFull }}
-        {{ template "components/button" .buttonWindowOpen }}
-    </form>
-    {{ end }}
-    <form method="post" action="/diagnostics/window">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <input type="hidden" name="action" value="max">
-        {{ template "components/field" .fieldWindowMax }}
-        {{ template "components/button" .buttonWindowMax }}
-    </form>
+{{ template "components/facts" .system }}
+{{ template "components/facts" .surroundings }}
+{{ if .surroundRecheck }}
+<form method="post" action="/diagnostics/surroundings/recheck" class="btn-row">
+    <input type="hidden" name="_csrf" value="{{ .csrf }}">
+    {{ template "components/button" .surroundRecheck }}
+</form>
+{{ end }}
 </div>
-
-<div class="card">
-    <h2>Полная проверка сети</h2>
-    {{ if .fullCheck }}
-    <p><span class="state-down">Идёт</span> до {{ .fullCheckUntil }} (осталось {{ .fullCheckLeft }}).
-    Сняты все пределы проверки скорости; <strong>качество звонков не гарантируется</strong>.
-    Пределы вернутся сами по сроку.</p>
-    {{ if .fullLoadKnown }}<p class="muted">Нагрузка сервера сейчас: процессор {{ .fullLoadCPU }} %, ожидание процессора {{ .fullLoadPSI }} %, порт LAN {{ .fullLoadLAN }} Мбит/с (обновите страницу для свежих чисел).</p>{{ end }}
-    <form method="post" action="/diagnostics/fullcheck">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/button" .buttonFullStop }}
-    </form>
-    {{ else }}
-    <p class="muted">Режим для диагностики, когда обычных пределов не хватает:
-    на выбранный срок снимаются <strong>все</strong> пределы проверки скорости —
-    частота с каждого компьютера, перерыв, «один тест одновременно», отказ при
-    занятом сервере. Остаются только срок с автоматическим возвратом,
-    «Остановить» и журнал.</p>
-    <div class="alert alert-warn"><strong>Пока идёт полная проверка, качество звонков не гарантируется.</strong>
-    На слабом сервере проверка может упереться в процессор или порт — это тоже находка.
-    {{ if .fullLoadKnown }}Нагрузка сейчас: процессор {{ .fullLoadCPU }} %, ожидание {{ .fullLoadPSI }} %, порт LAN {{ .fullLoadLAN }} Мбит/с.{{ else }}Датчики защиты без свежих данных — нагрузка неизвестна.{{ end }}</div>
-    <form method="post" action="/diagnostics/fullcheck">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        {{ template "components/select" .selectFullCheck }}
-        {{ template "components/toggle" .toggleFullConsent }}
-        {{ template "components/button" .buttonFullStart }}
-    </form>
-    {{ end }}
-</div>
-
-<div class="card">
-    <h2>Настройки диагностики</h2>
-    <form method="post" action="/diagnostics/settings">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <label class="checkbox">
-            <input type="checkbox" name="active_probes" value="1" {{ if .activeProbes }}checked{{ end }}>
-            Активные проверки разрешены (кнопка «Проверить сеть офиса» и тест скорости)
-        </label>
-        <label class="checkbox">
-            <input type="checkbox" name="self_label" value="1" {{ if .selfLabel }}checked{{ end }}>
-            Сотрудники могут предлагать подписи для своих компьютеров
-        </label>
-        <p class="muted">Наблюдение за сетью идёт только чтением счётчиков —
-        сервер не отправляет ни одного пакета сам по себе. Активные проверки
-        запускаются только по кнопке, к известным устройствам, с ограничением
-        частоты и времени.</p>
-        <button type="submit" class="btn">Сохранить</button>
-    </form>
-</div>
-
-<div class="card" id="support">
-    <h2>Сведения для поддержки</h2>
-    <p class="muted">Один текстовый файл о состоянии шлюза: версии, сеть,
-    защита, канал, журналы за неделю. Паролей и ключей в нём нет; адреса и
-    имена устройств заменены условными. Панель никуда его не отправляет —
-    файл передаёте вы, и перед отправкой его можно открыть и прочитать.</p>
-    {{ if .supportRunning }}
-    <p>Сведения собираются. Обновите страницу через минуту.</p>
-    {{ else }}
-    {{ if .supportReady }}
-    <p>Файл готов: собран {{ .supportAt }}, {{ .supportSize }}.
-    <a class="btn btn-secondary" href="/diagnostics/support/file">Скачать файл</a></p>
-    {{ end }}
-    {{ if .supportFailed }}
-    <p>Прошлый сбор не удался. Попробуйте ещё раз; если повторяется — на
-    рабочем столе шлюза есть значок «Сведения для поддержки».</p>
-    {{ end }}
-    <form method="post" action="/diagnostics/support">
-        <input type="hidden" name="_csrf" value="{{ .csrf }}">
-        <button type="submit" class="btn">Собрать сведения</button>
-    </form>
-    {{ end }}
-    <p class="muted">Если поддержка называет устройство условным именем —
-    <a href="/diagnostics/support/names">таблица соответствия</a> покажет, какое это устройство.</p>
 </div>
 
 <script src="{{ .static }}/js/diagnostics.js" defer></script>

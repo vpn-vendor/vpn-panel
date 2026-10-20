@@ -7,6 +7,14 @@ install-boot-screen:
 		debian/vpn-panel/usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-keymap.conf
 	install -D -m 0755 debian/assets/dracut-vpn-panel-keymap/module-setup.sh \
 		debian/vpn-panel/usr/lib/dracut/modules.d/99vpn-panel-keymap/module-setup.sh
+	# Без видеодрайвера запрос пароля — по-русски на консоли: агент панели в initramfs.
+	install -D -m 0644 debian/assets/vpn-panel-unlock-text.conf \
+		debian/vpn-panel/usr/lib/dracut/dracut.conf.d/90-vpn-panel-unlock-text.conf
+	install -D -m 0755 debian/assets/dracut-vpn-panel-unlock/module-setup.sh \
+		debian/vpn-panel/usr/lib/dracut/modules.d/99vpn-panel-unlock/module-setup.sh
+	install -m 0644 debian/assets/dracut-vpn-panel-unlock/vpn-panel-disk-unlock.path \
+		debian/assets/dracut-vpn-panel-unlock/vpn-panel-disk-unlock.service \
+		debian/vpn-panel/usr/lib/dracut/modules.d/99vpn-panel-unlock/
 	# Тема экрана пароля: готовые файлы из дерева, темой по умолчанию её делает postinst.
 	mkdir -p debian/vpn-panel/usr/share/plymouth/themes/vpn-panel
 	install -m 0644 debian/assets/boot-theme/*.plymouth debian/assets/boot-theme/*.script \

@@ -1,0 +1,19 @@
+{{ define "components/choice-card" }}
+<div class="choice-cards{{ if .Trailing }} choice-trailing{{ end }}" role="radiogroup"{{ if .Legend }} aria-label="{{ .Legend }}"{{ end }}>
+    {{ $c := . }}
+    {{ range .Options }}
+    <label class="choice-card{{ with .Tone }} choice-{{ . }}{{ end }}" for="{{ $c.ID . }}">
+        <input class="choice-input" type="radio" id="{{ $c.ID . }}" name="{{ $c.Name }}" value="{{ .Value }}"
+               {{ if $c.Form }}form="{{ $c.Form }}"{{ end }}
+               {{ if .Checked }}checked{{ end }}{{ if .Disabled }} disabled{{ end }}>
+        <span class="choice-card-body">
+            <span class="choice-card-label">{{ if .Icon }}<span class="choice-ico" aria-hidden="true">{{ template "components/icon" .Icon }}</span>{{ end }}{{ .Label }}</span>
+            {{ if .Meta }}<span class="choice-card-meta">{{ .Meta }}</span>{{ end }}
+            {{ if .Hint }}<span class="choice-hint">{{ .Hint }}</span>{{ end }}
+            {{ if .Tags }}<span class="choice-facts">{{ range .Tags }}<span class="{{ .Class }}">{{ .Text }}</span>{{ end }}</span>{{ end }}
+            {{ if .Points }}<span class="choice-points">{{ range .Points }}<span class="pt pt-{{ .Kind }}"><span class="pt-sign" aria-hidden="true">{{ .Sign }}</span><span>{{ .Text }}</span></span>{{ end }}</span>{{ end }}
+        </span>
+    </label>
+    {{ end }}
+</div>
+{{ end }}

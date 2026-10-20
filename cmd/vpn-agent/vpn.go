@@ -111,6 +111,8 @@ type vpnApplier struct {
 
 	composer *modeComposer
 
+	legacyRoot func() (root, source string)
+
 	watchMu sync.Mutex
 
 	watchKick chan struct{}
@@ -228,6 +230,8 @@ type vpnImportParams struct {
 	Slug     string `json:"slug"`
 	Protocol string `json:"protocol,omitempty"`
 	Config   string `json:"config"`
+
+	Source string `json:"source,omitempty"`
 }
 
 func (v *vpnApplier) vpnImport(raw json.RawMessage) (any, *agentrpc.ErrorObject) {
@@ -246,6 +250,20 @@ func (v *vpnApplier) vpnImport(raw json.RawMessage) (any, *agentrpc.ErrorObject)
 		return nil, &agentrpc.ErrorObject{Code: codeVPNParams,
 			Message: "имя профиля составлено неверно — задайте название латиницей или кириллицей",
 			Data:    map[string]any{"recoverable": false}}
+	}
+	if p.Source == legacySecretSource {
+
+		if v.legacyRoot == nil {
+			return nil, invalidParams()
+		}
+		root, _ := v.legacyRoot()
+		text, err := legacyVPNConfig(root, string(proto))
+		if err != nil {
+			return nil, &agentrpc.ErrorObject{Code: codeVPNParams,
+				Message: "подключение старого шлюза не загружено: " + err.Error() + " — загрузите файл от поставщика",
+				Data:    map[string]any{"recoverable": false}}
+		}
+		p.Config = text
 	}
 
 	v.mu.Lock()

@@ -154,3 +154,92 @@ func TestExcludeAndSorting(t *testing.T) {
 		t.Fatalf("исключение и сортировка (проблемные первыми): %+v", r.Devices)
 	}
 }
+
+func foreignDHCPInput() Input {
+	in := base()
+	in.LANs[0].PoolFrom, in.LANs[0].PoolTo = net.ParseIP("192.168.11.100"), net.ParseIP("192.168.11.200")
+	in.Neighbours = append(in.Neighbours,
+		diagfacts.Neighbour{IP: "192.168.11.150", MAC: "52:54:00:12:34:20", Dev: "ens4", State: "REACHABLE"},
+		diagfacts.Neighbour{IP: "192.168.11.30", MAC: "52:54:00:12:34:30", Dev: "ens4", State: "REACHABLE"},
+		diagfacts.Neighbour{IP: "192.168.11.2", MAC: "52:54:00:12:34:40", Dev: "ens4", State: "REACHABLE"})
+	in.Sets[nftgen.SetForeignDNS] = []diagfacts.SetEntry{{IP: "192.168.11.30", Packets: 3}}
+	return in
+}
+
+func byIP(r Report, ip string) Device {
+	for _, d := range r.Devices {
+		if d.IP == ip {
+			return d
+		}
+	}
+	return Device{}
+}
+
+func TestForeignDHCP(t *testing.T) {
+	plain := Run(foreignDHCPInput())
+	cases := []struct {
+		name      string
+		servers   []string
+		ip        string
+		wantCodes string
+		wantLevel string
+		wantText  string
+	}{
+		{"старая аренда — второй сервер", []string{"192.168.11.2"}, "192.168.11.150", "unknown_lease", LevelWarn, "ещё один сервер DHCP (192.168.11.2)"},
+		{"статика — только догадка", []string{"192.168.11.2"}, "192.168.11.30", "static_ip,foreign_dns", LevelError, "Возможно, адрес выдал второй сервер DHCP"},
+		{"сам сервер вместо статики", []string{"192.168.11.2"}, "192.168.11.2", "dhcp_server", LevelWarn, "раздаёт адреса"},
+		{"чистое устройство не трогаем", []string{"192.168.11.2"}, "192.168.11.100", "", LevelOK, ""},
+		{"два сервера в тексте", []string{"192.168.11.2", " 192.168.11.3", "192.168.11.2"}, "192.168.11.150", "unknown_lease", LevelWarn, "(192.168.11.2, 192.168.11.3)"},
+
+		{"без адресов", nil, "192.168.11.150", "unknown_lease", LevelInfo, "держит старую аренду"},
+		{"мусор вместо адреса", []string{"роутер", ""}, "192.168.11.2", "static_ip", LevelWarn, "задан на устройстве вручную"},
+	}
+	for _, c := range cases {
+		r := ForeignDHCP(plain, c.servers)
+		d := byIP(r, c.ip)
+		var got []string
+		for _, x := range d.Diagnoses {
+			got = append(got, x.Code)
+		}
+		if strings.Join(got, ",") != c.wantCodes || d.Level != c.wantLevel {
+			t.Errorf("%s: диагнозы %v уровня %s, ждали %s уровня %s", c.name, got, d.Level, c.wantCodes, c.wantLevel)
+			continue
+		}
+		if c.wantText != "" && !strings.Contains(d.Diagnoses[0].Title, c.wantText) {
+			t.Errorf("%s: заголовок %q без %q", c.name, d.Diagnoses[0].Title, c.wantText)
+		}
+	}
+	if byIP(plain, "192.168.11.150").Diagnoses[0].Level != LevelInfo {
+		t.Fatal("поправка изменила исходный отчёт")
+	}
+}
+
+func TestForeignDHCPRelevels(t *testing.T) {
+	in := foreignDHCPInput()
+	in.Sets = map[string][]diagfacts.SetEntry{}
+
+	in.Neighbours = append(in.Neighbours[:2],
+		diagfacts.Neighbour{IP: "192.168.11.250", MAC: "52:54:00:12:34:50", Dev: "ens4", State: "REACHABLE"})
+	order := func(r Report) string {
+		var ips []string
+		for _, d := range r.Devices {
+			ips = append(ips, d.IP)
+		}
+		return strings.Join(ips, " ")
+	}
+	plain := Run(in)
+	if order(plain) != "192.168.11.250 192.168.11.150 192.168.11.100" {
+		t.Fatalf("исходный порядок: %s", order(plain))
+	}
+	r := ForeignDHCP(plain, []string{"192.168.1.1"})
+	if r.Level != LevelWarn || order(r) != "192.168.11.150 192.168.11.250 192.168.11.100" || r.Devices[0].Level != LevelWarn {
+		t.Fatalf("уровни не пересчитаны: %s, порядок %s", r.Level, order(r))
+	}
+	in.Neighbours = in.Neighbours[:2]
+	if r := ForeignDHCP(Run(in), []string{"192.168.1.1"}); r.Level != LevelWarn {
+		t.Fatalf("уровень отчёта по старой аренде: %s", r.Level)
+	}
+	if !strings.Contains(r.Devices[0].Diagnoses[0].Advice, "точке доступа 192.168.1.1") {
+		t.Fatalf("совет: %s", r.Devices[0].Diagnoses[0].Advice)
+	}
+}

@@ -1,0 +1,5 @@
+{{ define "components/gauge-grid" }}
+<div class="gauge-grid">
+    {{ range .Gauges }}{{ template "components/gauge" . }}{{ end }}
+</div>
+{{ end }}

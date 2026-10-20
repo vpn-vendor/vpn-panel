@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/keagen"
 	"github.com/vpn-vendor/vpn-panel-core/internal/netstatus"
 )
@@ -44,12 +45,24 @@ Restart=on-failure
 RestartSec=15
 `
 
+func keaWaitsForLink(out []byte) bool {
+	return strings.Contains(string(out), "not present in the system") ||
+		strings.Contains(string(out), "doesn't have address") ||
+		strings.Contains(string(out), "Failed to select interface")
+}
+
 const keaUser = "_kea"
 
 type dhcpApplier struct {
 	mu sync.Mutex
 
+	caps hostCapsSource
+
 	pendingAddrs []string
+
+	surround *surroundings
+
+	takeover *takeoverRunner
 }
 
 func keaCredential() *syscall.Credential {
@@ -127,16 +140,21 @@ func (d *dhcpApplier) dhcpApply(raw json.RawMessage) (any, *agentrpc.ErrorObject
 			Data: map[string]any{"recoverable": false}}
 	}
 
-	config, err := p.Plan.Generate()
-	if err != nil {
-
-		return nil, internalErr(err.Error(), false)
+	warning := ""
+	if r, bad := d.surround.dhcpConflict(dhcpPlanLANs(p.Plan)); bad {
+		if !r.ownServes(dhcpPlanLANs(p.Plan)) {
+			return nil, dhcpConflictErr(r)
+		}
+		warning = dhcpNeighbourText(r)
+	}
+	if d.takeover != nil {
+		d.takeover.waitDHCPRetired()
 	}
 
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	keaBin, err := findBinary([]string{"/usr/sbin/kea-dhcp4", "/sbin/kea-dhcp4"})
+	keaBin, err := findBinary(keaCandidates)
 	if err != nil {
 		return nil, &agentrpc.ErrorObject{Code: codeDHCPNoTool,
 			Message: "служба выдачи адресов не установлена",
@@ -148,24 +166,42 @@ func (d *dhcpApplier) dhcpApply(raw json.RawMessage) (any, *agentrpc.ErrorObject
 	}
 	chownDirForKea(keaConfigDir)
 
-	staged, err := durable.Stage(keaConfigFile, config, 0o640, keaOwner()...)
-	if err != nil {
-		return nil, detailErr(errWriteConfig, err.Error(), true)
+	snap := capsOf(d.caps)
+	var (
+		config      []byte
+		staged      *durable.Staged
+		waitingLink bool
+	)
+	for attempt := 0; ; attempt++ {
+		config, err = p.Plan.Generate(hostcaps.Caps(snap, keagen.Options))
+		if err != nil {
+
+			return nil, internalErr(err.Error(), false)
+		}
+
+		staged, err = durable.Stage(keaConfigFile, config, 0o640, keaOwner()...)
+		if err != nil {
+			return nil, detailErr(errWriteConfig, err.Error(), true)
+		}
+
+		out, cerr := runAsKea(keaBin, "-t", staged.Path())
+		if cerr == nil {
+			break
+		}
+		if keaWaitsForLink(out) {
+			waitingLink = true
+			break
+		}
+		staged.Abort()
+		if attempt == 0 && d.caps != nil && d.caps.recheck(snap.Digest) {
+			snap = d.caps.current()
+			continue
+		}
+		return nil, &agentrpc.ErrorObject{Code: codeDHCPConfig,
+			Message: "служба выдачи адресов этой системы не приняла настройки — обратитесь в поддержку: причина записана в журнал службы",
+			Data:    map[string]any{"recoverable": false, "detail": keaErrorLine(out)}}
 	}
 	defer staged.Abort()
-
-	waitingLink := false
-	if out, err := runAsKea(keaBin, "-t", staged.Path()); err != nil {
-		if strings.Contains(string(out), "not present in the system") ||
-			strings.Contains(string(out), "doesn't have address") ||
-			strings.Contains(string(out), "Failed to select interface") {
-			waitingLink = true
-		} else {
-			return nil, &agentrpc.ErrorObject{Code: codeDHCPConfig,
-				Message: "конфигурация выдачи адресов не прошла проверку: " + keaErrorLine(out),
-				Data:    map[string]any{"recoverable": false}}
-		}
-	}
 
 	changed := true
 	if cur, err := os.ReadFile(keaConfigFile); err == nil && string(cur) == string(config) { //nolint:gosec
@@ -194,7 +230,11 @@ func (d *dhcpApplier) dhcpApply(raw json.RawMessage) (any, *agentrpc.ErrorObject
 	if waitingLink && state != "active" {
 		state = "waiting_link"
 	}
-	return map[string]any{"changed": changed || dropInChanged, "state": state}, nil
+	res := map[string]any{"changed": changed || dropInChanged, "state": state}
+	if warning != "" {
+		res["warning"] = warning
+	}
+	return res, nil
 }
 
 func (d *dhcpApplier) ensureDropIn() (bool, error) {

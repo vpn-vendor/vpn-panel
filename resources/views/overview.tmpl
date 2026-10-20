@@ -1,12 +1,41 @@
 {{ define "overview.tmpl" }}
 {{ template "app-top" . }}
-{{ template "components/status-grid" .lights }}
-{{ template "components/window-chips" .chips }}
-{{ template "components/chart-grid" .bands }}
-{{ template "components/chart-grid" .sparks }}
+
+<section class="card overview-hero" aria-label="Состояние шлюза">
+    <div class="hero-head">
+        <span class="hero-dot" aria-hidden="true"></span>
+        <div class="hero-words">
+            <div class="hero-title">
+                <span class="ov-say ov-say-ok">Шлюз работает, всё в порядке</span>
+                <span class="ov-say ov-say-warn">Шлюз работает, есть замечание</span>
+                <span class="ov-say ov-say-error">Есть проблема</span>
+                <span class="ov-say ov-say-unknown">Состояние пока неизвестно</span>
+            </div>
+            <p class="hero-text">
+                <span class="ov-say ov-say-ok">Интернет, звонки и сервер в норме. Делать ничего не нужно.</span>
+                <span class="ov-say ov-say-warn">Что именно и что делать — в светофорах рядом.</span>
+                <span class="ov-say ov-say-error">Красное мешает интернету или звонкам прямо сейчас — что делать, сказано рядом.</span>
+                <span class="ov-say ov-say-unknown">Сбор показателей выключен или ещё не дал данных.</span>
+            </p>
+        </div>
+    </div>
+    {{ template "components/status-grid" .lights }}
+</section>
+{{ template "components/gauge-grid" .gauges }}
+{{ template "components/fact-strip" .facts }}
+{{ template "components/chart-grid" .traffic }}
+{{ template "components/pult-trio" .trio }}
+{{ template "components/pult-work" .work }}
 {{ template "components/card-grid" .blocks }}
-{{ template "components/facts" .server }}
-{{ template "components/facts" .reliability }}
+<details class="fold">
+    <summary>{{ template "components/icon" "chevron" }}Паспорт сервера и надёжность<span class="fold-note">железо, система, порты, обрывы и перезагрузки за неделю</span></summary>
+    <div class="fold-body">
+        <div class="cols">
+            <div class="col">{{ template "components/facts" .server }}</div>
+            <div class="col">{{ template "components/facts" .reliability }}</div>
+        </div>
+    </div>
+</details>
 {{ template "components/chart-tip" .tip }}
 {{ template "components/chart-panel" .panel }}
 <script src="{{ .static }}/js/dashboard.js" defer></script>

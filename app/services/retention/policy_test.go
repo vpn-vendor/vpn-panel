@@ -21,7 +21,7 @@ func TestApprovedNumbers(t *testing.T) {
 		{"потолок критичных событий", CriticalCap, 20000},
 		{"системные события: гарантия суток", SystemKeepDays, 7},
 		{"системные события: гарантия суток при нехватке диска", SystemKeepDaysTight, 1},
-		{"журнал запусков, суток", BootsKeepDays, 8},
+		{"журнал запусков, суток", BootsKeepDays, 31},
 		{"порция уборки", Batch, 1000},
 		{"истёкшие коды, дней", CodesKeepDays, 90},
 		{"след мёртвого доверия по умолчанию, дней", TrustKeepDaysDefault, 30},

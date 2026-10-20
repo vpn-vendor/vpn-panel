@@ -1,6 +1,8 @@
 package backup
 
 import (
+	"encoding/json"
+
 	"github.com/vpn-vendor/vpn-panel-core/app/services/auth"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/dhcp"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/diag"
@@ -17,7 +19,8 @@ import (
 func Sections() []Entry {
 	net := []settings.Section{settings.SectionNetwork}
 	return []Entry{
-		Of(Def[network.Section]{Name: settings.SectionNetwork, Version: 1,
+		Of(Def[network.Section]{Name: settings.SectionNetwork, Version: 2,
+			Up:   map[int]func(json.RawMessage) (json.RawMessage, error){1: network.UpV1},
 			Read: network.ReadSection, Validate: alone(network.ValidateSection), Apply: anyone(network.ApplySection)}),
 		Of(Def[security.Section]{Name: settings.SectionSecurity, Version: 1, After: net,
 			Read: security.ReadSection, Validate: alone(security.ValidateSection),

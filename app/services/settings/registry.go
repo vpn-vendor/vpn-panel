@@ -103,6 +103,9 @@ var Keys = []Key{
 	{Name: "diag.fullcheck_until", Section: SectionDiag, Data: State, Risk: Safe},
 	{Name: "diag.last_probe", Section: SectionDiag, Data: State, Risk: Safe},
 	{Name: "path.underlay", Section: SectionDiag, Data: State, Risk: Safe},
+	{Name: "hostcaps.applied", Section: SectionDiag, Data: State, Risk: Safe},
+	{Name: "surroundings.seen", Section: SectionDiag, Data: State, Risk: Safe},
+	{Name: "dhcp.waits_foreign", Section: SectionDHCP, Data: State, Risk: Safe},
 
 	{Name: "metrics.master", Section: SectionMetrics, Data: Policy, Risk: Safe},
 	{Name: "metrics.source.", Prefix: true, Owner: OwnerMetricsSource, Section: SectionMetrics, Data: Policy, Risk: Safe},
@@ -127,6 +130,7 @@ var Keys = []Key{
 	{Name: "setup.lan_card", Section: SectionNetwork, Data: State, Risk: Safe},
 	{Name: "setup.skipped", Section: SectionAuth, Data: State, Risk: Safe},
 	{Name: "setup.finished", Section: SectionAuth, Data: State, Risk: Safe},
+	{Name: "setup.takeover", Section: SectionAuth, Data: State, Risk: Safe},
 }
 
 var Tables = []Table{

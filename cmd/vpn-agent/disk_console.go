@@ -29,6 +29,8 @@ const (
 
 	consoleTakeover     = 3 * time.Second
 	consoleTakeoverPoll = 50 * time.Millisecond
+
+	consoleTick = 100 * time.Millisecond
 )
 
 type consoleFontSize struct {
@@ -103,7 +105,7 @@ func waitConsoleTakeover() {
 		}
 		time.Sleep(consoleTakeoverPoll)
 	}
-	log.Print("disk-change: консоль не перешла к драйверу экрана")
+	log.Print("консоль экрана: не перешла к драйверу экрана")
 }
 
 func consoleOnFramebuffer() bool {
@@ -115,7 +117,7 @@ func consoleOnFramebuffer() bool {
 		name, err1 := os.ReadFile(filepath.Join(d, "name")) //nolint:gosec
 		bind, err2 := os.ReadFile(filepath.Join(d, "bind")) //nolint:gosec
 		if err1 == nil && err2 == nil && strings.TrimSpace(string(bind)) == "1" &&
-			strings.Contains(string(name), "frame buffer") {
+			!strings.Contains(string(name), "dummy") {
 			return true
 		}
 	}
@@ -123,9 +125,13 @@ func consoleOnFramebuffer() bool {
 }
 
 func consoleFont(fd int) (font string, restore func()) {
+	return consoleFontOn(consoleTTY, fd)
+}
+
+func consoleFontOn(dev string, fd int) (font string, restore func()) {
 	setfont, err := findBinary([]string{"/usr/bin/setfont", "/bin/setfont"})
 	if err != nil {
-		log.Printf("disk-change: шрифт консоли: %v", err)
+		log.Printf("консоль экрана: шрифт: %v", err)
 		return "", func() {}
 	}
 	screenW, screenH := fbSize()
@@ -133,15 +139,15 @@ func consoleFont(fd int) (font string, restore func()) {
 	deadline := time.Now().Add(consoleTakeover)
 	for {
 
-		if out, err := exec.Command(setfont, "-C", consoleTTY, consoleFonts+"/"+f.file).CombinedOutput(); err != nil { //nolint:gosec
-			log.Printf("disk-change: шрифт консоли не включён: %v: %s", err, lastLine(out))
+		if out, err := exec.Command(setfont, "-C", dev, consoleFonts+"/"+f.file).CombinedOutput(); err != nil { //nolint:gosec
+			log.Printf("консоль экрана: шрифт не включён: %v: %s", err, lastLine(out))
 			return "", func() {}
 		}
 		if screenW <= 0 || consoleCols(fd) == screenW/f.width {
 			break
 		}
 		if time.Now().After(deadline) {
-			log.Printf("disk-change: шрифт консоли не применился: колонок %d, ждали %d", consoleCols(fd), screenW/f.width)
+			log.Printf("консоль экрана: шрифт не применился: колонок %d, ждали %d", consoleCols(fd), screenW/f.width)
 			break
 		}
 		time.Sleep(consoleTakeoverPoll)
@@ -279,6 +285,12 @@ func (h *consoleHuman) draw(label string, note diskcrypt.Message) {
 }
 
 func readSecret(fd int, echo io.Writer, timeout time.Duration) ([]byte, error) {
+	return readSecretOpts(fd, echo, time.Now().Add(timeout), -1, nil)
+}
+
+var errConsoleCancelled = errors.New("ввод на консоли отменён")
+
+func readSecretOpts(fd int, echo io.Writer, deadline time.Time, cancel int, tick func()) ([]byte, error) {
 	if st, err := unix.IoctlGetTermios(fd, unix.TCGETS); err == nil {
 		raw := *st
 		raw.Lflag &^= unix.ECHO | unix.ICANON
@@ -289,7 +301,6 @@ func readSecret(fd int, echo io.Writer, timeout time.Duration) ([]byte, error) {
 
 		_ = unix.IoctlSetInt(fd, unix.TCFLSH, unix.TCIFLUSH)
 	}
-	deadline := time.Now().Add(timeout)
 
 	secret := make([]byte, 0, consoleMaxSecret)
 
@@ -303,13 +314,22 @@ func readSecret(fd int, echo io.Writer, timeout time.Duration) ([]byte, error) {
 	buf := make([]byte, 64)
 	defer wipeBytes(buf)
 	for {
-		left := time.Until(deadline)
-		if left <= 0 {
-			wipeBytes(secret)
-			return nil, errConsoleTimeout
+		wait := consoleTick
+		if !deadline.IsZero() {
+			left := time.Until(deadline)
+			if left <= 0 {
+				wipeBytes(secret)
+				return nil, errConsoleTimeout
+			}
+			if left < wait {
+				wait = left
+			}
 		}
 		fds := []unix.PollFd{{Fd: int32(fd), Events: unix.POLLIN}} //nolint:gosec
-		n, err := unix.Poll(fds, int(left.Milliseconds())+1)
+		if cancel >= 0 {
+			fds = append(fds, unix.PollFd{Fd: int32(cancel), Events: unix.POLLIN}) //nolint:gosec
+		}
+		n, err := unix.Poll(fds, int(wait.Milliseconds())+1)
 		if errors.Is(err, unix.EINTR) {
 			continue
 		}
@@ -317,10 +337,21 @@ func readSecret(fd int, echo io.Writer, timeout time.Duration) ([]byte, error) {
 			wipeBytes(secret)
 			return nil, err
 		}
-		if n == 0 {
+		if cancel >= 0 && fds[1].Revents != 0 {
+			wipeBytes(secret)
+			return nil, errConsoleCancelled
+		}
+		if tick != nil {
+			tick()
+		}
+		if n == 0 || fds[0].Revents == 0 {
 			continue
 		}
 		got, err := unix.Read(fd, buf)
+		if errors.Is(err, unix.EAGAIN) || errors.Is(err, unix.EINTR) {
+
+			continue
+		}
 		if err != nil || got == 0 {
 			wipeBytes(secret)
 			if err == nil {

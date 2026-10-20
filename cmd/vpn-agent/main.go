@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"syscall"
+	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
 	"github.com/vpn-vendor/vpn-panel-core/internal/devmode"
@@ -38,14 +39,26 @@ func main() {
 		if os.Args[1] == "disk-setup" {
 			os.Exit(runDiskSetup())
 		}
+		if os.Args[1] == "disk-unlock" {
+
+			os.Exit(runDiskUnlock())
+		}
 		if os.Args[1] == "backup-code" {
 			os.Exit(runBackupCode())
 		}
 		if os.Args[1] == "support" {
 			os.Exit(runSupport())
 		}
+		if os.Args[1] == "rollback" {
+
+			os.Exit(runRollback())
+		}
 		if os.Args[1] == "console" {
 			os.Exit(runConsole(os.Args[2:]))
+		}
+		if os.Args[1] == "legacy-home" {
+
+			os.Exit(runLegacyHome(os.Args[2:]))
 		}
 		runHookCommand(os.Args[1])
 		return
@@ -75,7 +88,13 @@ func main() {
 		firewall.writeLockdown(facts)
 	}
 	firewall.restoreOnStart()
+
+	passport := newHostPassport()
+
+	grab := newTakeoverRunner()
+	grab.recoverOnStart(fileExists(netplanBackup))
 	applier := newNetplanApplier(firewall)
+	applier.caps = passport
 	applier.recoverAfterCrash()
 
 	linkLocal := newLinkLocalHelper()
@@ -84,21 +103,54 @@ func main() {
 	dns := newDNSApplier()
 	dns.composer = composer
 	dhcp := newDhcpApplier()
+	dhcp.caps = passport
 	dhcp.RestoreOnStart()
 	go dhcp.WatchLink()
+
+	policy := newPolicyApplier()
 	qos := newQosApplier()
 	qos.composer = composer
+	qos.policy = policy
 	qos.RestoreOnStart()
 	diag := newDiagApplier()
 	vpn := newVPNApplier(firewall, dns, qos)
 	vpn.composer = composer
+	vpn.legacyRoot = grab.legacyRoot
+	vpn.useHostCaps(passport)
+	firewall.caps = passport
+	passport.onChange = func() {
+		firewall.redraw()
+		firewall.kickGuard()
+	}
+
+	passport.start()
+
+	surround := newSurroundings(applier.awaitingConfirm)
+	surround.probes = append(surround.probes, firewall.surroundFirewallProbes()...)
+	surround.resetters = map[string]func(){factDHCPLAN: firewall.restartDHCPWatch}
+	applier.surround = surround
+	applier.takeover = grab
+	dhcp.surround = surround
+	dhcp.takeover = grab
+	surround.useTakeover(grab)
+	firewall.awaiting = applier.awaitingConfirm
+	surround.start()
 	firewall.intentBroken = func() bool { return vpn.readState().Broken }
 	composer.onUnbound = func() { vpn.markServicesPending(true); vpn.kickWatchdog() }
 
 	applier.onPathChanged = vpn.onPathChanged
 	vpn.RestoreOnStart()
+
+	if !devmode.Enabled {
+		firewall.startGuard(surround.kickSoon)
+	}
 	clock := newTimeApplier()
 	updates := newUpdatesApplier()
+
+	updates.restoreOnStart()
+	updates.policy = policy
+
+	updates.onPolicyChange()
 	logs := newLogsApplier()
 	disk := newDiskApplier()
 	backup := newBackupApplier(vpn)
@@ -108,7 +160,46 @@ func main() {
 	if devmode.Enabled {
 		log.Printf("режим разработки (тег сборки dev): системные методы отвечают отказом, чтение работает")
 	}
-	server := agentMethods(applier, firewall, dns, dhcp, qos, diag, vpn, clock, updates, logs, disk, backup, support, newPanelApplier())
+
+	policy.OnChange(qos.onPolicyChange)
+	policy.OnChange(updates.onPolicyChange)
+
+	vgate := &versionGate{
+		ceiling:   func() string { return policy.get().Ceiling() },
+		installed: installedVersion,
+		held:      aptHeld,
+		hold:      func() error { return aptMarkHold("vpn-panel") },
+		unhold:    func() error { return aptMarkUnhold("vpn-panel") },
+		cmp:       dpkgCompare,
+	}
+	vgate.rolledBackFrom = func() string {
+		if o := readOutcome(); o != nil {
+			return o.FromVersion
+		}
+		return ""
+	}
+	policy.OnChange(vgate.onPolicyChange)
+
+	units := systemdOps()
+	probation := &probationWatch{
+		version: installedVersion,
+		holdDeb: holdDebFromCache,
+		now:     time.Now,
+		stop:    make(chan struct{}),
+	}
+	probation.readings = func(base int) (map[string]bool, int) {
+		f := gatherFacts(vpn, units, readProbation() != nil)
+		return readingsFrom(f, base), f.Panel.Restarts
+	}
+	probation.fairChance = func() time.Duration { return fairChanceFrom(vpn, units) }
+	probation.trigger = func() { _ = systemctl("start", "--no-block", rollbackUnit) }
+	probation.units = units
+
+	probation.resumeRollback()
+	server := agentMethods(applier, firewall, dns, dhcp, qos, diag, vpn, clock, updates, logs, disk, backup, support, policy, probation, newPanelApplier(units), passport, surround, grab)
+	go keepDesktopHelpers(aptMarkRun, time.Sleep)
+	go policy.run()
+	go probation.run()
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
@@ -117,6 +208,8 @@ func main() {
 		log.Printf("received %s, shutting down", sig)
 
 		vpn.StopWatchdog()
+		policy.StopPolling()
+		probation.StopWatch()
 		_ = listener.Close()
 	}()
 
@@ -135,9 +228,12 @@ func runHookCommand(cmd string) {
 	case "wan-up":
 
 		method = "qos.wan_up"
+	case "host-refresh":
+
+		method = "host.refresh"
 	default:
 
-		log.Fatal("unknown command; supported: wan-up, disk-setup, disk-change, backup-code, support")
+		log.Fatal("unknown command; supported: wan-up, host-refresh, disk-setup, disk-change, disk-unlock, backup-code, support")
 	}
 	socketPath, err := sanitizeSocketPath(os.Getenv("AGENT_SOCKET"))
 	if err != nil {
@@ -260,11 +356,21 @@ func systemPing(json.RawMessage) (any, *agentrpc.ErrorObject) {
 	}, nil
 }
 
+func networkNeighbors(json.RawMessage) (any, *agentrpc.ErrorObject) {
+	list, err := netstatus.CollectNeighbors()
+	if err != nil {
+		log.Printf("network.neighbors: %v", err)
+		return nil, internalErr(errReadInterfaces, true)
+	}
+	return list, nil
+}
+
 func networkStatus(json.RawMessage) (any, *agentrpc.ErrorObject) {
 	status, err := netstatus.Collect()
 	if err != nil {
 		log.Printf("network.status: %v", err)
 		return nil, internalErr(errReadInterfaces, true)
 	}
+	fillDHCPServers(status, leaseDir, nmStateDir)
 	return status, nil
 }

@@ -1,0 +1,22 @@
+{{ define "components/score-card" }}
+<section class="{{ .Class }}" id="score"{{ if .Row }} data-island="chart" data-kind="score" data-rows="{{ .Row }}{{ range .Parts }},{{ .Row }}{{ end }}" data-score-row="{{ .Row }}" data-good="{{ .Num .Good }}" data-poor="{{ .Num .Poor }}"
+         data-text-ok="хорошо" data-text-warn="местами хуже" data-text-error="разговор рвётся" data-text-unknown="ещё не оценено"{{ end }}>
+    <header class="score-head">
+        <h3 class="chart-title">Канал для звонков</h3>
+        <span class="tag score-tag" data-score-tag>{{ if not .Known }}ещё не оценено{{ else if eq .Level "ok" }}хорошо{{ else if eq .Level "warn" }}местами хуже{{ else }}разговор рвётся{{ end }}</span>
+    </header>
+    <p class="chart-sub">{{ .Note }}</p>
+    <div class="score-big"><span class="score-value num" data-score-value>{{ .Shown }}</span><span class="score-of">из 5</span></div>
+    <svg class="score-scale" viewBox="0 0 100 12" preserveAspectRatio="none" aria-hidden="true" focusable="false">
+        <rect class="score-zone-error" x="0" y="2" width="{{ .PoorAt }}" height="8"/>
+        <rect class="score-zone-warn" x="{{ .PoorAt }}" y="2" width="{{ .FairWidth }}" height="8"/>
+        <rect class="score-zone-ok" x="{{ .GoodAt }}" y="2" width="{{ .GoodWidth }}" height="8"/>
+        <line class="score-mark" x1="{{ .MarkAt }}" x2="{{ .MarkAt }}" y1="0" y2="12" data-score-mark{{ if not .Known }} visibility="hidden"{{ end }}/>
+    </svg>
+    <div class="score-axis num"><span>1 плохо</span><span>3</span><span>5 отлично</span></div>
+    <p class="score-empty" data-score-empty{{ if .Known }} hidden{{ end }}>{{ .Empty }}</p>
+    <div class="score-parts">
+        {{ range .Parts }}<div class="score-part" data-legend-row="{{ .Row }}" data-unit="{{ .Unit }}"><span class="score-part-label">{{ .Label }}</span><span class="score-part-value num" data-row-value>{{ .Value }}</span></div>{{ end }}
+    </div>
+</section>
+{{ end }}

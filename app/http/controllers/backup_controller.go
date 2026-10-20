@@ -118,9 +118,27 @@ func (c *BackupController) Index(ctx contractshttp.Context) contractshttp.Respon
 		"uploadBtn":  ui.Button{Label: "Открыть файл"},
 		"confirmBtn": ui.Button{Label: "Закрепить настройки"},
 		"undoBtn":    ui.Button{Label: "Откатить импорт", Kind: "danger"},
+
+		"kindCards": ui.ItemGrid{Tight: true, Items: []ui.ItemCard{
+			{Title: "Копия", Tags: []ui.Tag{{Text: "то же железо"}},
+				Note: "Этот же шлюз или его замена. Берём всё как было: сеть, адреса, подключения с ключами, устройства панели."},
+			{Title: "Шаблон", Tags: []ui.Tag{{Text: "второй офис"}},
+				Note: "Новое железо или второй шлюз. Берём правила офиса, а карты и адреса подбираем под эту машину; пароль не нужен."},
+		}},
 	}
 	if _, ok := slot.take(deviceOf(ctx), time.Now()); ok {
 		view["hasSlot"] = true
+	}
+
+	var parts []ui.Tag
+	for _, e := range backup.Sections() {
+		parts = append(parts, ui.Tag{Text: e.Name().Title(), Judged: ui.Judge(ui.OK, "реестр разделов копии")})
+	}
+	parts = append(parts, ui.Tag{Text: "журнал безопасности — нет"})
+	view["copyParts"] = parts
+	if at, from, changed, ok := c.im().LastExport(); ok {
+		view["lastExport"] = at.Local().Format("02.01.2006 в 15:04") + " " + from
+		view["lastExportChanged"] = changed
 	}
 	return ctx.Response().View().Make("backup.tmpl", page(ctx, "Резервная копия", "backup", view))
 }
@@ -236,10 +254,11 @@ func (c *BackupController) Preview(ctx contractshttp.Context) contractshttp.Resp
 }
 
 type sectionRow struct {
-	Title  string
-	State  string
-	Items  []string
-	Absent bool
+	Title   string
+	State   string
+	Items   []string
+	Absent  bool
+	Changed bool
 }
 
 var kindWords = map[string]string{backup.Changed: "изменится", backup.Added: "добавится", backup.Removed: "удалится"}
@@ -262,7 +281,7 @@ func sectionRows(p *backup.Plan) []sectionRow {
 				}
 				r.Items = append(r.Items, "«"+ch.Item+"» — "+kindWords[ch.Kind])
 			}
-			r.State = "изменится"
+			r.State, r.Changed = "изменится", true
 			if plain > 0 {
 				r.State = "изменится: " + ui.Plural(plain, "настройка", "настройки", "настроек")
 			}

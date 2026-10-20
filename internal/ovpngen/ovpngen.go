@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/cipherbook"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/vpndriver"
 )
 
@@ -682,6 +683,54 @@ func (p *Profile) Library() []byte {
 	return []byte(b.String())
 }
 
+type Caps struct {
+	DNSUpdown bool
+}
+
+var Options = []hostcaps.Option[Caps]{
+	{ID: "openvpn.dns_updown", Consumers: []string{"vpn"}, Enable: func(c *Caps) { c.DNSUpdown = true },
+		Title:   "Запрет правки DNS в OpenVPN",
+		Missing: "OpenVPN этой версии не знает запрета правки DNS. Настройки DNS от сервера всё равно отбрасываются фильтром. Делать ничего не нужно."},
+}
+
+const probeProfileText = `client
+proto udp
+remote 192.0.2.10 1194
+remote-cert-tls server
+data-ciphers AES-256-GCM:AES-128-GCM:CHACHA20-POLY1305
+auth SHA256
+<ca>
+-----BEGIN CERTIFICATE-----
+AA==
+-----END CERTIFICATE-----
+</ca>
+<cert>
+-----BEGIN CERTIFICATE-----
+AA==
+-----END CERTIFICATE-----
+</cert>
+<key>
+-----BEGIN TESTING KEY-----
+AA==
+-----END TESTING KEY-----
+</key>
+`
+
+func ProbeProfile() (*Profile, error) {
+	p, _, err := Parse(probeProfileText)
+	return p, err
+}
+
+func ProbeRender() Render {
+	return Render{
+		Iface:      "vp-probe0",
+		Mark:       vpndriver.Mark,
+		MTU:        1400,
+		Remotes:    []Remote{{Host: "192.0.2.10", Port: DefaultPort, Proto: vpndriver.TransportUDP}},
+		Management: "/run/vpn-panel-ovpn/probe.sock",
+	}
+}
+
 type Render struct {
 	Iface string
 	Mark  int
@@ -690,6 +739,8 @@ type Render struct {
 	Remotes []Remote
 
 	Management string
+
+	Caps Caps
 }
 
 func (p *Profile) Generate(r Render) []byte {
@@ -715,7 +766,10 @@ func (p *Profile) Generate(r Render) []byte {
 
 	b.WriteString("route-noexec\n")
 	b.WriteString("route-nopull\n")
-	b.WriteString("dns-updown disable\n")
+
+	if r.Caps.DNSUpdown {
+		b.WriteString("dns-updown disable\n")
+	}
 
 	for _, accept := range pushAccept {
 		b.WriteString("pull-filter accept \"" + accept + "\"\n")

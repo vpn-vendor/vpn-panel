@@ -20,7 +20,7 @@ func blackPlan() FirewallPlan {
 
 func outputChain(t *testing.T, p FirewallPlan) string {
 	t.Helper()
-	got := string(p.Generate())
+	got := string(p.Generate(Caps{}))
 	i := strings.Index(got, "chain output {")
 	if i < 0 {
 		return ""
@@ -103,7 +103,7 @@ func TestOutputChainDoesNotDependOnWANName(t *testing.T) {
 
 func TestNoOutputChainInWhiteMode(t *testing.T) {
 	p := FirewallPlan{WANs: []string{"ens3"}, LANs: []FirewallLAN{{Name: "ens4", CIDR: "10.0.0.1/24"}}}
-	if strings.Contains(string(p.Generate()), "chain output") {
+	if strings.Contains(string(p.Generate(Caps{})), "chain output") {
 		t.Error("в прямом режиме цепочка выхода не нужна: она ничего не защищает, но может мешать")
 	}
 }
@@ -112,7 +112,7 @@ func TestNoOutputChainWithoutEndpoint(t *testing.T) {
 
 	p := blackPlan()
 	p.Tunnel.Endpoint = ""
-	if strings.Contains(string(p.Generate()), "chain output") {
+	if strings.Contains(string(p.Generate(Caps{})), "chain output") {
 		t.Error("без адреса сервера цепочка выхода запирает канал — её быть не должно")
 	}
 }
@@ -135,7 +135,7 @@ func TestOutputChainValidatesAddresses(t *testing.T) {
 func TestOutputChainIsDeterministic(t *testing.T) {
 	a := blackPlan()
 	b := blackPlan()
-	if string(a.Generate()) != string(b.Generate()) {
+	if string(a.Generate(Caps{})) != string(b.Generate(Caps{})) {
 		t.Error("один и тот же план даёт разный рулсет — идемпотентность сломана")
 	}
 }

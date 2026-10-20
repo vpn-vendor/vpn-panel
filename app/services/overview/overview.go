@@ -69,17 +69,22 @@ type Rows struct {
 	VoiceDrops string
 	Loss       string
 	PathAlive  string
+	Jitter     string
+	Score      string
+	Path       pathmon.Kind
 }
 
 func RowsFor(protected bool) Rows {
 	if protected {
 		return Rows{Rx: metrics.RowTunnelRx, Tx: metrics.RowTunnelTx,
 			VoiceDelay: metrics.RowTunnelVoiceDelay, VoiceDrops: metrics.RowTunnelVoiceDrops,
-			Loss: pathmon.RowTunnelLoss, PathAlive: pathmon.RowTunnelRTT}
+			Loss: pathmon.RowTunnelLoss, PathAlive: pathmon.RowTunnelRTT,
+			Jitter: pathmon.RowTunnelJitter, Score: pathmon.RowTunnelMOS, Path: pathmon.Tunnel}
 	}
 	return Rows{Rx: metrics.RowWANRx, Tx: metrics.RowWANTx,
 		VoiceDelay: metrics.RowWANVoiceDelay, VoiceDrops: metrics.RowWANVoiceDrops,
-		Loss: pathmon.RowDirectLoss, PathAlive: pathmon.RowDirectRTT}
+		Loss: pathmon.RowDirectLoss, PathAlive: pathmon.RowDirectRTT,
+		Jitter: pathmon.RowDirectJitter, Score: pathmon.RowDirectMOS, Path: pathmon.Direct}
 }
 
 func Internet(protected bool, paths []pathmon.Snapshot) Light {

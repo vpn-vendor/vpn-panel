@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/vpn-vendor/vpn-panel-core/internal/durable"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/durable"
+	"github.com/vpn-vendor/vpn-panel-core/internal/policy"
 )
 
 const (
@@ -19,18 +21,54 @@ const (
 	codeUpdNoTool = 1803
 )
 
-const updatesConfPath = "/etc/apt/apt.conf.d/52vpn-panel-auto"
+var updatesConfPath = "/etc/apt/apt.conf.d/52vpn-panel-auto"
 
-const (
-	updatesOrigin   = "VPN Vendor"
-	updatesCodename = "resolute"
-)
+var updatesPauseConfPath = "/etc/apt/apt.conf.d/53vpn-panel-policy"
+
+func updatesPauseConf() string {
+	return `// Пауза автоматических обновлений по политике защиты.
+// Файл создаёт и снимает панель сама; правка руками не нужна.
+// Пока он здесь, автоматическая установка обновлений не запускается.
+APT::Periodic::Unattended-Upgrade "0";
+`
+}
+
+const updatesOrigin = "VPN Vendor"
 
 type updatesApplier struct {
 	mu sync.Mutex
+
+	policy policyReader
+
+	tool   func() string
+	timers func()
 }
 
-func newUpdatesApplier() *updatesApplier { return &updatesApplier{} }
+func newUpdatesApplier() *updatesApplier {
+	return &updatesApplier{tool: unattendedTool, timers: enableUpdateTimers}
+}
+
+func (u *updatesApplier) paused() bool {
+	return u.policy != nil && u.policy.Flag(policy.FlagUpdatesPause)
+}
+
+func (u *updatesApplier) onPolicyChange() {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if u.paused() {
+
+		if _, err := durable.WriteIfChanged(updatesPauseConfPath, []byte(updatesPauseConf()), 0o644); err != nil {
+			log.Printf("updates: policy pause not written: %v", err)
+		}
+		return
+	}
+
+	if fileExists(updatesPauseConfPath) {
+		if err := durable.Remove(updatesPauseConfPath); err != nil {
+			log.Printf("updates: policy pause not cleared: %v", err)
+		}
+	}
+}
 
 func updatesConf() string {
 	return fmt.Sprintf(`// Автоматические обновления панели управления шлюзом.
@@ -40,7 +78,7 @@ func updatesConf() string {
 // системные, и «обновлять панель» тихо превратилось бы в «обновлять всё».
 #clear Unattended-Upgrade::Allowed-Origins;
 #clear Unattended-Upgrade::Origins-Pattern;
-Unattended-Upgrade::Origins-Pattern { "origin=%s,codename=%s"; };
+Unattended-Upgrade::Origins-Pattern { "origin=%s,codename=${distro_codename}"; };
 
 // Перезагрузку система не выбирает сама никогда: шлюз с офисом за спиной
 // не имеет права уйти в перезагрузку по своему усмотрению.
@@ -50,24 +88,26 @@ Unattended-Upgrade::Automatic-Reboot-WithUsers "false";
 // Ежедневно: обновить список и поставить то, что разрешено выше.
 APT::Periodic::Update-Package-Lists "1";
 APT::Periodic::Unattended-Upgrade "1";
-`, updatesOrigin, updatesCodename)
+`, updatesOrigin)
 }
 
 type updatesStatus struct {
-	Enabled     bool   `json:"enabled"`
-	ToolPresent bool   `json:"tool_present"`
-	TimerActive bool   `json:"timer_active"`
-	Version     string `json:"version"`
-	LastRun     string `json:"last_run"`
-	LastResult  string `json:"last_result"`
+	Enabled        bool   `json:"enabled"`
+	ToolPresent    bool   `json:"tool_present"`
+	TimerActive    bool   `json:"timer_active"`
+	PausedByPolicy bool   `json:"paused_by_policy"`
+	Version        string `json:"version"`
+	LastRun        string `json:"last_run"`
+	LastResult     string `json:"last_result"`
 }
 
 func (u *updatesApplier) updatesStatus(json.RawMessage) (any, *agentrpc.ErrorObject) {
 	st := updatesStatus{
-		Enabled:     fileExists(updatesConfPath),
-		ToolPresent: unattendedTool() != "",
-		TimerActive: upgradeTimerActive(),
-		Version:     installedVersion(),
+		Enabled:        fileExists(updatesConfPath),
+		ToolPresent:    unattendedTool() != "",
+		TimerActive:    upgradeTimerActive(),
+		PausedByPolicy: fileExists(updatesPauseConfPath),
+		Version:        installedVersion(),
 	}
 	st.LastRun, st.LastResult = lastUnattendedRun()
 	return st, nil
@@ -93,6 +133,10 @@ func (u *updatesApplier) updatesSet(raw json.RawMessage) (any, *agentrpc.ErrorOb
 	u.mu.Lock()
 	defer u.mu.Unlock()
 
+	if err := writeUpdatesChoice(*p.Enabled); err != nil {
+		return nil, &agentrpc.ErrorObject{Code: codeUpdWrite,
+			Message: "не удалось сохранить настройку обновлений"}
+	}
 	if !*p.Enabled {
 		if err := durable.Remove(updatesConfPath); err != nil {
 			return nil, &agentrpc.ErrorObject{Code: codeUpdWrite,
@@ -110,9 +154,7 @@ func (u *updatesApplier) updatesSet(raw json.RawMessage) (any, *agentrpc.ErrorOb
 		return nil, &agentrpc.ErrorObject{Code: codeUpdWrite,
 			Message: "не удалось записать настройку обновлений"}
 	}
-
-	_ = exec.Command("systemctl", "enable", "--now", "apt-daily.timer").Run()
-	_ = exec.Command("systemctl", "enable", "--now", "apt-daily-upgrade.timer").Run()
+	u.timers()
 	return u.updatesStatus(nil)
 }
 
@@ -140,11 +182,15 @@ func upgradeTimerActive() bool {
 }
 
 func installedVersion() string {
-	out, err := exec.Command("dpkg-query", "-W", "-f=${Version}", "vpn-panel").Output()
+	out, err := exec.Command("dpkg-query", "-W", "-f=${db:Status-Status}\t${Version}", "vpn-panel").Output()
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(out))
+	status, version, _ := strings.Cut(strings.TrimSpace(string(out)), "\t")
+	if status != "installed" {
+		return ""
+	}
+	return version
 }
 
 func lastUnattendedRun() (when string, result string) {

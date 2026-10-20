@@ -1,6 +1,8 @@
 package network
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"net/netip"
 	"slices"
@@ -42,6 +44,8 @@ type SectionInterface struct {
 	WANMetric     uint   `json:"wan_metric"`
 	PPPoEUsername string `json:"pppoe_username"`
 	VLAN          int    `json:"vlan"`
+
+	CloneMAC string `json:"clone_mac"`
 }
 
 func ReadSection() (Section, error) {
@@ -66,7 +70,7 @@ func ReadSection() (Section, error) {
 		out.Interfaces = append(out.Interfaces, SectionInterface{
 			Name: r.Name, MAC: r.MAC, Role: r.Role, IPv4Method: method, IPv4CIDR: r.IPv4CIDR,
 			IPv4Gateway: r.IPv4Gateway, IPv4DNS: r.IPv4DNS, WANMetric: r.WANMetric,
-			PPPoEUsername: r.PPPoEUsername, VLAN: r.VLAN,
+			PPPoEUsername: r.PPPoEUsername, VLAN: r.VLAN, CloneMAC: r.CloneMAC,
 		})
 	}
 	return out, nil
@@ -95,6 +99,18 @@ func ValidateSection(v Section) fielderr.List {
 			continue
 		}
 		errs.Under(path, validateInterface(i))
+	}
+
+	for n, i := range v.Interfaces {
+		if i.CloneMAC == "" {
+			continue
+		}
+		for _, o := range v.Interfaces {
+			if o.Name != i.Name && o.MAC == i.CloneMAC {
+				errs.Add(fielderr.Join(fielderr.Row("interfaces", n, i.Name), "clone_mac"),
+					"это адрес другой карты шлюза (%s) — нужен адрес старого роутера", o.Name)
+			}
+		}
 	}
 	if len(errs) == 0 {
 		if plan := sectionPlan(v); len(plan.Interfaces) > 0 {
@@ -159,6 +175,16 @@ func validateInterface(i SectionInterface) fielderr.List {
 	if i.VLAN != 0 && !allowed["vlan"] {
 		errs.Add("vlan", "тег VLAN задаётся только у подключения к интернету")
 	}
+	if i.CloneMAC != "" {
+		switch {
+		case i.Role != netplangen.RoleWAN:
+			errs.Add("clone_mac", "подменить адрес можно только у карты в интернет")
+		case !netplangen.ValidCloneMAC(i.CloneMAC):
+			errs.Add("clone_mac", "адрес для провайдера не годится — нужен обычный адрес устройства вида a4:bb:6d:1f:22:90")
+		case i.CloneMAC == i.MAC:
+			errs.Add("clone_mac", "это родной адрес карты — подменять нечем")
+		}
+	}
 	return errs
 }
 
@@ -179,7 +205,7 @@ func sectionPlan(v Section) netplangen.Plan {
 		pi := netplangen.PlanInterface{Name: r.Name, Role: r.Role, Method: r.IPv4Method,
 			CIDR: r.IPv4CIDR, Metric: int(r.WANMetric)}
 		if r.Role == netplangen.RoleWAN {
-			pi.VLAN = r.VLAN
+			pi.VLAN, pi.MAC = r.VLAN, r.CloneMAC
 			switch r.IPv4Method {
 			case netplangen.MethodStatic:
 				pi.Gateway = r.IPv4Gateway
@@ -229,6 +255,18 @@ func (v *Section) SetRole(in RoleInput) error {
 		}
 	}
 	row.MAC, row.Role = in.MAC, in.Role
+	if in.Role != netplangen.RoleWAN {
+		row.CloneMAC = ""
+	} else if in.CloneSet {
+		row.CloneMAC = ""
+		if t := strings.TrimSpace(in.CloneMAC); t != "" {
+			m, err := keagen.NormalizeMAC(t)
+			if err != nil {
+				return errors.New("адрес старого роутера: " + err.Error())
+			}
+			row.CloneMAC = m
+		}
+	}
 	row.IPv4CIDR, row.IPv4Gateway, row.IPv4DNS, row.PPPoEUsername, row.VLAN = in.CIDR, "", "", "", 0
 	switch in.Role {
 	case netplangen.RoleWAN:
@@ -282,19 +320,34 @@ func ApplySection(cur, want Section) error {
 			if _, err := tx.Model(&models.Interface{}).Where("name", i.Name).Update(map[string]any{
 				"mac": i.MAC, "role": i.Role, "ipv4_method": i.IPv4Method, "ipv4_cidr": i.IPv4CIDR,
 				"ipv4_gateway": i.IPv4Gateway, "ipv4_dns": i.IPv4DNS, "wan_metric": i.WANMetric,
-				"pppoe_username": i.PPPoEUsername, "vlan": i.VLAN, "updated_at": now}); err != nil {
+				"pppoe_username": i.PPPoEUsername, "vlan": i.VLAN, "clone_mac": i.CloneMAC, "updated_at": now}); err != nil {
 				return err
 			}
 		}
 		for _, i := range added {
 			if err := tx.Create(&models.Interface{Name: i.Name, MAC: i.MAC, Role: i.Role, IPv4Method: i.IPv4Method,
 				IPv4CIDR: i.IPv4CIDR, IPv4Gateway: i.IPv4Gateway, IPv4DNS: i.IPv4DNS, WANMetric: i.WANMetric,
-				PPPoEUsername: i.PPPoEUsername, VLAN: i.VLAN, CreatedAt: now, UpdatedAt: now}); err != nil {
+				PPPoEUsername: i.PPPoEUsername, VLAN: i.VLAN, CloneMAC: i.CloneMAC, CreatedAt: now, UpdatedAt: now}); err != nil {
 				return err
 			}
 		}
 		return nil
 	})
+}
+
+func UpV1(raw json.RawMessage) (json.RawMessage, error) {
+	var v map[string]any
+	if err := json.Unmarshal(raw, &v); err != nil {
+		return nil, err
+	}
+	if list, ok := v["interfaces"].([]any); ok {
+		for _, it := range list {
+			if row, ok := it.(map[string]any); ok {
+				row["clone_mac"] = ""
+			}
+		}
+	}
+	return json.Marshal(v)
 }
 
 func Edit(edit func(*Section) error) (Section, error) {

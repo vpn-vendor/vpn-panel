@@ -13,12 +13,13 @@
 set -euo pipefail
 
 REPO_URL="${VPN_PANEL_REPO:-https://vpn-vendor.github.io/vpn-panel}"
-SUITE="${VPN_PANEL_SUITE:-resolute}"
 KEYRING=/usr/share/keyrings/vpn-panel.asc
 SOURCE=/etc/apt/sources.list.d/vpn-panel.sources
 
 say() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 fail() { printf '\nОшибка: %s\n' "$*" >&2; exit 1; }
+# Сценарий скачивают и wget, и curl: берём тот, что есть.
+fetch() { if command -v wget >/dev/null 2>&1; then wget -qO- "$1"; else curl -fsSL "$1"; fi; }
 
 [ "$(id -u)" = "0" ] || fail "запустите с правами администратора: wget -qO- https://vpn-vendor.github.io/vpn-panel/install.sh | sudo bash"
 
@@ -32,16 +33,24 @@ cat <<TXT
 трогает — этим займётся сама панель после установки, по вашей команде.
 TXT
 
-# Система: работаем только на поддерживаемой версии, иначе честный отказ.
+# Система: ставим только на выпуски из окна поддержки, иначе честный отказ.
+# Список берётся с той же площадки, что ключ и пакет: так он не расходится
+# с репозиторием.
 . /etc/os-release 2>/dev/null || fail "не удалось определить систему"
 if [ "${ID:-}" != "ubuntu" ]; then
     fail "панель рассчитана на Ubuntu; у вас ${PRETTY_NAME:-неизвестная система}"
 fi
-if [ "${VERSION_ID:-}" != "26.04" ]; then
-    printf '\nВнимание: панель проверена на Ubuntu 26.04, у вас %s.\n' "${VERSION_ID:-?}"
-    printf 'Установка продолжится, но работа не гарантируется.\n'
-fi
 [ "$(dpkg --print-architecture)" = "amd64" ] || fail "поддерживается только архитектура amd64"
+WINDOW="$(fetch "$REPO_URL/os-window")" \
+    || fail "не удалось скачать список поддерживаемых выпусков с $REPO_URL — проверьте интернет и повторите"
+SUPPORTED="$(printf '%s\n' "$WINDOW" | awk '!/^#/ && NF == 2 {printf "%s%s", sep, $1; sep = ", "}')"
+# Совпадение ищет сам awk и дочитывает список до конца: grep -q после awk
+# под pipefail провалил бы конвейер на поддерживаемой системе.
+if [ -z "${VPN_PANEL_SUITE:-}" ] &&
+    ! printf '%s\n' "$WINDOW" | awk -v c="${VERSION_CODENAME:-}" '!/^#/ && NF == 2 && $2 == c {f = 1} END {exit !f}'; then
+    fail "панель ставится на Ubuntu $SUPPORTED, а у вас ${PRETTY_NAME:-другая версия}. Обновите систему до одного из этих выпусков или поставьте шлюз с флешки"
+fi
+SUITE="${VPN_PANEL_SUITE:-$VERSION_CODENAME}"
 
 say "Подключаю источник обновлений"
 export DEBIAN_FRONTEND=noninteractive

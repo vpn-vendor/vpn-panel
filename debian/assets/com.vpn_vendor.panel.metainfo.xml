@@ -2,7 +2,7 @@
 <component type="desktop-application">
   <id>com.vpn_vendor.panel</id>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>Apache-2.0</project_license>
+  <project_license>GPL-3.0-only</project_license>
   <name>VPN Panel</name>
   <summary>Office gateway control panel</summary>
   <summary xml:lang="ru">Панель управления офисным шлюзом</summary>

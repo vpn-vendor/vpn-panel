@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/vpn-vendor/vpn-panel-core/app/facades"
@@ -123,8 +124,17 @@ func (s *Service) Import(name, config string) (*ImportResult, error) {
 	if err != nil {
 		return nil, err
 	}
+	return s.importProfile(name, map[string]any{"protocol": string(d.ID), "config": config})
+}
+
+func (s *Service) ImportLegacy(name, protocol string) (*ImportResult, error) {
+	return s.importProfile(name, map[string]any{"protocol": protocol, "source": "legacy"})
+}
+
+func (s *Service) importProfile(name string, params map[string]any) (*ImportResult, error) {
 	slug := s.uniqueSlug(vpndriver.Slug(name))
-	resp, err := s.client().Call("vpn.import", map[string]any{"slug": slug, "protocol": string(d.ID), "config": config})
+	params["slug"] = slug
+	resp, err := s.client().Call("vpn.import", params)
 	if err != nil {
 		return nil, err
 	}
@@ -468,4 +478,37 @@ func (s *Service) SetProbeTarget(slug, target string) error {
 
 func (s *Service) Audit(event, ip, details string) {
 	securitylog.Record(models.AuthEvent{Event: event, IP: ip, Details: details, OccurredAt: time.Now()})
+}
+
+const ReconnectGap = time.Minute
+
+var lastReconnect struct {
+	mu sync.Mutex
+	at time.Time
+}
+
+func (s *Service) Reconnect() error {
+	resp, err := s.client().Call("vpn.reconnect", map[string]any{})
+	if err != nil {
+		return err
+	}
+	if resp.Error != nil {
+		return resp.Error
+	}
+	lastReconnect.mu.Lock()
+	lastReconnect.at = time.Now()
+	lastReconnect.mu.Unlock()
+	return nil
+}
+
+func (s *Service) ReconnectWait() time.Duration {
+	lastReconnect.mu.Lock()
+	defer lastReconnect.mu.Unlock()
+	if lastReconnect.at.IsZero() {
+		return 0
+	}
+	if left := time.Until(lastReconnect.at.Add(ReconnectGap)); left > 0 {
+		return left
+	}
+	return 0
 }

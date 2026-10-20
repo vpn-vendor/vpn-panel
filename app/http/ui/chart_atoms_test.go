@@ -39,7 +39,7 @@ func TestChartCardIsSelfDescribing(t *testing.T) {
 	out := render(t, "components/chart-card", trafficCard())
 	for _, want := range []string{
 		`data-island="chart"`, `data-kind="band"`, `data-rows="net.wan.rx,net.wan.tx"`,
-		`data-window="2h"`, `data-unit="bits"`, "12,4 Мбит/с", "chart-series-2", `data-text-paused=`,
+		`data-window="live"`, `data-unit="bits"`, "12,4 Мбит/с", "chart-series-2", `data-text-paused=`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("карточка графика потеряла %q:\n%s", want, out)
@@ -66,7 +66,7 @@ func TestChartCardRejectsGarbage(t *testing.T) {
 	if got := c.RowNames(); got != "cpu.busy,load1,mem.used,pressure.cpu" {
 		t.Errorf("ряды карточки: %q", got)
 	}
-	if c.KindName() != "spark" || c.WindowName() != "2h" || c.UnitName() != "" {
+	if c.KindName() != "spark" || c.WindowName() != "live" || c.UnitName() != "" {
 		t.Errorf("неизвестные вид, окно, единица: %q %q %q", c.KindName(), c.WindowName(), c.UnitName())
 	}
 	if len(ui.ChartTip{}.Slots()) != ui.MaxChartRows {
@@ -120,7 +120,7 @@ func TestRangeIsExplainedNotGuessed(t *testing.T) {
 	if !strings.Contains(plot[:strings.Index(plot, "chart-panel-note")], "data-panel-coach") {
 		t.Error("подсказка обязана жить у графика, а не поверх заголовка панели")
 	}
-	if !strings.Contains(panel, "Проведите мышью по графику") || !strings.Contains(panel, "Понятно") {
+	if !strings.Contains(panel, "Коснитесь графика") || !strings.Contains(panel, "Понятно") {
 		t.Error("подсказка обязана говорить, что делать, и закрываться кнопкой")
 	}
 }
@@ -178,7 +178,8 @@ func TestChartPanelIsServedOnceWithItsCanvas(t *testing.T) {
 		t.Errorf("полотен в панели %d, должно быть ровно одно", n)
 	}
 	for _, want := range []string{`data-island="chart-panel"`, `data-chart-select`, `data-panel-close`,
-		`data-panel-reset`, `data-panel-values`, `aria-labelledby=`, "Выделите мышью отрезок"} {
+		`data-panel-reset`, `data-panel-values`, `data-chart-cross`, `data-panel-read`, `aria-labelledby=`,
+		"увидеть значение в точке"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("панель потеряла %q", want)
 		}

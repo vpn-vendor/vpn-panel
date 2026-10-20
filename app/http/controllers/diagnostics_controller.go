@@ -4,18 +4,24 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	contractshttp "github.com/goravel/framework/contracts/http"
 
 	"github.com/vpn-vendor/vpn-panel-core/app/http/ui"
+	"github.com/vpn-vendor/vpn-panel-core/app/models"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/diag"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/metrics"
 	"github.com/vpn-vendor/vpn-panel-core/app/services/network"
+	"github.com/vpn-vendor/vpn-panel-core/app/services/system"
 	"github.com/vpn-vendor/vpn-panel-core/internal/agentrpc"
+	"github.com/vpn-vendor/vpn-panel-core/internal/diagnose"
+	"github.com/vpn-vendor/vpn-panel-core/internal/hostcaps"
 	"github.com/vpn-vendor/vpn-panel-core/internal/keagen"
 	"github.com/vpn-vendor/vpn-panel-core/internal/oui"
 	"github.com/vpn-vendor/vpn-panel-core/internal/ratelimit"
+	"github.com/vpn-vendor/vpn-panel-core/internal/sysinfo"
 )
 
 type DiagnosticsController struct {
@@ -73,9 +79,12 @@ func (c *DiagnosticsController) Index(ctx contractshttp.Context) contractshttp.R
 			Text: "Диагностика заработает после назначения роли «локальная сеть» на странице «Сеть»."})
 	}
 
+	now := time.Now()
+	around, aerr := system.New().Surroundings()
 	report, rows, err := c.service.Report()
 	switch err {
 	case nil:
+		report, rows = withLanDHCP(report, rows, around)
 		devices := make([]deviceRow, 0, len(rows))
 		for _, r := range rows {
 			devices = append(devices, toDeviceRow(r))
@@ -123,11 +132,43 @@ func (c *DiagnosticsController) Index(ctx contractshttp.Context) contractshttp.R
 	c.identifyView(view)
 	if len(prows) > 0 {
 		notices = append(notices, notice{Level: "info",
-			Text: fmt.Sprintf("Сотрудники предложили подписи для %d устройств — проверьте и примите их в разделе «Предложения подписей».", len(prows))})
+			Text: fmt.Sprintf(ui.JuniorAdmin.Plural+" предложили подписи для %d устройств — проверьте и примите их в разделе «Предложения подписей».", len(prows))})
 	}
 	view["notices"] = notices
 	NewSupportController().view(view)
+	devices, _ := view["devices"].([]deviceRow)
+	level, _ := view["level"].(string)
+	probedAt, _ := view["probedAt"].(string)
+	view["hero"] = diagHero(level, probedAt, devices, err == nil)
+	view["switchProbes"], view["switchSelfLabel"] = diagSwitches(settings.ActiveProbes, settings.SelfLabel)
+	sys := systemFacts(system.New().Report(now), sysinfo.Read(), now)
+	if row, ok := takeoverFactRow(system.New().TakeoverState()); ok {
+		sys.Items = append(sys.Items, row)
+	}
+	view["system"] = sys
+	if aerr == nil {
+		around = holdSeen(around, system.LastSeen())
+		view["surroundRecheck"] = ui.Button{Label: "Проверить ещё раз", Kind: "secondary", Small: true}
+	}
+	view["surroundings"] = surroundFacts(withOwnBinding(around, panelInUse(), now), aerr != nil, now)
 	return ctx.Response().View().Make("diagnostics.tmpl", page(ctx, "Диагностика", "diagnostics", view))
+}
+
+func withLanDHCP(report *diagnose.Report, rows []diag.Row, st hostcaps.Surroundings) (*diagnose.Report, []diag.Row) {
+	f, ok := st.Fact("surroundings.dhcp_lan")
+	if !ok || f.Answer != hostcaps.Yes || report == nil {
+		return report, rows
+	}
+	fixed := diagnose.ForeignDHCP(*report, strings.Split(f.Value, ","))
+	records := make(map[string]models.Device, len(rows))
+	for _, r := range rows {
+		records[r.MAC] = r.Record
+	}
+	out := make([]diag.Row, 0, len(fixed.Devices))
+	for _, d := range fixed.Devices {
+		out = append(out, diag.Row{Device: d, Record: records[d.MAC]})
+	}
+	return &fixed, out
 }
 
 func toDeviceRow(r diag.Row) deviceRow {
@@ -274,7 +315,7 @@ func (c *DiagnosticsController) windowView(view map[string]any) {
 	view["selectWindowOpen"] = ui.Select{ID: "window-open", Name: "minutes", Label: "Срок окна", Value: "120", Options: windowPresets(st.MaxHours),
 		Hint: "Срок считается от открытия. Бессрочного окна не бывает: предел " + strconv.Itoa(st.MaxHours) + " ч."}
 	view["toggleWindowFull"] = ui.Toggle{ID: "window-full", Name: "full", Label: "Разрешить полный замер до гигабита",
-		Hint: "Полный замер занимает порт сервера целиком; без этого флажка сотрудникам доступна только быстрая проверка."}
+		Hint: "Полный замер занимает порт сервера целиком; без этого флажка " + ui.JuniorAdmin.PluralDat + " доступна только быстрая проверка."}
 	view["buttonWindowOpen"] = ui.Button{Label: "Открыть окно", Name: "action", Value: "open"}
 	view["selectWindowExtend"] = ui.Select{ID: "window-extend", Name: "minutes", Label: "Продлить на", Value: "60", Options: windowPresets(st.MaxHours)}
 	view["buttonWindowExtend"] = ui.Button{Label: "Продлить", Name: "action", Value: "extend", Kind: "secondary"}
@@ -316,7 +357,7 @@ func (c *DiagnosticsController) Window(ctx contractshttp.Context) contractshttp.
 			setFlash(ctx, flashError, "Окно не закрыто.")
 			break
 		}
-		c.service.Audit("lan_window_closed", ip, "закрыто администратором")
+		c.service.Audit("lan_window_closed", ip, "закрыто "+ui.MainAdmin.Ins)
 		setFlash(ctx, flashCode, "Окно проверок закрыто.")
 	case "max":
 		h, err := strconv.Atoi(ctx.Request().Input("max_hours"))
@@ -374,7 +415,7 @@ func (c *DiagnosticsController) IdentifyAction(ctx contractshttp.Context) contra
 			setFlash(ctx, flashError, "Подпись не сохранена: "+err.Error())
 			break
 		}
-		if err := c.service.CloseIdentify(mac, ip, "подписано администратором"); err != nil {
+		if err := c.service.CloseIdentify(mac, ip, "подписано "+ui.MainAdmin.Ins); err != nil {
 			setFlash(ctx, flashError, "Подпись сохранена, но запрос не закрыт: "+err.Error())
 			break
 		}
@@ -410,6 +451,15 @@ func (c *DiagnosticsController) fullCheckView(view map[string]any) {
 		Hint: "На слабом сервере полная проверка может упереться в процессор или порт — это тоже находка."}
 	view["buttonFullStart"] = ui.Button{Label: "Начать полную проверку", Name: "action", Value: "start", Kind: "danger"}
 	view["buttonFullStop"] = ui.Button{Label: "Остановить", Name: "action", Value: "stop", Kind: "danger"}
+}
+
+func (c *DiagnosticsController) SurroundingsRecheck(ctx contractshttp.Context) contractshttp.Response {
+	if err := system.New().Rescan([]string{"surroundings.dhcp_lan"}); err != nil {
+		setFlash(ctx, flashError, "Проверка не запустилась: "+lowerFirst(strings.TrimSuffix(agentrpc.Human(err), "."))+".")
+	} else {
+		setFlash(ctx, flashCode, "Шлюз заново слушает сеть офиса. Второй сервер раздачи адресов станет виден, когда компьютеры офиса попросят адрес, обычно при включении. Обновите страницу через минуту.")
+	}
+	return ctx.Response().Redirect(contractshttp.StatusFound, "/diagnostics")
 }
 
 func (c *DiagnosticsController) FullCheckAction(ctx contractshttp.Context) contractshttp.Response {

@@ -12,15 +12,20 @@
 </div>
 {{ end }}
 
-{{ template "security/exposure" . }}
-{{ template "security/listen" . }}
-{{ template "security/settings" . }}
-{{ template "security/retention" . }}
+<div class="cols cols-side">
+<div class="col">
+<section class="card">
+    {{ template "components/hero-status" .hero }}
+</section>
+{{ template "security/policy" . }}
 {{ template "security/storage" . }}
-{{ template "security/metrics" . }}
-{{ template "security/access" . }}
-{{ template "security/disk" . }}
+</div>
+<div class="col">
+{{ template "security/outside" . }}
 {{ template "security/updates" . }}
+{{ template "security/disk" . }}
+</div>
+</div>
 
 <script src="{{ .static }}/js/security.js" defer></script>
 {{ template "app-bottom" . }}

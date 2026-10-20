@@ -1,0 +1,10 @@
+{{ define "components/usage-bar" }}
+<div class="{{ .Class }}">
+    <div class="usage-head">
+        <span class="usage-label">{{ .Label }} <span class="usage-value">{{ .Value }}</span>{{ if .Of }} <span class="usage-of">{{ .Of }}</span>{{ end }}</span>
+        <span class="usage-pct">{{ .Percent }} %</span>
+    </div>
+    <div class="pool-bar usage-track" role="img" aria-label="{{ .Label }}: {{ .Percent }} %"><span class="pool-fill-{{ .Step }}"></span></div>
+    {{ if .Note }}<p class="usage-note">{{ .Note }}</p>{{ end }}
+</div>
+{{ end }}

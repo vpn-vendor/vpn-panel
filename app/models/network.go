@@ -19,6 +19,8 @@ type Interface struct {
 	PPPoEUsername string `gorm:"column:pppoe_username"`
 
 	VLAN int `gorm:"column:vlan"`
+
+	CloneMAC string `gorm:"column:clone_mac"`
 }
 
 func (Interface) TableName() string { return "interfaces" }
