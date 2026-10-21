@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "flags": {
+    "qos-off": false,
+    "updates-pause": false
+  },
+  "advisory": {
+    "pull_now": false,
+    "message": ""
+  },
+  "known_bad": [],
+  "floor": "",
+  "ceiling": ""
+}
