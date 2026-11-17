@@ -83,7 +83,13 @@ sudo apt update && sudo apt install ./vpn-panel_*_amd64.deb
 ### Способ 2: одна команда
 
 Для Ubuntu 26.04, в том числе сервера без рабочего стола, и для Ubuntu 22.04
-Server. Наберите в терминале шлюза:
+Server. Наберите в терминале шлюза одну из команд ниже (во второй косанде большая буква О, а не цифра ноль):
+
+```bash
+wget https://vpn-vendor.github.io/vpn-panel/install.sh && sudo bash install.sh
+```
+
+или
 
 ```bash
 wget -qO- https://vpn-vendor.github.io/vpn-panel/install.sh | sudo bash
